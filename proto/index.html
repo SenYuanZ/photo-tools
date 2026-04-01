@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>卡通摄影排单 APP 原型总览</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg px-6 py-8 lg:px-10">
+    <main class="mx-auto max-w-[1500px]">
+      <section class="card mb-6 p-6 bounce-in">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <h1 class="title-font text-3xl text-[#ff6f9b]">卡通风格摄影排单 APP · 高保真原型</h1>
+          <span class="chip">iOS / Android 通用</span>
+        </div>
+        <p class="text-sm leading-7 text-[#625b77]">
+          核心闭环：登录 → 添加客户 → 排单录入 → 首页排单查看 → 详情页查看备注与提醒。所有页面采用马卡龙配色、圆角组件、
+          Q 版图标与轻量动效，支持直接交付前端开发。
+        </p>
+        <div class="mt-4 grid gap-3 text-sm md:grid-cols-3">
+          <article class="module-card soft-pink">
+            <p class="mb-1 font-extrabold">用户体验分析</p>
+            <p>高频任务是快速看档期与避免冲突，信息录入必须一步到位，重点强调客户备注与支付状态。</p>
+          </article>
+          <article class="module-card soft-blue">
+            <p class="mb-1 font-extrabold">产品界面规划</p>
+            <p>以底部三栏导航承载登录/首页/我的，关键流程拆为独立表单与详情，减少跨页记忆负担。</p>
+          </article>
+          <article class="module-card soft-yellow">
+            <p class="mb-1 font-extrabold">原型实现方式</p>
+            <p>每个界面为独立 HTML 文件，通过 iframe 平铺展示，便于评审、标注与开发映射。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="preview-grid">
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">01 登录页</h2>
+          <div class="preview-frame"><iframe src="./login.html" title="登录页"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">02 首页排单</h2>
+          <div class="preview-frame"><iframe src="./home.html" title="首页排单"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">03 我的页面</h2>
+          <div class="preview-frame"><iframe src="./my.html" title="我的页面"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">04 添加客户信息</h2>
+          <div class="preview-frame"><iframe src="./add-customer.html" title="添加客户"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">05 排单录入</h2>
+          <div class="preview-frame"><iframe src="./schedule-entry.html" title="排单录入"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">06 排单详情</h2>
+          <div class="preview-frame"><iframe src="./detail.html" title="排单详情"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">07 客户管理</h2>
+          <div class="preview-frame"><iframe src="./customer-management.html" title="客户管理"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">08 历史排单</h2>
+          <div class="preview-frame"><iframe src="./history.html" title="历史排单"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">09 个人设置</h2>
+          <div class="preview-frame"><iframe src="./settings.html" title="个人设置"></iframe></div>
+        </article>
+        <article class="preview-card">
+          <h2 class="mb-3 font-extrabold text-[#4d4761]">10 开发标注版</h2>
+          <div class="preview-frame"><iframe src="./dev-spec.html" title="开发标注版"></iframe></div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

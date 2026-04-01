@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>首页排单</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-full"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="card mb-4 p-4">
+          <div class="mb-2 flex items-center justify-between">
+            <h1 class="title-font text-3xl text-[#ff6f9b]">我的排单</h1>
+            <button class="chip"><i class="fa-regular fa-calendar mr-1 text-[#ff7ca9]"></i>日期切换</button>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <p class="font-bold">2026年4月1日 星期三</p>
+            <span class="chip border-[#d5e9ff] text-[#4d9eff]"><i class="fa-regular fa-sun mr-1"></i>晴 26°C</span>
+          </div>
+        </header>
+
+        <section class="mb-4">
+          <div class="mb-2 flex items-center justify-between">
+            <p class="section-title"><i class="fa-solid fa-star"></i>今日排单✨</p>
+            <span class="chip">3 人</span>
+          </div>
+
+          <article class="card soft-pink mb-2 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <p class="font-extrabold">张小鹿 <span class="chip ml-1 text-[#ff6f9b]">个人写真</span></p>
+              <span class="text-sm font-extrabold text-[#ff5a93]">09:00 - 11:30</span>
+            </div>
+            <div class="space-y-1 text-xs text-[#6f6886]">
+              <p><i class="fa-solid fa-location-dot mr-1 text-[#6aa9ff]"></i>XX 公园草坪</p>
+              <p><i class="fa-solid fa-coins mr-1 text-[#efb236]"></i>定金：已支付</p>
+            </div>
+          </article>
+
+          <article class="card soft-blue mb-2 p-3 pulse-alert">
+            <div class="mb-2 flex items-center justify-between">
+              <p class="font-extrabold">林一朵 <span class="chip ml-1 border-[#d6e9ff] text-[#5b9dff]">情侣</span></p>
+              <span class="text-sm font-extrabold text-[#2d8dff]">14:00 - 16:00</span>
+            </div>
+            <div class="space-y-1 text-xs text-[#6f6886]">
+              <p><i class="fa-solid fa-location-dot mr-1 text-[#6aa9ff]"></i>北岸咖啡街</p>
+              <p><i class="fa-solid fa-bell mr-1 text-[#ff7ca9]"></i>距离拍摄还有 1 小时</p>
+            </div>
+          </article>
+
+          <article class="card soft-yellow p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <p class="font-extrabold">启辰工作室 <span class="chip ml-1 border-[#ffe6a5] text-[#d19800]">商业</span></p>
+              <span class="text-sm font-extrabold text-[#d19800]">19:00 - 20:30</span>
+            </div>
+            <div class="space-y-1 text-xs text-[#6f6886]">
+              <p><i class="fa-solid fa-location-dot mr-1 text-[#6aa9ff]"></i>创意园 A 栋</p>
+              <p><i class="fa-solid fa-coins mr-1 text-[#efb236]"></i>定金：全款</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="mb-4">
+          <div class="mb-2 flex items-center justify-between">
+            <p class="section-title"><i class="fa-solid fa-cloud-sun"></i>明日排单</p>
+            <span class="chip">1 人</span>
+          </div>
+          <article class="card p-3">
+            <p class="font-extrabold">小雨亲子照 <span class="chip ml-2">亲子</span></p>
+            <p class="mt-1 text-xs text-[#6f6886]">10:30 - 12:00 · 森林公园童趣区 · 定金未支付</p>
+          </article>
+        </section>
+
+        <section>
+          <div class="mb-2 flex items-center justify-between">
+            <p class="section-title"><i class="fa-solid fa-hourglass-half"></i>未来排单</p>
+            <span class="chip">0 人</span>
+          </div>
+          <article class="card flex items-center gap-3 p-4 text-sm text-[#7d7892]">
+            <i class="fa-solid fa-camera text-xl text-[#c6bdcf]"></i>
+            <p>暂无排单哦～下拉刷新即可同步最新排单。</p>
+          </article>
+        </section>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item active-home"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

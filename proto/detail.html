@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>排单详情</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-3 flex items-center justify-between">
+          <button class="chip"><i class="fa-solid fa-chevron-left mr-1"></i>返回</button>
+          <h1 class="title-font text-2xl text-[#ff6f9b]">客户：张小鹿</h1>
+          <button class="chip"><i class="fa-solid fa-pen mr-1"></i>编辑</button>
+        </header>
+
+        <section class="card mb-3 p-3 soft-pink">
+          <p class="section-title mb-2"><i class="fa-regular fa-calendar"></i>排单基础信息</p>
+          <div class="space-y-1.5 text-sm">
+            <p>拍摄日期：2026年4月1日 星期三</p>
+            <p>拍摄时段：09:00 - 11:30（2.5小时）</p>
+            <p>支付情况：定金已支付（¥500）· 尾款 2026年4月3日</p>
+          </div>
+          <div class="mt-3 overflow-hidden rounded-2xl border border-[#f3cada]">
+            <img
+              src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=900&q=80"
+              alt="拍摄地点图片"
+              class="h-28 w-full object-cover"
+            />
+            <div class="flex items-center justify-between bg-white px-3 py-2 text-xs">
+              <span><i class="fa-solid fa-location-dot mr-1 text-[#5b9dff]"></i>XX 公园草坪</span>
+              <button class="chip border-[#d7eaff] text-[#4f9eff]">一键导航</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card mb-3 p-3 soft-blue">
+          <p class="section-title mb-2"><i class="fa-solid fa-book-open"></i>客户备注信息</p>
+          <div class="space-y-2 text-xs leading-6 text-[#5d5870]">
+            <p><span class="font-extrabold">拍摄风格：</span>日系卡通风，偏爱浅色背景，后期加贴纸。</p>
+            <p><span class="font-extrabold">客户爱好：</span>喜欢猫咪，不喜欢过度严肃摆姿。</p>
+            <p><span class="font-extrabold">特殊需求：</span>简单化妆，保留原生肤质，避免夸张磨皮。</p>
+            <p><span class="font-extrabold">穿搭建议：</span>浅色连衣裙 + 白色帽子，避免深色衣物。</p>
+            <p><span class="font-extrabold">陪同人员：</span>闺蜜 1 人，可拍少量合影。</p>
+          </div>
+        </section>
+
+        <section class="card mb-4 p-3 soft-yellow">
+          <p class="section-title mb-2"><i class="fa-solid fa-user"></i>客户基础信息</p>
+          <div class="space-y-1 text-sm">
+            <p>联系电话：138XXXX8888 <span class="chip ml-1 border-[#ffe7a8] text-[#b07a00]">一键复制</span></p>
+            <p>客户类型：个人写真</p>
+            <p>
+              备注标签：
+              <span class="chip ml-1">首次拍摄</span>
+              <span class="chip ml-1">喜欢可爱元素</span>
+            </p>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button class="btn-primary"><i class="fa-regular fa-bell mr-1"></i>设置提醒</button>
+          <button class="btn-secondary"><i class="fa-solid fa-trash-can mr-1"></i>删除排单</button>
+        </div>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item active-home"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

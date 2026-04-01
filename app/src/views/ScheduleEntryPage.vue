@@ -1,0 +1,352 @@
+<script setup lang="ts">
+import dayjs from 'dayjs'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Button, CellGroup, DatePicker, Field, Picker, Popup, TimePicker, Uploader } from 'vant'
+import type { UploaderFileListItem } from 'vant'
+import PageHeader from '../components/PageHeader.vue'
+import { scheduleApi } from '../api/app'
+import {
+  depositStatusOptions,
+  depositStatusText,
+  timeHourOptions,
+  timeMinuteOptions,
+} from '../constants/options'
+import { useAppStore } from '../stores/app'
+import { isAfterTime } from '../utils/time'
+
+const route = useRoute()
+const router = useRouter()
+const store = useAppStore()
+
+const customerIdFromQuery = typeof route.query.customerId === 'string' ? route.query.customerId : ''
+const dateFromQuery = typeof route.query.date === 'string' ? route.query.date : dayjs().format('YYYY-MM-DD')
+const startFromQuery = typeof route.query.start === 'string' ? route.query.start : '10:00'
+const endFromQuery = typeof route.query.end === 'string' ? route.query.end : '11:30'
+
+const form = reactive({
+  customerId: customerIdFromQuery,
+  date: dateFromQuery,
+  startTime: startFromQuery,
+  endTime: endFromQuery,
+  location: '',
+  note: '',
+  depositStatus: 'unpaid',
+  amount: 300,
+})
+
+const error = ref('')
+const success = ref('')
+const conflictId = ref('')
+
+const showCustomerPicker = ref(false)
+const showDatePicker = ref(false)
+const showStartTimePicker = ref(false)
+const showEndTimePicker = ref(false)
+const showDepositPicker = ref(false)
+const uploading = ref(false)
+
+type UploadItem = UploaderFileListItem & {
+  uploadedUrl?: string
+}
+
+const referenceFileList = ref<UploadItem[]>([])
+
+const failedUploads = computed(() =>
+  referenceFileList.value.filter((item) => item.status === 'failed' && item.file),
+)
+
+const selectedDateValues = ref(form.date.split('-'))
+const selectedStartTimeValues = ref(form.startTime.split(':'))
+const selectedEndTimeValues = ref(form.endTime.split(':'))
+
+const customers = computed(() => store.customers)
+const customerColumns = computed(() =>
+  customers.value.map((item) => ({
+    text: `${item.name} · ${item.phone}`,
+    value: item.id,
+  })),
+)
+
+const selectedCustomerLabel = computed(() => {
+  const customer = customers.value.find((item) => item.id === form.customerId)
+  return customer ? `${customer.name} · ${customer.phone}` : '选择客户'
+})
+
+const depositStatusColumns = depositStatusOptions.map(([value, text]) => ({ text, value }))
+const depositStatusLabel = computed(
+  () => depositStatusOptions.find(([value]) => value === form.depositStatus)?.[1] ?? '请选择定金状态',
+)
+
+const timeColumns = [timeHourOptions, timeMinuteOptions]
+
+const conflictSchedule = computed(() => (conflictId.value ? store.getScheduleById(conflictId.value) : undefined))
+const conflictCustomerName = computed(() => {
+  if (!conflictSchedule.value) {
+    return ''
+  }
+  return store.getCustomerById(conflictSchedule.value.customerId)?.name ?? '未知客户'
+})
+
+const normalizeDate = (values: string[]) => {
+  const [year, month, day] = values
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+watch(
+  () => form.customerId,
+  (id) => {
+    const customer = store.getCustomerById(id)
+    if (!customer) {
+      return
+    }
+    form.location = customer.location
+    form.depositStatus = customer.depositStatus
+    form.note = customer.specialNeed
+  },
+  { immediate: true },
+)
+
+const openDate = () => {
+  selectedDateValues.value = form.date.split('-')
+  showDatePicker.value = true
+}
+
+const openStartTime = () => {
+  selectedStartTimeValues.value = form.startTime.split(':')
+  showStartTimePicker.value = true
+}
+
+const openEndTime = () => {
+  selectedEndTimeValues.value = form.endTime.split(':')
+  showEndTimePicker.value = true
+}
+
+const submit = async () => {
+  error.value = ''
+  success.value = ''
+  conflictId.value = ''
+
+  if (uploading.value) {
+    error.value = '参考图仍在上传中，请稍候提交。'
+    return
+  }
+
+  if (!form.customerId || !form.date || !form.startTime || !form.endTime) {
+    error.value = '请选择客户并补全拍摄时间。'
+    return
+  }
+
+  if (!isAfterTime(form.startTime, form.endTime)) {
+    error.value = '结束时间必须晚于开始时间。'
+    return
+  }
+
+  try {
+    const result = await store.addSchedule({
+      customerId: form.customerId,
+      date: form.date,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      location: form.location,
+      note: form.note,
+      referenceImages: referenceFileList.value
+        .map((item) => item.uploadedUrl || item.url)
+        .filter(Boolean) as string[],
+      depositStatus: form.depositStatus as 'unpaid' | 'paid' | 'full',
+      amount: Number(form.amount) || 0,
+      reminders: [...store.defaultReminders],
+    })
+
+    if (!result.ok) {
+      conflictId.value = result.conflict.id
+      error.value = '该时段已有排单，请更换时间。'
+      return
+    }
+
+    success.value = '排单录入成功，已同步到首页。'
+    setTimeout(() => {
+      router.push({ name: 'home' })
+    }, 500)
+  } catch (requestError) {
+    error.value = (requestError as Error).message || '排单提交失败，请稍后重试'
+  }
+}
+
+const uploadSingle = async (item: UploadItem) => {
+  const file = item.file
+  if (!(file instanceof File)) {
+    return
+  }
+
+  item.status = 'uploading'
+  item.message = '0%'
+
+  const result = await scheduleApi.uploadReferenceImage(file, (percent) => {
+    item.message = `${percent}%`
+  })
+
+  item.uploadedUrl = result.url
+  item.url = result.thumbnail
+  item.status = 'done'
+  item.message = ''
+  delete item.file
+}
+
+const onAfterRead = async (value: UploaderFileListItem | UploaderFileListItem[]) => {
+  const items = Array.isArray(value) ? value : [value]
+  const uploadTargets = items as UploadItem[]
+
+  uploading.value = true
+  try {
+    await Promise.all(
+      uploadTargets.map(async (item) => {
+        try {
+          await uploadSingle(item)
+        } catch (uploadError) {
+          item.status = 'failed'
+          item.message = (uploadError as Error).message || '上传失败'
+        }
+      }),
+    )
+  } catch (uploadError) {
+    const message = (uploadError as Error).message || '上传失败'
+    error.value = message
+  } finally {
+    uploading.value = false
+  }
+}
+
+const retryUpload = async (item: UploadItem) => {
+  uploading.value = true
+  error.value = ''
+  try {
+    await uploadSingle(item)
+  } catch (uploadError) {
+    item.status = 'failed'
+    item.message = (uploadError as Error).message || '上传失败'
+    error.value = item.message
+  } finally {
+    uploading.value = false
+  }
+}
+</script>
+
+<template>
+  <section class="bounce-in">
+    <PageHeader title="排单录入" back @back="router.back()" />
+
+    <article class="card mb-3 p-3">
+      <div class="mb-3 grid grid-cols-2 gap-2">
+        <Button block round type="primary">关联已有客户</Button>
+        <Button block round plain type="primary" @click="router.push({ name: 'customer-new' })">新增客户</Button>
+      </div>
+
+      <CellGroup inset>
+        <Field
+          :model-value="selectedCustomerLabel"
+          label="选择客户"
+          readonly
+          is-link
+          @click="showCustomerPicker = true"
+        />
+        <Field :model-value="form.date" label="拍摄日期" readonly is-link @click="openDate" />
+        <Field :model-value="form.startTime" label="开始时间" readonly is-link @click="openStartTime" />
+        <Field :model-value="form.endTime" label="结束时间" readonly is-link @click="openEndTime" />
+        <Field v-model="form.location" label="拍摄地点" placeholder="请输入拍摄地点" clearable />
+        <Field
+          :model-value="depositStatusLabel"
+          label="定金状态"
+          readonly
+          is-link
+          @click="showDepositPicker = true"
+        />
+        <Field v-model="form.amount" label="定金金额" type="number" placeholder="请输入金额" />
+        <Field v-model="form.note" label="备注信息" type="textarea" rows="2" autosize placeholder="填写拍摄备注" />
+      </CellGroup>
+
+      <div class="mt-3">
+        <p class="mb-2 text-xs font-bold text-slate-500">动作参考图（最多 6 张）</p>
+        <Uploader
+          v-model="referenceFileList"
+          :max-count="6"
+          multiple
+          :disabled="uploading"
+          :after-read="onAfterRead"
+          :deletable="!uploading"
+          preview-size="72"
+          upload-text="上传参考图"
+        />
+
+        <div v-if="failedUploads.length" class="mt-2 space-y-1">
+          <div v-for="item in failedUploads" :key="item.url || item.file?.name" class="flex items-center justify-between text-xs text-amber-700">
+            <span>有图片上传失败，可重试</span>
+            <Button size="small" round plain type="primary" :disabled="uploading" @click="retryUpload(item)">重试</Button>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article v-if="error" class="card mb-3 p-3 text-xs text-amber-700 soft-yellow">
+      <p class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1" />{{ error }}</p>
+      <p v-if="conflictSchedule" class="mt-1">
+        冲突排单：{{ conflictCustomerName }} {{ conflictSchedule.startTime }} - {{ conflictSchedule.endTime }}（{{
+          depositStatusText[conflictSchedule.depositStatus]
+        }}）
+      </p>
+    </article>
+
+    <article v-if="success" class="card mb-3 p-3 text-xs text-blue-600 soft-blue">
+      <i class="fa-solid fa-circle-check mr-1" />{{ success }}
+    </article>
+
+    <Button block round type="primary" @click="submit">
+      <i class="fa-solid fa-paper-plane mr-1" />提交排单
+    </Button>
+
+    <Popup v-model:show="showCustomerPicker" position="bottom" round>
+      <Picker
+        :columns="customerColumns"
+        @cancel="showCustomerPicker = false"
+        @confirm="({ selectedOptions }: any) => { form.customerId = selectedOptions[0]?.value || ''; showCustomerPicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showDepositPicker" position="bottom" round>
+      <Picker
+        :columns="depositStatusColumns"
+        @cancel="showDepositPicker = false"
+        @confirm="({ selectedOptions }: any) => { form.depositStatus = selectedOptions[0]?.value || form.depositStatus; showDepositPicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showDatePicker" position="bottom" round>
+      <DatePicker
+        v-model="selectedDateValues"
+        title="选择拍摄日期"
+        @cancel="showDatePicker = false"
+        @confirm="({ selectedValues }: any) => { form.date = normalizeDate(selectedValues); showDatePicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showStartTimePicker" position="bottom" round>
+      <TimePicker
+        v-model="selectedStartTimeValues"
+        title="选择开始时间"
+        :columns="timeColumns"
+        @cancel="showStartTimePicker = false"
+        @confirm="({ selectedValues }: any) => { form.startTime = `${selectedValues[0]}:${selectedValues[1]}`; showStartTimePicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showEndTimePicker" position="bottom" round>
+      <TimePicker
+        v-model="selectedEndTimeValues"
+        title="选择结束时间"
+        :columns="timeColumns"
+        @cancel="showEndTimePicker = false"
+        @confirm="({ selectedValues }: any) => { form.endTime = `${selectedValues[0]}:${selectedValues[1]}`; showEndTimePicker = false }"
+      />
+    </Popup>
+  </section>
+</template>

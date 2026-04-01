@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>个人设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-3 flex items-center justify-between">
+          <button class="chip"><i class="fa-solid fa-chevron-left mr-1"></i>返回</button>
+          <h1 class="title-font text-2xl text-[#ff6f9b]">个人设置</h1>
+          <button class="chip">保存</button>
+        </header>
+
+        <section class="card mb-3 p-3 soft-blue">
+          <p class="section-title mb-2"><i class="fa-solid fa-user-gear"></i>账号与资料</p>
+          <div class="flex items-center gap-3">
+            <img
+              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=300&q=80"
+              alt="头像"
+              class="h-14 w-14 rounded-2xl object-cover"
+            />
+            <div class="text-sm">
+              <p class="font-extrabold">林娜摄影</p>
+              <p class="text-xs text-[#6f6886]">可修改头像、账号密码</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card mb-3 p-3 soft-pink">
+          <p class="section-title mb-2"><i class="fa-solid fa-palette"></i>卡通主题切换</p>
+          <div class="grid grid-cols-3 gap-2 text-xs text-center">
+            <button class="module-card bg-[#ffeaf2] font-extrabold text-[#ff6699]">浅粉</button>
+            <button class="module-card bg-[#eaf5ff] font-extrabold text-[#4f9eff]">浅蓝</button>
+            <button class="module-card bg-[#fff6d8] font-extrabold text-[#c08a00]">鹅黄</button>
+          </div>
+        </section>
+
+        <section class="card mb-3 p-3 soft-yellow">
+          <p class="section-title mb-2"><i class="fa-regular fa-bell"></i>消息提醒</p>
+          <div class="space-y-2 text-sm">
+            <label class="module-card flex items-center justify-between bg-white"><span>拍摄前 1 天提醒</span><i class="fa-solid fa-toggle-on text-[#ff7ca9]"></i></label>
+            <label class="module-card flex items-center justify-between bg-white"><span>拍摄前 1 小时提醒</span><i class="fa-solid fa-toggle-on text-[#ff7ca9]"></i></label>
+            <label class="module-card flex items-center justify-between bg-white"><span>卡通铃声</span><span class="chip">叮当相机</span></label>
+          </div>
+        </section>
+
+        <section class="card mb-4 p-3">
+          <p class="section-title mb-2"><i class="fa-solid fa-cloud-arrow-up"></i>数据与引导</p>
+          <div class="space-y-2 text-sm">
+            <div class="module-card flex items-center justify-between"><span>每日自动备份</span><i class="fa-solid fa-toggle-on text-[#5b9dff]"></i></div>
+            <div class="module-card flex items-center justify-between"><span>查看新手引导</span><button class="chip">重新播放</button></div>
+          </div>
+        </section>
+
+        <button class="btn-secondary w-full"><i class="fa-solid fa-right-from-bracket mr-1"></i>退出登录</button>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item active-mine"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

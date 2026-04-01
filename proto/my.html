@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的页面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="card mb-4 p-4 soft-blue">
+          <div class="flex items-center gap-3">
+            <img
+              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80"
+              alt="摄影师头像"
+              class="h-16 w-16 rounded-2xl object-cover"
+            />
+            <div>
+              <p class="title-font text-2xl text-[#4f9eff]">林娜摄影</p>
+              <p class="text-xs text-[#6f6886]">今日待拍 3 组 · 本月完成 42 单</p>
+            </div>
+          </div>
+          <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="module-card"><p class="font-extrabold text-[#ff6f9b]">128</p><p>客户总数</p></div>
+            <div class="module-card"><p class="font-extrabold text-[#5b9dff]">7</p><p>本周排单</p></div>
+            <div class="module-card"><p class="font-extrabold text-[#d19800]">95%</p><p>准时率</p></div>
+          </div>
+        </header>
+
+        <section class="grid grid-cols-2 gap-3 text-sm">
+          <article class="module-card soft-blue">
+            <p class="mb-1 font-extrabold"><i class="fa-solid fa-user-plus mr-1 text-[#5b9dff]"></i>添加客户信息</p>
+            <p class="text-xs text-[#6f6886]">填写姓名、电话、风格与特殊需求</p>
+          </article>
+          <article class="module-card soft-yellow">
+            <p class="mb-1 font-extrabold"><i class="fa-solid fa-calendar-plus mr-1 text-[#d19800]"></i>排单录入</p>
+            <p class="text-xs text-[#6f6886]">关联客户并校验档期冲突</p>
+          </article>
+          <article class="module-card soft-pink">
+            <p class="mb-1 font-extrabold"><i class="fa-solid fa-address-book mr-1 text-[#ff6f9b]"></i>客户管理</p>
+            <p class="text-xs text-[#6f6886]">查看、编辑、删除客户信息</p>
+          </article>
+          <article class="module-card soft-blue">
+            <p class="mb-1 font-extrabold"><i class="fa-solid fa-clock-rotate-left mr-1 text-[#5b9dff]"></i>历史排单</p>
+            <p class="text-xs text-[#6f6886]">按日期和客户类型筛选复盘</p>
+          </article>
+          <article class="module-card soft-yellow col-span-2">
+            <p class="mb-1 font-extrabold"><i class="fa-solid fa-sliders mr-1 text-[#d19800]"></i>个人设置</p>
+            <p class="text-xs text-[#6f6886]">头像、主题、备份、提醒频率与新手引导</p>
+          </article>
+        </section>
+
+        <button class="btn-secondary mt-4 w-full"><i class="fa-solid fa-right-from-bracket mr-1"></i>退出登录</button>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item active-mine"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

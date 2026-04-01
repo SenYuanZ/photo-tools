@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>排单录入</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-half"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-3 flex items-center justify-between">
+          <button class="chip"><i class="fa-solid fa-chevron-left mr-1"></i>返回</button>
+          <h1 class="title-font text-2xl text-[#ff6f9b]">排单录入</h1>
+          <span class="chip">自动冲突校验</span>
+        </header>
+
+        <section class="card mb-3 p-3">
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <button class="btn-primary py-2">关联已有客户</button>
+            <button class="btn-secondary py-2">新增客户并录入</button>
+          </div>
+          <div class="mt-3 space-y-2">
+            <label class="input-wrap"><i class="fa-solid fa-address-book text-[#6dafff]"></i><select><option>张小鹿 · 个人写真 · 13812345678</option><option>林一朵 · 情侣 · 13888886666</option></select></label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="input-wrap"><i class="fa-regular fa-clock text-[#6dafff]"></i><select><option>14:00</option><option>15:00</option></select></label>
+              <label class="input-wrap"><i class="fa-regular fa-clock text-[#6dafff]"></i><select><option>16:00</option><option>17:00</option></select></label>
+            </div>
+            <label class="input-wrap h-auto"><i class="fa-solid fa-note-sticky mt-3 self-start text-[#6dafff]"></i><textarea>客户偏爱外景，想要卡通贴纸后期，避免高对比硬光。</textarea></label>
+          </div>
+        </section>
+
+        <section class="card mb-3 p-3 soft-yellow">
+          <p class="mb-2 text-sm font-extrabold"><i class="fa-solid fa-triangle-exclamation mr-1 text-[#d19800]"></i>档期冲突提醒</p>
+          <p class="text-xs leading-6 text-[#80652a]">该时段已有排单：林一朵（14:00 - 16:00）。建议改为 16:30 - 18:30。</p>
+        </section>
+
+        <section class="card mb-4 p-3 soft-blue text-xs">
+          <p class="font-extrabold text-sm"><i class="fa-solid fa-circle-check mr-1 text-[#5b9dff]"></i>提交成功后自动同步</p>
+          <ul class="mt-2 space-y-1 text-[#6f6886]">
+            <li>首页今日/明日/未来排单立即更新</li>
+            <li>历史排单中新增一条可编辑记录</li>
+            <li>客户管理同步本次拍摄时间与备注</li>
+          </ul>
+        </section>
+
+        <button class="btn-primary w-full"><i class="fa-solid fa-paper-plane mr-1"></i>提交排单</button>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item active-mine"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

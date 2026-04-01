@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>历史排单</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-3 flex items-center justify-between">
+          <button class="chip"><i class="fa-solid fa-chevron-left mr-1"></i>返回</button>
+          <h1 class="title-font text-2xl text-[#ff6f9b]">历史排单</h1>
+          <button class="chip"><i class="fa-solid fa-filter mr-1"></i>筛选</button>
+        </header>
+
+        <section class="card mb-3 p-3 soft-yellow">
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <label class="input-wrap"><i class="fa-regular fa-calendar text-[#d19800]"></i><select><option>2026年4月</option><option>2026年3月</option></select></label>
+            <label class="input-wrap"><i class="fa-solid fa-tag text-[#d19800]"></i><select><option>全部类型</option><option>个人写真</option><option>情侣</option></select></label>
+          </div>
+        </section>
+
+        <section class="space-y-2">
+          <article class="card p-3 soft-pink">
+            <p class="font-extrabold">04/01 · 张小鹿 · 个人写真</p>
+            <p class="mt-1 text-xs text-[#6f6886]">09:00 - 11:30 · XX 公园草坪 · 定金已支付</p>
+            <p class="mt-1 text-xs text-[#8a819f]">备注：偏爱浅色，猫咪可入镜。</p>
+          </article>
+          <article class="card p-3 soft-blue">
+            <p class="font-extrabold">03/29 · 林一朵 · 情侣</p>
+            <p class="mt-1 text-xs text-[#6f6886]">14:00 - 16:00 · 北岸咖啡街 · 全款</p>
+            <p class="mt-1 text-xs text-[#8a819f]">备注：想要胶片感和柔光。</p>
+          </article>
+          <article class="card p-3">
+            <p class="font-extrabold">03/21 · 启辰工作室 · 商业</p>
+            <p class="mt-1 text-xs text-[#6f6886]">19:00 - 20:30 · 创意园 A 栋 · 定金已支付</p>
+            <p class="mt-1 text-xs text-[#8a819f]">备注：产品主图需当天初选。</p>
+          </article>
+        </section>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item active-mine"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

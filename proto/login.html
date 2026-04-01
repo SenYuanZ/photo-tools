@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录页</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-4 overflow-hidden rounded-3xl border border-[#f4d7e5] bg-white">
+          <img
+            src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80"
+            alt="摄影主题背景"
+            class="h-36 w-full object-cover"
+          />
+        </header>
+
+        <section class="card bounce-in p-4">
+          <div class="mb-4 text-center">
+            <p class="title-font text-2xl text-[#ff679b]">摄影排单小助手</p>
+            <p class="text-xs text-[#8c85a0]">请先登录，解锁排单功能哦</p>
+          </div>
+
+          <div class="space-y-3">
+            <label class="input-wrap">
+              <i class="fa-solid fa-user text-[#7ab6ff]"></i>
+              <input type="text" placeholder="请输入账号" value="lina_photo" />
+            </label>
+            <label class="input-wrap">
+              <i class="fa-solid fa-lock text-[#f3b94a]"></i>
+              <input type="password" placeholder="请输入密码" value="********" />
+            </label>
+            <div class="grid grid-cols-[1fr_120px] gap-2">
+              <label class="input-wrap">
+                <i class="fa-solid fa-mobile-screen-button text-[#6faef6]"></i>
+                <input type="text" placeholder="手机号 + 验证码快捷登录" value="13800001234" />
+              </label>
+              <button class="btn-secondary px-0 text-xs">
+                <i class="fa-regular fa-clock mr-1"></i>60秒有效
+              </button>
+            </div>
+          </div>
+
+          <button class="btn-primary mt-4 w-full">登录</button>
+          <div class="mt-3 flex gap-2">
+            <button class="btn-secondary w-full text-sm">忘记密码</button>
+            <button class="btn-secondary w-full text-sm">注册</button>
+          </div>
+        </section>
+
+        <aside class="card mt-4 flex items-start gap-3 p-3 text-xs soft-yellow">
+          <i class="fa-regular fa-circle-question mt-0.5 text-[#d2a533]"></i>
+          <p>未登录状态访问首页或我的时，将弹出卡通提示并引导到登录页，避免误操作。</p>
+        </aside>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item active-login"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>客户管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-3 flex items-center justify-between">
+          <button class="chip"><i class="fa-solid fa-chevron-left mr-1"></i>返回</button>
+          <h1 class="title-font text-2xl text-[#ff6f9b]">客户管理</h1>
+          <button class="chip"><i class="fa-solid fa-user-plus mr-1"></i>新增</button>
+        </header>
+
+        <label class="input-wrap mb-3">
+          <i class="fa-solid fa-magnifying-glass text-[#90a0ba]"></i>
+          <input type="text" value="搜索姓名/电话/客户类型" />
+        </label>
+
+        <section class="space-y-2">
+          <article class="card p-3 soft-pink">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-extrabold">张小鹿 <span class="chip ml-1">个人写真</span></p>
+                <p class="mt-1 text-xs text-[#6f6886]">13812345678 · 下次拍摄 04-01 09:00</p>
+              </div>
+              <div class="flex gap-1">
+                <button class="chip">编辑</button>
+                <button class="chip border-[#ffe6a5] text-[#c38100]">删除</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card p-3 soft-blue">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-extrabold">林一朵 <span class="chip ml-1 border-[#d7eaff] text-[#4f9eff]">情侣</span></p>
+                <p class="mt-1 text-xs text-[#6f6886]">13888886666 · 下次拍摄 04-01 14:00</p>
+              </div>
+              <div class="flex gap-1">
+                <button class="chip">编辑</button>
+                <button class="chip border-[#ffe6a5] text-[#c38100]">删除</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card p-3 soft-yellow">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-extrabold">启辰工作室 <span class="chip ml-1 border-[#ffe7a8] text-[#b07a00]">商业</span></p>
+                <p class="mt-1 text-xs text-[#6f6886]">13900008888 · 下次拍摄 04-01 19:00</p>
+              </div>
+              <div class="flex gap-1">
+                <button class="chip">编辑</button>
+                <button class="chip border-[#ffe6a5] text-[#c38100]">删除</button>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <aside class="card mt-3 p-3 text-xs">
+          <p><i class="fa-solid fa-circle-info mr-1 text-[#5b9dff]"></i>删除客户时将同步删除关联排单，弹出二次确认弹窗。</p>
+        </aside>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item active-mine"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>

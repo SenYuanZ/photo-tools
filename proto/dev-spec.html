@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>开发标注版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg p-4 text-[#4d4761] md:p-6">
+    <main class="mx-auto max-w-[1020px] space-y-4">
+      <section class="card p-5">
+        <div class="mb-2 flex items-center justify-between gap-3">
+          <h1 class="title-font text-3xl text-[#ff6f9b]">开发标注版</h1>
+          <span class="chip">Design Handoff v1.0</span>
+        </div>
+        <p class="text-sm leading-7">
+          本页用于前端开发对齐，包含尺寸、间距、色值、字体、组件命名和页面映射。所有数值与 `proto/assets/theme.css`
+          和各页面原型保持一致。
+        </p>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="section-title mb-3"><i class="fa-solid fa-mobile-screen-button"></i>1. 设备与布局标注</h2>
+        <div class="grid gap-3 md:grid-cols-2">
+          <article class="module-card soft-blue text-sm leading-7">
+            <p class="font-extrabold">屏幕规格（原型基线）</p>
+            <p>画板：390 x 844</p>
+            <p>外壳圆角：34</p>
+            <p>状态栏高度：34</p>
+            <p>底部导航高度：68（距离底部 12）</p>
+            <p>内容区内边距：16（上/左/右）+ 96（底）</p>
+          </article>
+          <article class="module-card soft-pink text-sm leading-7">
+            <p class="font-extrabold">间距基准（8pt 体系）</p>
+            <p>XS: 4 / S: 8 / M: 12 / L: 16 / XL: 24 / 2XL: 32</p>
+            <p>卡片圆角：16-18</p>
+            <p>输入框高度：44</p>
+            <p>按钮高度：44（主按钮）</p>
+            <p>模块间距：12-16</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="section-title mb-3"><i class="fa-solid fa-swatchbook"></i>2. 颜色与字体标注</h2>
+        <div class="mb-3 grid gap-2 text-sm md:grid-cols-2">
+          <div class="module-card">
+            <p class="mb-2 font-extrabold">主色 Token</p>
+            <div class="space-y-1.5 text-xs leading-6">
+              <p><span class="dot mr-1 bg-[#ff7fae]"></span>--pink-500: #ff7fae（强调按钮/高亮）</p>
+              <p><span class="dot mr-1 bg-[#5da8ff]"></span>--blue-500: #5da8ff（信息/可操作提示）</p>
+              <p><span class="dot mr-1 bg-[#ffe186]"></span>--yellow-300: #ffe186（提醒/标签）</p>
+              <p><span class="dot mr-1 bg-[#ffd5e7]"></span>--line: #ffd5e7（边框）</p>
+              <p><span class="dot mr-1 bg-[#3f3b4f]"></span>--ink: #3f3b4f（主文本）</p>
+            </div>
+          </div>
+          <div class="module-card">
+            <p class="mb-2 font-extrabold">字体 Token</p>
+            <div class="space-y-1.5 text-xs leading-6">
+              <p>标题字：ZCOOL KuaiLe（.title-font）</p>
+              <p>正文字：Noto Sans SC / Nunito</p>
+              <p>H1: 30 / 700</p>
+              <p>Section: 15 / 800</p>
+              <p>正文: 13-14 / 400-500</p>
+              <p>辅助文案: 11-12</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="section-title mb-3"><i class="fa-solid fa-cubes"></i>3. 组件命名规范（建议）</h2>
+        <div class="overflow-hidden rounded-2xl border border-[#eedbe7]">
+          <table class="w-full border-collapse text-left text-xs">
+            <thead class="bg-[#fff3f9] text-[#6e6783]">
+              <tr>
+                <th class="px-3 py-2">组件名</th>
+                <th class="px-3 py-2">现有 class</th>
+                <th class="px-3 py-2">开发命名建议</th>
+                <th class="px-3 py-2">说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">应用外壳</td><td class="px-3 py-2">app-shell</td><td class="px-3 py-2">c-app-shell</td><td class="px-3 py-2">390x844 容器</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">状态栏</td><td class="px-3 py-2">status-bar</td><td class="px-3 py-2">c-status-bar</td><td class="px-3 py-2">系统信息行</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">内容容器</td><td class="px-3 py-2">app-content</td><td class="px-3 py-2">l-app-content</td><td class="px-3 py-2">页面滚动区域</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">底部导航</td><td class="px-3 py-2">bottom-nav / nav-item</td><td class="px-3 py-2">c-bottom-nav / c-nav-item</td><td class="px-3 py-2">三栏导航 + 状态</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">通用卡片</td><td class="px-3 py-2">card / module-card</td><td class="px-3 py-2">c-card / c-module</td><td class="px-3 py-2">信息块容器</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">输入控件</td><td class="px-3 py-2">input-wrap</td><td class="px-3 py-2">c-field</td><td class="px-3 py-2">输入/下拉/多行文本</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">主按钮</td><td class="px-3 py-2">btn-primary</td><td class="px-3 py-2">c-btn c-btn--primary</td><td class="px-3 py-2">提交类操作</td></tr>
+              <tr class="border-t border-[#f3e5ee]"><td class="px-3 py-2">次按钮</td><td class="px-3 py-2">btn-secondary</td><td class="px-3 py-2">c-btn c-btn--secondary</td><td class="px-3 py-2">辅助/取消操作</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="section-title mb-3"><i class="fa-solid fa-wand-magic-sparkles"></i>4. 动效与状态标注</h2>
+        <div class="grid gap-3 text-sm md:grid-cols-2">
+          <article class="module-card soft-pink">
+            <p class="mb-1 font-extrabold">页面进入动效</p>
+            <p>`bounce-in`: 520ms / ease-out / translateY(12px) + scale(0.98 → 1)</p>
+          </article>
+          <article class="module-card soft-yellow">
+            <p class="mb-1 font-extrabold">临近拍摄提醒</p>
+            <p>`pulse-alert`: 1.5s 无限循环，用于首页紧急卡片闪烁提醒。</p>
+          </article>
+          <article class="module-card soft-blue">
+            <p class="mb-1 font-extrabold">按钮按压状态</p>
+            <p>建议补充 `:active { transform: scale(0.98); filter: brightness(.96); }`。</p>
+          </article>
+          <article class="module-card">
+            <p class="mb-1 font-extrabold">冲突状态</p>
+            <p>排单冲突统一使用黄色模块 + 警告图标 + 冲突对象与时间。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="section-title mb-3"><i class="fa-solid fa-sitemap"></i>5. 页面与模块映射</h2>
+        <div class="overflow-hidden rounded-2xl border border-[#eedbe7]">
+          <table class="w-full border-collapse text-left text-xs">
+            <thead class="bg-[#eef7ff] text-[#5e6c86]">
+              <tr>
+                <th class="px-3 py-2">页面文件</th>
+                <th class="px-3 py-2">Page ID 建议</th>
+                <th class="px-3 py-2">核心模块</th>
+                <th class="px-3 py-2">数据重点</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">login.html</td><td class="px-3 py-2">p-login</td><td class="px-3 py-2">账号登录 / 验证码登录</td><td class="px-3 py-2">账号、密码、验证码</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">home.html</td><td class="px-3 py-2">p-home</td><td class="px-3 py-2">今日/明日/未来排单列表</td><td class="px-3 py-2">时段、客户类型、支付状态</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">my.html</td><td class="px-3 py-2">p-my</td><td class="px-3 py-2">入口菜单与统计</td><td class="px-3 py-2">客户总数、待拍数量</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">add-customer.html</td><td class="px-3 py-2">p-customer-create</td><td class="px-3 py-2">客户录入表单</td><td class="px-3 py-2">基础/排单/备注/附加</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">schedule-entry.html</td><td class="px-3 py-2">p-schedule-create</td><td class="px-3 py-2">排单提交与冲突校验</td><td class="px-3 py-2">关联客户、时间段、备注</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">detail.html</td><td class="px-3 py-2">p-schedule-detail</td><td class="px-3 py-2">排单完整详情</td><td class="px-3 py-2">备注、提醒、联系入口</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">customer-management.html</td><td class="px-3 py-2">p-customer-list</td><td class="px-3 py-2">客户列表与编辑删除</td><td class="px-3 py-2">客户信息与下次拍摄</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">history.html</td><td class="px-3 py-2">p-schedule-history</td><td class="px-3 py-2">筛选与历史复盘</td><td class="px-3 py-2">日期、类型、备注摘要</td></tr>
+              <tr class="border-t border-[#e7edf5]"><td class="px-3 py-2">settings.html</td><td class="px-3 py-2">p-settings</td><td class="px-3 py-2">主题、提醒、备份</td><td class="px-3 py-2">主题色、提醒开关、备份</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card p-5">
+        <h2 class="section-title mb-3"><i class="fa-solid fa-database"></i>6. 前端数据结构建议</h2>
+        <pre class="overflow-x-auto rounded-2xl bg-[#2f2b3a] p-3 text-xs leading-6 text-[#f6f2ff]">{
+  "customer": {
+    "id": "cst_001",
+    "name": "张小鹿",
+    "phone": "13812345678",
+    "type": "personal|couple|family|business|other",
+    "style": "日系卡通",
+    "hobby": "喜欢可爱元素",
+    "specialNeed": "可带宠物",
+    "depositStatus": "unpaid|paid|full",
+    "tailPaymentDate": "2026-04-03"
+  },
+  "schedule": {
+    "id": "sch_001",
+    "customerId": "cst_001",
+    "date": "2026-04-01",
+    "startTime": "09:00",
+    "endTime": "11:30",
+    "location": "XX公园草坪",
+    "note": "偏爱浅色背景",
+    "reminder": ["1d", "1h"]
+  }
+}</pre>
+      </section>
+    </main>
+  </body>
+</html>

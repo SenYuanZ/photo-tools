@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>添加客户信息</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Nunito:wght@400;600;700;800&family=ZCOOL+KuaiLe&display=swap"
+    />
+    <link rel="stylesheet" href="./assets/theme.css" />
+  </head>
+  <body class="proto-bg">
+    <div class="app-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="flex items-center gap-2 text-xs"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-three-quarters"></i></div>
+      </div>
+
+      <div class="app-content">
+        <header class="mb-3 flex items-center justify-between">
+          <button class="chip"><i class="fa-solid fa-chevron-left mr-1"></i>返回</button>
+          <h1 class="title-font text-2xl text-[#ff6f9b]">添加客户信息</h1>
+          <span class="chip">必填带 *</span>
+        </header>
+
+        <section class="card mb-3 p-3">
+          <p class="section-title mb-2"><i class="fa-solid fa-user-group"></i>基础信息 <span class="text-[#ff6f9b]">*</span></p>
+          <div class="space-y-2">
+            <label class="input-wrap"><i class="fa-solid fa-id-card text-[#6dafff]"></i><input type="text" value="张小鹿" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-phone text-[#6dafff]"></i><input type="text" value="13812345678" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-tag text-[#6dafff]"></i><select><option>个人写真</option><option>情侣</option><option>亲子</option></select></label>
+          </div>
+        </section>
+
+        <section class="card mb-3 p-3 soft-yellow">
+          <p class="section-title mb-2"><i class="fa-regular fa-calendar"></i>排单相关 <span class="text-[#ff6f9b]">*</span></p>
+          <div class="space-y-2">
+            <label class="input-wrap"><i class="fa-solid fa-calendar-day text-[#d19800]"></i><input type="text" value="2026-04-01" /></label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="input-wrap"><i class="fa-regular fa-clock text-[#d19800]"></i><select><option>09:00</option><option>09:30</option></select></label>
+              <label class="input-wrap"><i class="fa-regular fa-clock text-[#d19800]"></i><select><option>11:30</option><option>12:00</option></select></label>
+            </div>
+            <p class="text-xs text-[#987300]"><i class="fa-solid fa-circle-info mr-1"></i>结束时间已通过校验：晚于开始时间</p>
+          </div>
+        </section>
+
+        <section class="card mb-3 p-3 soft-blue">
+          <p class="section-title mb-2"><i class="fa-solid fa-note-sticky"></i>备注信息（可选）</p>
+          <div class="space-y-2">
+            <label class="input-wrap"><i class="fa-solid fa-paintbrush text-[#5b9dff]"></i><input type="text" value="日系卡通、森系" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-heart text-[#5b9dff]"></i><input type="text" value="喜欢可爱元素，不喜欢露脸" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-circle-exclamation text-[#5b9dff]"></i><input type="text" value="带宠物拍摄，需要化妆" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-coins text-[#5b9dff]"></i><select><option>已支付</option><option>未支付</option><option>全款</option></select></label>
+            <label class="input-wrap"><i class="fa-regular fa-calendar text-[#5b9dff]"></i><input type="text" value="2026-04-03" /></label>
+          </div>
+        </section>
+
+        <section class="card mb-4 p-3">
+          <p class="section-title mb-2"><i class="fa-solid fa-plus"></i>附加信息（可选）</p>
+          <div class="space-y-2">
+            <label class="input-wrap"><i class="fa-solid fa-shirt text-[#ff7ca9]"></i><input type="text" value="浅色系连衣裙" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-map-location-dot text-[#ff7ca9]"></i><input type="text" value="XX 公园草坪" /></label>
+            <label class="input-wrap"><i class="fa-solid fa-people-group text-[#ff7ca9]"></i><input type="text" value="闺蜜 1 人" /></label>
+          </div>
+        </section>
+
+        <button class="btn-primary w-full"><i class="fa-solid fa-check mr-1"></i>保存客户</button>
+      </div>
+
+      <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-key"></i><span>登录</span></div>
+        <div class="nav-item"><i class="fa-solid fa-camera-retro"></i><span>首页</span></div>
+        <div class="nav-item active-mine"><i class="fa-solid fa-user-astronaut"></i><span>我的</span></div>
+      </nav>
+    </div>
+  </body>
+</html>
