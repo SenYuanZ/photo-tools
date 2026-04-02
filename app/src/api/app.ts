@@ -26,6 +26,24 @@ export interface SettingsData {
   backupEnabled: boolean
 }
 
+export interface PublicPhotographer {
+  id: string
+  nickname: string
+  account: string
+}
+
+export interface PublicBookingPayload {
+  photographerId: string
+  modelName: string
+  modelPhone: string
+  date: string
+  startTime: string
+  endTime: string
+  location: string
+  poseRequirement: string
+  referenceImages: string[]
+}
+
 export const authApi = {
   login(payload: LoginPayload) {
     return request<LoginResponse>('/auth/login', {
@@ -156,6 +174,10 @@ export const scheduleApi = {
             })
             return
           }
+          if (xhr.status === 404 || String(payload?.message || '').includes('Cannot POST /api/public/reference-images')) {
+            reject(new Error('公开图片上传接口未生效，请重启后端服务后重试。'))
+            return
+          }
           reject(new Error(payload?.message || '上传失败'))
         } catch {
           reject(new Error('上传失败'))
@@ -175,6 +197,63 @@ export const settingsApi = {
     return request<SettingsData>('/settings', {
       method: 'PATCH',
       body: payload,
+    })
+  },
+}
+
+export const publicBookingApi = {
+  listPhotographers() {
+    return request<PublicPhotographer[]>('/public/photographers', {
+      skipAuth: true,
+    })
+  },
+  create(payload: PublicBookingPayload) {
+    return request<{ success: boolean; bookingId: string }>('/public/bookings', {
+      method: 'POST',
+      body: payload,
+      skipAuth: true,
+    })
+  },
+  uploadReferenceImage(file: File, onProgress?: (percent: number) => void) {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000/api'
+
+    return new Promise<{ url: string; thumbnail: string }>((resolve, reject) => {
+      const formData = new FormData()
+      formData.append('files', file)
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE_URL}/public/reference-images`, true)
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable || !onProgress) {
+          return
+        }
+        const percent = Math.min(99, Math.max(0, Math.round((event.loaded / event.total) * 100)))
+        onProgress(percent)
+      }
+
+      xhr.onerror = () => {
+        reject(new Error('上传失败，请检查网络后重试'))
+      }
+
+      xhr.onload = () => {
+        try {
+          const payload = xhr.responseText ? JSON.parse(xhr.responseText) : null
+          if (xhr.status >= 200 && xhr.status < 300 && payload?.urls?.length) {
+            onProgress?.(100)
+            resolve({
+              url: payload.urls[0],
+              thumbnail: payload.thumbnails?.[0] || payload.urls[0],
+            })
+            return
+          }
+          reject(new Error(payload?.message || '上传失败'))
+        } catch {
+          reject(new Error('上传失败'))
+        }
+      }
+
+      xhr.send(formData)
     })
   },
 }

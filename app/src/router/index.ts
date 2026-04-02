@@ -13,6 +13,12 @@ const routes = [
     meta: { tab: 'login' },
   },
   {
+    path: '/model-booking',
+    name: 'model-booking',
+    component: () => import('../views/ModelBookingPage.vue'),
+    meta: { tab: 'login', hideNav: true },
+  },
+  {
     path: '/home',
     name: 'home',
     component: () => import('../views/HomePage.vue'),

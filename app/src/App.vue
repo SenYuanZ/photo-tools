@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import { useAppStore } from './stores/app'
 
 const store = useAppStore()
+const route = useRoute()
+
+const showBottomNav = computed(() => !route.meta.hideNav)
 
 watch(
   () => store.theme,
@@ -19,6 +23,6 @@ watch(
     <main class="content-area">
       <router-view />
     </main>
-    <BottomNav />
+    <BottomNav v-if="showBottomNav" />
   </div>
 </template>

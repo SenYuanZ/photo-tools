@@ -10,6 +10,7 @@ import { UserSetting } from './database/entities/user-setting.entity';
 import { User } from './database/entities/user.entity';
 import { SeedService } from './database/seed.service';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { PublicBookingModule } from './public-booking/public-booking.module';
 import { CustomersModule } from './customers/customers.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { SettingsModule } from './settings/settings.module';
@@ -42,6 +43,7 @@ import { SettingsModule } from './settings/settings.module';
     TypeOrmModule.forFeature([User, UserSetting, Customer, Schedule]),
     AuthModule,
     DashboardModule,
+    PublicBookingModule,
     CustomersModule,
     SchedulesModule,
     SettingsModule,

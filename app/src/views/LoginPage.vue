@@ -273,6 +273,9 @@ const submit = async () => {
         <Button block round plain type="primary">忘记密码</Button>
         <Button block round plain type="primary">注册账号</Button>
       </div>
+      <Button block round plain type="primary" class="mt-2" @click="router.push({ name: 'model-booking' })">
+        <i class="fa-regular fa-calendar-check mr-1" />模特免登录约拍入口
+      </Button>
     </article>
 
     <article class="card mt-4 p-3 text-xs soft-yellow">
