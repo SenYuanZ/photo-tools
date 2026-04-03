@@ -7,7 +7,7 @@ import { useAppStore } from './stores/app'
 const store = useAppStore()
 const route = useRoute()
 
-const showBottomNav = computed(() => !route.meta.hideNav)
+const showBottomNav = computed(() => store.isLoggedIn && !route.meta.hideNav)
 
 watch(
   () => store.theme,

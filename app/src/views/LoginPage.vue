@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Button, CellGroup, Field } from 'vant'
 import { useAppStore } from '../stores/app'
 
@@ -12,7 +12,6 @@ type CaptchaGlyph = {
 }
 
 const store = useAppStore()
-const route = useRoute()
 const router = useRouter()
 
 const form = reactive({
@@ -163,9 +162,8 @@ const submit = async () => {
 
   try {
     await store.login({ account: form.account, password: form.password })
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
     window.setTimeout(() => {
-      router.push(redirect)
+      router.replace({ name: 'home' })
     }, 550)
   } catch (error) {
     setOops((error as Error).message || '登录失败，请稍后重试')
@@ -271,7 +269,7 @@ const submit = async () => {
       </Button>
       <div class="mt-2 grid grid-cols-2 gap-2">
         <Button block round plain type="primary">忘记密码</Button>
-        <Button block round plain type="primary">注册账号</Button>
+        <Button block round plain type="primary" @click="router.push({ name: 'register' })">注册账号</Button>
       </div>
       <Button block round plain type="primary" class="mt-2" @click="router.push({ name: 'model-booking' })">
         <i class="fa-regular fa-calendar-check mr-1" />模特免登录约拍入口

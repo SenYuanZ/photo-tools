@@ -10,7 +10,13 @@ const routes = [
     path: '/login',
     name: 'login',
     component: () => import('../views/LoginPage.vue'),
-    meta: { tab: 'login' },
+    meta: { tab: 'login', hideNav: true },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('../views/RegisterPage.vue'),
+    meta: { tab: 'login', hideNav: true },
   },
   {
     path: '/model-booking',
@@ -67,6 +73,12 @@ const routes = [
     meta: { requiresAuth: true, tab: 'my' },
   },
   {
+    path: '/invite-codes',
+    name: 'invite-codes',
+    component: () => import('../views/InviteCodeManagementPage.vue'),
+    meta: { requiresAuth: true, tab: 'my' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/home',
   },
@@ -82,13 +94,10 @@ router.beforeEach((to) => {
     const store = useAppStore()
     await store.restoreSession()
     if (to.meta.requiresAuth && !store.isLoggedIn) {
-      return {
-        name: 'login',
-        query: { redirect: to.fullPath },
-      }
+      return { name: 'login' }
     }
 
-    if (to.name === 'login' && store.isLoggedIn) {
+    if ((to.name === 'login' || to.name === 'register') && store.isLoggedIn) {
       return { name: 'home' }
     }
 

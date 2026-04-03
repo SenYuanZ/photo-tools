@@ -7,22 +7,13 @@ const router = useRouter()
 
 const activeTab = computed(() => (route.meta.tab as string) ?? 'home')
 
-const jump = (name: 'login' | 'home' | 'my') => {
+const jump = (name: 'home' | 'my') => {
   router.push({ name })
 }
 </script>
 
 <template>
   <nav class="bottom-nav">
-    <button
-      class="nav-item"
-      :class="{ 'active-login': activeTab === 'login' }"
-      type="button"
-      @click="jump('login')"
-    >
-      <i class="fa-solid fa-key" />
-      <span>登录</span>
-    </button>
     <button
       class="nav-item"
       :class="{ 'active-home': activeTab === 'home' }"

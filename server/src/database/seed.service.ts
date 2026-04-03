@@ -10,6 +10,7 @@ import {
   ThemeName,
 } from '../common/enums/app.enums';
 import { Customer } from './entities/customer.entity';
+import { InviteCode } from './entities/invite-code.entity';
 import { Schedule } from './entities/schedule.entity';
 import { UserSetting } from './entities/user-setting.entity';
 import { User } from './entities/user.entity';
@@ -27,11 +28,15 @@ export class SeedService implements OnApplicationBootstrap {
     private readonly settingsRepository: Repository<UserSetting>,
     @InjectRepository(Customer)
     private readonly customersRepository: Repository<Customer>,
+    @InjectRepository(InviteCode)
+    private readonly inviteCodesRepository: Repository<InviteCode>,
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
   ) {}
 
   async onApplicationBootstrap() {
+    await this.ensureInviteCodes();
+
     const existing = await this.usersRepository.findOne({
       where: { account: 'lina_photo' },
     });
@@ -159,5 +164,38 @@ export class SeedService implements OnApplicationBootstrap {
     await this.schedulesRepository.save(schedules);
 
     this.logger.log('Seed data created: default user lina_photo / 123456');
+  }
+
+  private async ensureInviteCodes() {
+    const defaults = [
+      {
+        code: 'PHOTO2026',
+        note: '默认邀请码，可用于摄影师注册',
+      },
+      {
+        code: 'STUDIO888',
+        note: '备用邀请码',
+      },
+    ];
+
+    for (const item of defaults) {
+      const exists = await this.inviteCodesRepository.findOne({
+        where: { code: item.code },
+      });
+      if (exists) {
+        continue;
+      }
+
+      const entity = this.inviteCodesRepository.create({
+        id: uuidv4(),
+        code: item.code,
+        isActive: true,
+        maxUses: null,
+        usedCount: 0,
+        expiresAt: null,
+        note: item.note,
+      });
+      await this.inviteCodesRepository.save(entity);
+    }
   }
 }

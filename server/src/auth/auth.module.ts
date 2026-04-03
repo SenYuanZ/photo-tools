@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { InviteCode } from '../database/entities/invite-code.entity';
+import { UserSetting } from '../database/entities/user-setting.entity';
 import { User } from '../database/entities/user.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -10,7 +12,7 @@ import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, UserSetting, InviteCode]),
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

@@ -10,6 +10,13 @@ export interface LoginResponse {
   }
 }
 
+export interface RegisterPayload {
+  account: string
+  nickname: string
+  password: string
+  inviteCode: string
+}
+
 export interface DashboardOverview {
   customerCount: number
   todayCount: number
@@ -44,6 +51,19 @@ export interface PublicBookingPayload {
   referenceImages: string[]
 }
 
+export interface InviteCodeItem {
+  id: string
+  code: string
+  isActive: boolean
+  maxUses: number | null
+  usedCount: number
+  remainingUses: number | null
+  expiresAt: string | null
+  note: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface PublicAvailability {
   photographerId: string
   date: string
@@ -63,6 +83,13 @@ export interface PublicAvailability {
 export const authApi = {
   login(payload: LoginPayload) {
     return request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: payload,
+      skipAuth: true,
+    })
+  },
+  register(payload: RegisterPayload) {
+    return request<LoginResponse>('/auth/register', {
       method: 'POST',
       body: payload,
       skipAuth: true,
@@ -211,6 +238,39 @@ export const settingsApi = {
   },
   update(payload: Partial<Pick<SettingsData, 'theme' | 'defaultReminders' | 'backupEnabled'>>) {
     return request<SettingsData>('/settings', {
+      method: 'PATCH',
+      body: payload,
+    })
+  },
+}
+
+export const inviteCodeApi = {
+  list() {
+    return request<InviteCodeItem[]>('/invite-codes')
+  },
+  create(payload: {
+    code: string
+    isActive?: boolean
+    maxUses?: number | null
+    expiresAt?: string | null
+    note?: string
+  }) {
+    return request<InviteCodeItem>('/invite-codes', {
+      method: 'POST',
+      body: payload,
+    })
+  },
+  update(
+    id: string,
+    payload: Partial<{
+      code: string
+      isActive: boolean
+      maxUses: number | null
+      expiresAt: string | null
+      note: string
+    }>,
+  ) {
+    return request<InviteCodeItem>(`/invite-codes/${id}`, {
       method: 'PATCH',
       body: payload,
     })

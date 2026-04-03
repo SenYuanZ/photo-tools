@@ -93,6 +93,18 @@ const applyTheme = async (theme: 'pink' | 'blue' | 'yellow') => {
       <Button class="mt-3" block round plain type="primary">重新查看新手引导</Button>
     </article>
 
+    <article class="card mb-3 p-3 soft-pink">
+      <p class="mb-2 text-sm font-extrabold"><i class="fa-solid fa-ticket mr-1 text-rose-500" />注册邀请码</p>
+      <CellGroup inset>
+        <Cell
+          title="邀请码管理"
+          value="查看与编辑"
+          is-link
+          @click="router.push({ name: 'invite-codes' })"
+        />
+      </CellGroup>
+    </article>
+
     <p v-if="feedback" class="text-xs text-blue-500">{{ feedback }}</p>
 
     <Popup v-model:show="showThemePicker" position="bottom" round>
