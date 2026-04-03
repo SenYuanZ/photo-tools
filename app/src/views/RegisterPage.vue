@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, CellGroup, Field } from 'vant'
 import { authApi } from '../api/app'
+import AuthCameraBanner from '../components/AuthCameraBanner.vue'
 import { useAppStore } from '../stores/app'
 
 const router = useRouter()
@@ -18,8 +19,8 @@ const form = reactive({
 })
 
 const loading = ref(false)
-const error = ref('')
-const success = ref('')
+const feedback = ref('')
+const feedbackType = ref<'success' | 'error'>('success')
 
 const makeCaptcha = () =>
   Math.random()
@@ -29,31 +30,37 @@ const makeCaptcha = () =>
 
 const captchaText = ref(makeCaptcha())
 
-const refreshCaptcha = () => {
-  captchaText.value = makeCaptcha()
-}
-
 const canSubmit = computed(
   () =>
     Boolean(form.account && form.nickname && form.password && form.confirmPassword && form.inviteCode && form.captcha),
 )
 
+const feedbackClass = computed(() => (feedbackType.value === 'error' ? 'text-rose-500' : 'text-blue-500'))
+
+const setFeedback = (type: 'success' | 'error', message: string) => {
+  feedbackType.value = type
+  feedback.value = message
+}
+
+const refreshCaptcha = () => {
+  captchaText.value = makeCaptcha()
+}
+
 const submit = async () => {
-  error.value = ''
-  success.value = ''
+  feedback.value = ''
 
   if (!canSubmit.value) {
-    error.value = '请先完整填写注册信息。'
+    setFeedback('error', '请先完整填写注册信息。')
     return
   }
 
   if (form.password !== form.confirmPassword) {
-    error.value = '两次输入的密码不一致。'
+    setFeedback('error', '两次输入的密码不一致。')
     return
   }
 
   if (form.captcha.trim().toUpperCase() !== captchaText.value) {
-    error.value = '验证码不正确，请重试。'
+    setFeedback('error', '验证码不正确，请重试。')
     refreshCaptcha()
     return
   }
@@ -67,7 +74,7 @@ const submit = async () => {
       inviteCode: form.inviteCode.trim().toUpperCase(),
     })
 
-    success.value = '注册成功，正在自动登录...'
+    setFeedback('success', '注册成功，正在自动登录...')
     await store.login({
       account: form.account.trim(),
       password: form.password,
@@ -75,7 +82,7 @@ const submit = async () => {
 
     router.replace({ name: 'home' })
   } catch (requestError) {
-    error.value = (requestError as Error).message || '注册失败，请稍后重试'
+    setFeedback('error', (requestError as Error).message || '注册失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -83,20 +90,17 @@ const submit = async () => {
 </script>
 
 <template>
-  <section class="bounce-in">
-    <article class="card mb-4 p-4 soft-pink">
+  <section class="auth-shell bounce-in">
+    <AuthCameraBanner subtitle="创建摄影师账号" tip="邀请码注册后即可进入首页，开始管理你的客户与拍摄档期。" />
+
+    <article class="card auth-card p-4">
       <div class="mb-2 flex items-center justify-between">
-        <p class="title-font text-2xl text-rose-500">摄影师注册</p>
+        <p class="title-font text-xl text-rose-500">摄影师注册</p>
         <button class="chip" type="button" @click="router.push({ name: 'login' })">
           <i class="fa-solid fa-chevron-left" />返回登录
         </button>
       </div>
-      <p class="text-xs text-slate-600">
-        注册需邀请码。邀请码由已登录摄影师在「个人设置 - 邀请码管理」中维护。
-      </p>
-    </article>
 
-    <article class="card p-3">
       <CellGroup inset>
         <Field v-model="form.account" label="账号" placeholder="3-32位，字母数字下划线" clearable />
         <Field v-model="form.nickname" label="昵称" placeholder="例如：林娜摄影" clearable />
@@ -112,18 +116,27 @@ const submit = async () => {
           </template>
         </Field>
       </CellGroup>
+
+      <p v-if="feedback" class="mt-2 text-xs" :class="feedbackClass">{{ feedback }}</p>
+
+      <Button block round type="primary" class="mt-4" :loading="loading" @click="submit">
+        <i class="fa-solid fa-camera mr-1" />注册并登录
+      </Button>
     </article>
-
-    <p v-if="error" class="mt-2 text-xs text-rose-500">{{ error }}</p>
-    <p v-if="success" class="mt-2 text-xs text-blue-500">{{ success }}</p>
-
-    <Button block round type="primary" class="mt-4" :loading="loading" @click="submit">
-      <i class="fa-solid fa-user-plus mr-1" />注册并登录
-    </Button>
   </section>
 </template>
 
 <style scoped>
+.auth-shell {
+  margin: 0 auto;
+  max-width: 520px;
+}
+
+.auth-card {
+  border-radius: 22px;
+  box-shadow: 0 12px 24px rgba(255, 127, 174, 0.12);
+}
+
 .captcha-btn {
   display: inline-flex;
   align-items: center;
@@ -135,6 +148,7 @@ const submit = async () => {
   color: var(--theme-accent-strong);
   font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 4px 10px var(--theme-shadow);
 }
 
 .captcha-code {
