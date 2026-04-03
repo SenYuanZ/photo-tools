@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import { useAppStore } from '../stores/app'
 
 const store = useAppStore()
@@ -10,6 +11,20 @@ const jump = (name: string) => router.push({ name })
 const logout = () => {
   store.logout()
   router.push({ name: 'login' })
+}
+
+const openModelBooking = () => {
+  router.push({ name: 'model-booking' })
+}
+
+const copyModelBookingLink = async () => {
+  const link = `${window.location.origin}/model-booking`
+  try {
+    await navigator.clipboard.writeText(link)
+    showToast('约拍链接已复制')
+  } catch {
+    showToast('复制失败，请手动复制')
+  }
 }
 </script>
 
@@ -55,6 +70,15 @@ const logout = () => {
         <p class="font-extrabold"><i class="fa-solid fa-sliders mr-1 text-amber-500" />个人设置</p>
         <p class="mt-1 text-xs text-slate-500">主题切换、提醒和备份开关</p>
       </button>
+
+      <article class="card col-span-2 p-3 soft-pink">
+        <p class="font-extrabold text-sm"><i class="fa-regular fa-calendar-check mr-1 text-rose-500" />模特约拍入口</p>
+        <p class="mt-1 text-xs text-slate-500">把这个入口发给模特，TA 可以免登录选择时间并提交动作需求</p>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <button class="btn-primary" type="button" @click="openModelBooking">立即查看入口</button>
+          <button class="btn-secondary" type="button" @click="copyModelBookingLink">复制入口链接</button>
+        </div>
+      </article>
     </div>
 
     <button class="btn-secondary mt-4" type="button" @click="logout">

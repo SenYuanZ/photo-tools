@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, CellGroup, DatePicker, Field, Picker, Popup, TimePicker, Uploader } from 'vant'
+import { Button, CellGroup, DatePicker, Field, Picker, Popup, Uploader, showToast } from 'vant'
 import type { UploaderFileListItem } from 'vant'
-import { publicBookingApi, type PublicPhotographer } from '../api/app'
-import { timeHourOptions, timeMinuteOptions } from '../constants/options'
+import {
+  publicBookingApi,
+  type PublicAvailability,
+  type PublicPhotographer,
+} from '../api/app'
+import { timeOptions } from '../constants/options'
 import { isAfterTime } from '../utils/time'
 
 type UploadItem = UploaderFileListItem & {
@@ -33,8 +37,8 @@ const form = reactive({
 })
 
 const selectedDateValues = ref(form.date.split('-'))
-const selectedStartTimeValues = ref(form.startTime.split(':'))
-const selectedEndTimeValues = ref(form.endTime.split(':'))
+const selectedStartOption = ref(form.startTime)
+const selectedEndOption = ref(form.endTime)
 
 const showPhotographerPicker = ref(false)
 const showDatePicker = ref(false)
@@ -48,6 +52,9 @@ const referenceFileList = ref<UploadItem[]>([])
 const error = ref('')
 const success = ref('')
 const conflictHint = ref('')
+const availabilityLoading = ref(false)
+const availabilityError = ref('')
+const availability = ref<PublicAvailability | null>(null)
 
 const photographerColumns = computed(() =>
   photographers.value.map((item) => ({
@@ -68,7 +75,72 @@ const failedUploads = computed(() =>
   referenceFileList.value.filter((item) => item.status === 'failed' && item.file),
 )
 
-const timeColumns = [timeHourOptions, timeMinuteOptions]
+const availableSlotSet = computed(() => new Set(availability.value?.availableSlots || []))
+
+const toMinutes = (value: string) => {
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+const isRangeAvailable = (start: string, end: string) => {
+  if (!availability.value) {
+    return true
+  }
+  const startValue = toMinutes(start)
+  const endValue = toMinutes(end)
+  for (let cursor = startValue; cursor < endValue; cursor += 30) {
+    const slot = `${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`
+    if (!availableSlotSet.value.has(slot)) {
+      return false
+    }
+  }
+  return true
+}
+
+const canStartAt = (time: string) => {
+  if (!availability.value) {
+    return true
+  }
+  if (!availableSlotSet.value.has(time)) {
+    return false
+  }
+
+  return timeOptions.some((candidate) => toMinutes(candidate) > toMinutes(time) && isRangeAvailable(time, candidate))
+}
+
+const canEndAt = (time: string) => {
+  if (!form.startTime) {
+    return false
+  }
+  if (toMinutes(time) <= toMinutes(form.startTime)) {
+    return false
+  }
+  return isRangeAvailable(form.startTime, time)
+}
+
+const startTimeColumns = computed(() =>
+  timeOptions.map((time) => ({
+    text: canStartAt(time) ? time : `${time}（不可选）`,
+    value: time,
+    disabled: !canStartAt(time),
+  })),
+)
+
+const endTimeColumns = computed(() =>
+  timeOptions.map((time) => ({
+    text: canEndAt(time) ? time : `${time}（不可选）`,
+    value: time,
+    disabled: !canEndAt(time),
+  })),
+)
+
+const busyRangeText = computed(() =>
+  (availability.value?.busyRanges || []).map((item) => `${item.startTime}-${item.endTime}`),
+)
+
+const freeRangeText = computed(() =>
+  (availability.value?.freeRanges || []).map((item) => `${item.startTime}-${item.endTime}`),
+)
 
 const resolvePublicErrorMessage = (requestError: unknown, fallback: string) => {
   const apiError = requestError as ApiErrorLike
@@ -76,6 +148,10 @@ const resolvePublicErrorMessage = (requestError: unknown, fallback: string) => {
 
   if (message.includes('Cannot GET /api/public/photographers')) {
     return '公开约拍接口未生效，请重启后端服务后重试。'
+  }
+
+  if (message.includes('Cannot GET /api/public/availability')) {
+    return '可约时段接口未生效，请重启后端服务后重试。'
   }
 
   if (message.includes('Cannot POST /api/public/reference-images')) {
@@ -120,18 +196,82 @@ onMounted(() => {
   void loadPhotographers()
 })
 
+const fetchAvailability = async () => {
+  if (!form.photographerId || !form.date) {
+    availability.value = null
+    return
+  }
+
+  availabilityLoading.value = true
+  availabilityError.value = ''
+  try {
+    availability.value = await publicBookingApi.getAvailability(form.photographerId, form.date)
+
+    if (!canStartAt(form.startTime)) {
+      const firstAvailableStart = startTimeColumns.value.find((item) => !item.disabled)?.value || ''
+      form.startTime = firstAvailableStart
+    }
+
+    if (!canEndAt(form.endTime)) {
+      form.endTime = endTimeColumns.value.find((item) => !item.disabled)?.value || ''
+    }
+
+    selectedStartOption.value = form.startTime
+    selectedEndOption.value = form.endTime
+  } catch (requestError) {
+    availability.value = null
+    availabilityError.value = resolvePublicErrorMessage(requestError, '可约时段加载失败，请稍后重试')
+  } finally {
+    availabilityLoading.value = false
+  }
+}
+
+watch(
+  () => [form.photographerId, form.date],
+  ([photographerId]) => {
+    if (!photographerId) {
+      availability.value = null
+      return
+    }
+    void fetchAvailability()
+  },
+)
+
 const openDate = () => {
   selectedDateValues.value = form.date.split('-')
   showDatePicker.value = true
 }
 
 const openStartTime = () => {
-  selectedStartTimeValues.value = form.startTime.split(':')
+  if (!form.photographerId) {
+    showToast('请先选择摄影师')
+    return
+  }
+  if (availabilityLoading.value) {
+    showToast('正在获取可约时段，请稍候')
+    return
+  }
+
+  if (!startTimeColumns.value.some((item) => !item.disabled)) {
+    showToast('该日期暂无可约开始时间')
+    return
+  }
+
+  selectedStartOption.value = form.startTime || startTimeColumns.value.find((item) => !item.disabled)?.value || ''
   showStartTimePicker.value = true
 }
 
 const openEndTime = () => {
-  selectedEndTimeValues.value = form.endTime.split(':')
+  if (!form.startTime) {
+    showToast('请先选择开始时间')
+    return
+  }
+  if (!endTimeColumns.value.some((item) => !item.disabled)) {
+    showToast('当前开始时间无可用结束时间，请重新选择开始时间')
+    return
+  }
+
+  selectedEndOption.value = form.endTime || endTimeColumns.value.find((item) => !item.disabled)?.value || ''
   showEndTimePicker.value = true
 }
 
@@ -140,6 +280,34 @@ const openPhotographerPicker = async () => {
     await loadPhotographers()
   }
   showPhotographerPicker.value = true
+}
+
+const confirmStartTime = ({ selectedOptions }: { selectedOptions: Array<{ value: string; disabled?: boolean }> }) => {
+  const target = selectedOptions[0]
+  if (!target || target.disabled || !canStartAt(target.value)) {
+    showToast('该开始时间不可预约，请选择高亮时段')
+    return
+  }
+
+  form.startTime = target.value
+  selectedStartOption.value = target.value
+
+  if (!canEndAt(form.endTime)) {
+    form.endTime = endTimeColumns.value.find((item) => !item.disabled)?.value || ''
+  }
+  showStartTimePicker.value = false
+}
+
+const confirmEndTime = ({ selectedOptions }: { selectedOptions: Array<{ value: string; disabled?: boolean }> }) => {
+  const target = selectedOptions[0]
+  if (!target || target.disabled || !canEndAt(target.value)) {
+    showToast('该结束时间不可预约，请重新选择')
+    return
+  }
+
+  form.endTime = target.value
+  selectedEndOption.value = target.value
+  showEndTimePicker.value = false
 }
 
 const uploadSingle = async (item: UploadItem) => {
@@ -218,7 +386,16 @@ const submit = async () => {
     return
   }
 
-  if (!form.photographerId || !form.modelName || !form.modelPhone || !form.location || !form.poseRequirement) {
+  if (
+    !form.photographerId ||
+    !form.modelName ||
+    !form.modelPhone ||
+    !form.date ||
+    !form.startTime ||
+    !form.endTime ||
+    !form.location ||
+    !form.poseRequirement
+  ) {
     error.value = '请先补全摄影师、联系方式、地点和动作要求。'
     return
   }
@@ -246,6 +423,7 @@ const submit = async () => {
 
     success.value = '约拍信息已提交，摄影师会在排单里看到你的动作要求和参考图。'
     resetFormAfterSuccess()
+    void fetchAvailability()
   } catch (requestError) {
     const apiError = requestError as ApiErrorLike
     error.value = resolvePublicErrorMessage(requestError, '提交失败，请稍后重试')
@@ -297,6 +475,45 @@ const submit = async () => {
           placeholder="告诉摄影师你希望的动作风格、镜头感、情绪表达"
         />
       </CellGroup>
+
+      <div class="mt-2 rounded-xl border border-[#f2d9e7] bg-white/90 p-2.5 text-xs">
+        <p v-if="availabilityLoading" class="text-blue-500">
+          <i class="fa-solid fa-spinner mr-1 animate-spin" />正在获取可预约时段...
+        </p>
+        <p v-else-if="availabilityError" class="text-amber-700">
+          <i class="fa-solid fa-triangle-exclamation mr-1" />{{ availabilityError }}
+        </p>
+        <template v-else-if="availability">
+          <p class="mb-1 text-slate-600">可选时间（绿色）与已占用时间（粉色）如下：</p>
+          <div class="mb-1 flex flex-wrap gap-1">
+            <span
+              v-for="item in freeRangeText"
+              :key="item"
+              class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700"
+            >
+              可约 {{ item }}
+            </span>
+            <span
+              v-if="!freeRangeText.length"
+              class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
+            >
+              当天暂无可约时段，请换日期
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <span
+              v-for="item in busyRangeText"
+              :key="item"
+              class="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700"
+            >
+              占用 {{ item }}
+            </span>
+            <span v-if="!busyRangeText.length" class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
+              当天暂无限制
+            </span>
+          </div>
+        </template>
+      </div>
 
       <div v-if="!loadingPhotographers && !photographers.length" class="mt-2 flex items-center justify-between text-xs text-amber-700">
         <span>未获取到摄影师列表，请刷新后重试。</span>
@@ -361,22 +578,18 @@ const submit = async () => {
     </Popup>
 
     <Popup v-model:show="showStartTimePicker" position="bottom" round>
-      <TimePicker
-        v-model="selectedStartTimeValues"
-        title="选择开始时间"
-        :columns="timeColumns"
+      <Picker
+        :columns="startTimeColumns"
         @cancel="showStartTimePicker = false"
-        @confirm="({ selectedValues }: any) => { form.startTime = `${selectedValues[0]}:${selectedValues[1]}`; showStartTimePicker = false }"
+        @confirm="confirmStartTime"
       />
     </Popup>
 
     <Popup v-model:show="showEndTimePicker" position="bottom" round>
-      <TimePicker
-        v-model="selectedEndTimeValues"
-        title="选择结束时间"
-        :columns="timeColumns"
+      <Picker
+        :columns="endTimeColumns"
         @cancel="showEndTimePicker = false"
-        @confirm="({ selectedValues }: any) => { form.endTime = `${selectedValues[0]}:${selectedValues[1]}`; showEndTimePicker = false }"
+        @confirm="confirmEndTime"
       />
     </Popup>
   </section>

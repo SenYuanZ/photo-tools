@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Req,
   UploadedFiles,
   UseInterceptors,
@@ -18,6 +19,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import sharp from 'sharp';
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
+import { QueryPublicAvailabilityDto } from './dto/query-public-availability.dto';
 import { PublicBookingService } from './public-booking.service';
 
 const uploadDir = join(process.cwd(), 'uploads', 'references');
@@ -35,6 +37,14 @@ export class PublicBookingController {
   @Get('photographers')
   listPhotographers() {
     return this.publicBookingService.listPhotographers();
+  }
+
+  @Get('availability')
+  getAvailability(@Query() query: QueryPublicAvailabilityDto) {
+    return this.publicBookingService.getAvailability(
+      query.photographerId,
+      query.date,
+    );
   }
 
   @Post('bookings')

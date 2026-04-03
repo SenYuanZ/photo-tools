@@ -44,6 +44,22 @@ export interface PublicBookingPayload {
   referenceImages: string[]
 }
 
+export interface PublicAvailability {
+  photographerId: string
+  date: string
+  stepMinutes: number
+  busyRanges: Array<{
+    startTime: string
+    endTime: string
+  }>
+  blockedSlots: string[]
+  availableSlots: string[]
+  freeRanges: Array<{
+    startTime: string
+    endTime: string
+  }>
+}
+
 export const authApi = {
   login(payload: LoginPayload) {
     return request<LoginResponse>('/auth/login', {
@@ -204,6 +220,12 @@ export const settingsApi = {
 export const publicBookingApi = {
   listPhotographers() {
     return request<PublicPhotographer[]>('/public/photographers', {
+      skipAuth: true,
+    })
+  },
+  getAvailability(photographerId: string, date: string) {
+    const query = new URLSearchParams({ photographerId, date }).toString()
+    return request<PublicAvailability>(`/public/availability?${query}`, {
       skipAuth: true,
     })
   },
