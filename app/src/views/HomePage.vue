@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ScheduleCard from '../components/ScheduleCard.vue'
 import { formatCnDate } from '../utils/time'
@@ -12,6 +12,19 @@ const store = useAppStore()
 type HomeTab = 'today' | 'tomorrow' | 'future'
 
 const activeTab = ref<HomeTab>('today')
+const nowTick = ref(dayjs())
+
+let tickTimer = 0
+
+onMounted(() => {
+  tickTimer = window.setInterval(() => {
+    nowTick.value = dayjs()
+  }, 30000)
+})
+
+onBeforeUnmount(() => {
+  window.clearInterval(tickTimer)
+})
 
 const scheduleSorted = computed(() =>
   [...store.schedules].sort((left, right) => (left.date + left.startTime).localeCompare(right.date + right.startTime)),
@@ -87,8 +100,14 @@ const toDetail = (id: string) => {
 
 const isUrgent = (date: string, startTime: string) => {
   const start = dayjs(`${date} ${startTime}`)
-  const diff = start.diff(dayjs(), 'minute')
+  const diff = start.diff(nowTick.value, 'minute')
   return diff > 0 && diff <= 60
+}
+
+const isInProgress = (date: string, startTime: string, endTime: string) => {
+  const start = dayjs(`${date} ${startTime}`)
+  const end = dayjs(`${date} ${endTime}`)
+  return !nowTick.value.isBefore(start) && nowTick.value.isBefore(end)
 }
 
 const currentCount = computed(() => {
@@ -100,6 +119,11 @@ const currentCount = computed(() => {
   }
   return todaySchedules.value.length
 })
+
+const inProgressTodayCount = computed(() =>
+  todaySchedules.value.filter((item) => isInProgress(item.date, item.startTime, item.endTime)).length,
+)
+const hasInProgress = computed(() => inProgressTodayCount.value > 0)
 
 const cardToneClass = computed(() => {
   if (activeTab.value === 'tomorrow') {
@@ -125,7 +149,9 @@ const cardToneClass = computed(() => {
       <p class="text-sm font-bold">{{ formatCnDate(today) }}</p>
       <p class="mt-1 text-xs text-slate-500">
         <i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-500" />
-        今天有 {{ todaySchedules.length }} 组，去拍点超有趣的画面吧！
+        今天有 {{ todaySchedules.length }} 组，其中进行中
+        <span :class="hasInProgress ? 'text-amber-600 font-extrabold' : 'text-slate-400 font-bold'">{{ inProgressTodayCount }}</span>
+        组，去拍点超有趣的画面吧！
       </p>
     </header>
 
@@ -165,7 +191,16 @@ const cardToneClass = computed(() => {
     <article class="mb-4">
       <div class="mb-2 flex items-center justify-between">
         <p class="text-[15px] font-extrabold"><i class="mr-1" :class="activeMeta.icon" />{{ activeMeta.title }}</p>
-        <span class="chip home-count" :class="cardToneClass">{{ currentCount }} 人</span>
+        <div class="flex items-center gap-1.5">
+          <span
+            v-if="activeTab === 'today'"
+            class="chip live-chip"
+            :class="hasInProgress ? 'live-chip--active' : 'live-chip--idle'"
+          >
+            <span class="live-dot" :class="hasInProgress ? 'live-dot--active' : 'live-dot--idle'" />进行中 {{ inProgressTodayCount }} 组
+          </span>
+          <span class="chip home-count" :class="cardToneClass">{{ currentCount }} 人</span>
+        </div>
       </div>
 
       <div v-if="activeTab === 'future' && futureGroups.length" class="space-y-3">
@@ -200,6 +235,7 @@ const cardToneClass = computed(() => {
           :style="{ animationDelay: `${index * 80}ms` }"
           :schedule="item"
           :customer="store.getCustomerById(item.customerId)"
+          :in-progress="activeTab === 'today' && isInProgress(item.date, item.startTime, item.endTime)"
           :urgent="activeTab === 'today' && isUrgent(item.date, item.startTime)"
           @click="toDetail(item.id)"
         />
@@ -255,6 +291,39 @@ const cardToneClass = computed(() => {
   animation: count-pop 480ms ease;
 }
 
+.live-chip {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.live-chip--active {
+  border-color: #ffd6a6;
+  color: #b96c12;
+  background: #fff6e8;
+}
+
+.live-chip--idle {
+  border-color: #e5e7eb;
+  color: #94a3b8;
+  background: #f8fafc;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 999px;
+}
+
+.live-dot--active {
+  background: #ff9f1a;
+  animation: live-chip-dot 1.2s ease-in-out infinite;
+}
+
+.live-dot--idle {
+  background: #cbd5e1;
+}
+
 .schedule-pop {
   animation: schedule-pop 460ms ease both;
 }
@@ -297,6 +366,19 @@ const cardToneClass = computed(() => {
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes live-chip-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
   }
 }
 </style>
