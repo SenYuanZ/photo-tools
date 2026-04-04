@@ -1,4 +1,4 @@
-export type CustomerType = 'personal' | 'couple' | 'family' | 'business' | 'other'
+export type CustomerType = 'personal' | 'couple' | 'family' | 'business' | 'other' | 'exhibition'
 export type DepositStatus = 'unpaid' | 'paid' | 'full'
 export type ReminderType = '1d' | '1h'
 export type ThemeName = 'pink' | 'blue' | 'yellow'

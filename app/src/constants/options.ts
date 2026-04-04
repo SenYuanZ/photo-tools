@@ -5,6 +5,7 @@ export const customerTypeText: Record<CustomerType, string> = {
   couple: '情侣',
   family: '亲子',
   business: '商业',
+  exhibition: '漫展',
   other: '其他',
 }
 
