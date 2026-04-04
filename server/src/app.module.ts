@@ -5,10 +5,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CustomerTypesModule } from './customer-types/customer-types.module';
+import { BookingGroup } from './database/entities/booking-group.entity';
 import { Customer } from './database/entities/customer.entity';
 import { CustomerTypeOption } from './database/entities/customer-type.entity';
 import { InviteCode } from './database/entities/invite-code.entity';
 import { Schedule } from './database/entities/schedule.entity';
+import { ServiceTypeOption } from './database/entities/service-type.entity';
 import { UserSetting } from './database/entities/user-setting.entity';
 import { User } from './database/entities/user.entity';
 import { SeedService } from './database/seed.service';
@@ -17,6 +19,7 @@ import { PublicBookingModule } from './public-booking/public-booking.module';
 import { CustomersModule } from './customers/customers.module';
 import { InviteCodesModule } from './invite-codes/invite-codes.module';
 import { SchedulesModule } from './schedules/schedules.module';
+import { ServiceTypesModule } from './service-types/service-types.module';
 import { SettingsModule } from './settings/settings.module';
 
 @Module({
@@ -39,8 +42,10 @@ import { SettingsModule } from './settings/settings.module';
           UserSetting,
           Customer,
           Schedule,
+          BookingGroup,
           InviteCode,
           CustomerTypeOption,
+          ServiceTypeOption,
         ],
         synchronize: true,
         logging: false,
@@ -56,13 +61,16 @@ import { SettingsModule } from './settings/settings.module';
       UserSetting,
       Customer,
       Schedule,
+      BookingGroup,
       InviteCode,
       CustomerTypeOption,
+      ServiceTypeOption,
     ]),
     AuthModule,
     DashboardModule,
     PublicBookingModule,
     CustomerTypesModule,
+    ServiceTypesModule,
     InviteCodesModule,
     CustomersModule,
     SchedulesModule,

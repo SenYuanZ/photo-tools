@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcryptjs';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ReminderType, ThemeName } from '../common/enums/app.enums';
+import { ReminderType, ThemeName, UserRole } from '../common/enums/app.enums';
 import { InviteCode } from '../database/entities/invite-code.entity';
 import { UserSetting } from '../database/entities/user-setting.entity';
 import type { JwtPayload } from '../common/interfaces/jwt-payload.interface';
@@ -50,6 +50,7 @@ export class AuthService {
         id: user.id,
         account: user.account,
         nickname: user.nickname,
+        role: user.role,
       },
     };
   }
@@ -95,6 +96,7 @@ export class AuthService {
         account,
         nickname,
         password: await hash(payload.password, 10),
+        role: payload.role ?? UserRole.PHOTOGRAPHER,
       });
       await manager.save(user);
 
@@ -123,6 +125,7 @@ export class AuthService {
         id: result.id,
         account: result.account,
         nickname: result.nickname,
+        role: result.role,
       },
     };
   }

@@ -6,12 +6,15 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   DepositStatus,
   ReminderType,
+  ServiceTypeCode,
   ThemeName,
+  UserRole,
 } from '../common/enums/app.enums';
 import { Customer } from './entities/customer.entity';
 import { CustomerTypeOption } from './entities/customer-type.entity';
 import { InviteCode } from './entities/invite-code.entity';
 import { Schedule } from './entities/schedule.entity';
+import { ServiceTypeOption } from './entities/service-type.entity';
 import { UserSetting } from './entities/user-setting.entity';
 import { User } from './entities/user.entity';
 
@@ -32,13 +35,17 @@ export class SeedService implements OnApplicationBootstrap {
     private readonly customerTypesRepository: Repository<CustomerTypeOption>,
     @InjectRepository(InviteCode)
     private readonly inviteCodesRepository: Repository<InviteCode>,
+    @InjectRepository(ServiceTypeOption)
+    private readonly serviceTypesRepository: Repository<ServiceTypeOption>,
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
   ) {}
 
   async onApplicationBootstrap() {
     await this.ensureCustomerTypes();
+    await this.ensureServiceTypes();
     await this.ensureInviteCodes();
+    await this.ensureDemoMakeupUser();
 
     const existing = await this.usersRepository.findOne({
       where: { account: 'lina_photo' },
@@ -59,6 +66,7 @@ export class SeedService implements OnApplicationBootstrap {
       account: 'lina_photo',
       nickname: '林娜摄影',
       password: await hash('123456', 10),
+      role: UserRole.PHOTOGRAPHER,
     });
     await this.usersRepository.save(user);
 
@@ -116,6 +124,9 @@ export class SeedService implements OnApplicationBootstrap {
         endTime: '11:30',
         location: 'XX 公园草坪',
         note: '偏爱浅色背景，后期加入卡通贴纸。',
+        serviceTypeCode: ServiceTypeCode.PHOTOGRAPHY,
+        bookingGroupId: null,
+        serviceMeta: null,
         depositStatus: DepositStatus.PAID,
         amount: 500,
         reminders: [ReminderType.ONE_HOUR],
@@ -130,6 +141,9 @@ export class SeedService implements OnApplicationBootstrap {
         endTime: '16:00',
         location: '北岸咖啡街',
         note: '希望多抓拍互动镜头。',
+        serviceTypeCode: ServiceTypeCode.PHOTOGRAPHY,
+        bookingGroupId: null,
+        serviceMeta: null,
         depositStatus: DepositStatus.FULL,
         amount: 1200,
         reminders: [ReminderType.ONE_DAY, ReminderType.ONE_HOUR],
@@ -144,6 +158,9 @@ export class SeedService implements OnApplicationBootstrap {
         endTime: '12:00',
         location: '森林公园童趣区',
         note: '带轻便反光板。',
+        serviceTypeCode: ServiceTypeCode.PHOTOGRAPHY,
+        bookingGroupId: null,
+        serviceMeta: null,
         depositStatus: DepositStatus.UNPAID,
         amount: 300,
         reminders: [ReminderType.ONE_DAY],
@@ -158,6 +175,9 @@ export class SeedService implements OnApplicationBootstrap {
         endTime: '20:30',
         location: '创意园 A 栋',
         note: '商业补拍，需提前布灯。',
+        serviceTypeCode: ServiceTypeCode.PHOTOGRAPHY,
+        bookingGroupId: null,
+        serviceMeta: null,
         depositStatus: DepositStatus.PAID,
         amount: 800,
         reminders: [ReminderType.ONE_DAY],
@@ -167,6 +187,40 @@ export class SeedService implements OnApplicationBootstrap {
     await this.schedulesRepository.save(schedules);
 
     this.logger.log('Seed data created: default user lina_photo / 123456');
+  }
+
+  private async ensureServiceTypes() {
+    const defaults = [
+      {
+        code: ServiceTypeCode.PHOTOGRAPHY,
+        name: '摄影服务',
+        sortOrder: 10,
+      },
+      {
+        code: ServiceTypeCode.MAKEUP,
+        name: '妆娘约妆',
+        sortOrder: 20,
+      },
+    ];
+
+    for (const item of defaults) {
+      const exists = await this.serviceTypesRepository.findOne({
+        where: { code: item.code },
+      });
+      if (exists) {
+        continue;
+      }
+
+      const entity = this.serviceTypesRepository.create({
+        id: uuidv4(),
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        isActive: true,
+      });
+
+      await this.serviceTypesRepository.save(entity);
+    }
   }
 
   private async ensureCustomerTypes() {
@@ -229,5 +283,32 @@ export class SeedService implements OnApplicationBootstrap {
       });
       await this.inviteCodesRepository.save(entity);
     }
+  }
+
+  private async ensureDemoMakeupUser() {
+    const exists = await this.usersRepository.findOne({
+      where: { account: 'momo_makeup' },
+    });
+
+    if (exists) {
+      return;
+    }
+
+    const user = this.usersRepository.create({
+      id: uuidv4(),
+      account: 'momo_makeup',
+      nickname: '默默妆造',
+      password: await hash('123456', 10),
+      role: UserRole.MAKEUP_ARTIST,
+    });
+    await this.usersRepository.save(user);
+
+    const settings = this.settingsRepository.create({
+      userId: user.id,
+      theme: ThemeName.PINK,
+      defaultReminders: [ReminderType.ONE_DAY, ReminderType.ONE_HOUR],
+      backupEnabled: true,
+    });
+    await this.settingsRepository.save(settings);
   }
 }

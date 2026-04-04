@@ -1,4 +1,11 @@
-import type { Customer, CustomerPayload, LoginPayload, Schedule, SchedulePayload } from '../types/models'
+import type {
+  Customer,
+  CustomerPayload,
+  LoginPayload,
+  Schedule,
+  SchedulePayload,
+  UserRole,
+} from '../types/models'
 import { getToken, request } from './http'
 
 export interface LoginResponse {
@@ -7,6 +14,7 @@ export interface LoginResponse {
     id: string
     account: string
     nickname: string
+    role: UserRole
   }
 }
 
@@ -15,6 +23,7 @@ export interface RegisterPayload {
   nickname: string
   password: string
   inviteCode: string
+  role?: UserRole
 }
 
 export interface DashboardOverview {
@@ -33,22 +42,27 @@ export interface SettingsData {
   backupEnabled: boolean
 }
 
-export interface PublicPhotographer {
+export interface PublicProvider {
   id: string
   nickname: string
   account: string
+  role: UserRole
 }
 
 export interface PublicBookingPayload {
-  photographerId: string
   modelName: string
   modelPhone: string
   date: string
-  startTime: string
-  endTime: string
   location: string
-  poseRequirement: string
-  referenceImages: string[]
+  note?: string
+  items: Array<{
+    serviceTypeCode: string
+    providerId: string
+    startTime: string
+    endTime: string
+    requirement: string
+    referenceImages: string[]
+  }>
 }
 
 export interface InviteCodeItem {
@@ -72,8 +86,16 @@ export interface CustomerTypeItem {
   isActive: boolean
 }
 
+export interface ServiceTypeItem {
+  id: string
+  code: string
+  name: string
+  sortOrder: number
+  isActive: boolean
+}
+
 export interface PublicAvailability {
-  photographerId: string
+  providerId: string
   date: string
   stepMinutes: number
   busyRanges: Array<{
@@ -138,6 +160,12 @@ export const customerApi = {
 export const customerTypeApi = {
   list() {
     return request<CustomerTypeItem[]>('/customer-types')
+  },
+}
+
+export const serviceTypeApi = {
+  list() {
+    return request<ServiceTypeItem[]>('/service-types')
   },
 }
 
@@ -292,19 +320,41 @@ export const inviteCodeApi = {
 }
 
 export const publicBookingApi = {
-  listPhotographers() {
-    return request<PublicPhotographer[]>('/public/photographers', {
+  listProviders(serviceTypeCode?: string) {
+    const query = serviceTypeCode ? `?serviceTypeCode=${encodeURIComponent(serviceTypeCode)}` : ''
+    return request<PublicProvider[]>(`/public/providers${query}`, {
       skipAuth: true,
     })
   },
-  getAvailability(photographerId: string, date: string) {
-    const query = new URLSearchParams({ photographerId, date }).toString()
+  listPhotographers() {
+    return this.listProviders('photography')
+  },
+  listServiceTypes() {
+    return request<ServiceTypeItem[]>('/public/service-types', {
+      skipAuth: true,
+    })
+  },
+  getAvailability(providerId: string, date: string, serviceTypeCode?: string) {
+    const query = new URLSearchParams({
+      providerId,
+      date,
+      ...(serviceTypeCode ? { serviceTypeCode } : {}),
+    }).toString()
     return request<PublicAvailability>(`/public/availability?${query}`, {
       skipAuth: true,
     })
   },
   create(payload: PublicBookingPayload) {
-    return request<{ success: boolean; bookingId: string }>('/public/bookings', {
+    return request<{
+      success: boolean
+      bookingGroupId: string
+      bookings: Array<{
+        serviceTypeCode: string
+        bookingId: string
+        providerId: string
+        providerName: string
+      }>
+    }>('/public/bookings', {
       method: 'POST',
       body: payload,
       skipAuth: true,

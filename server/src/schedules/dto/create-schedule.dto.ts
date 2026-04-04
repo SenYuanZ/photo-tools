@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
@@ -40,6 +41,15 @@ export class CreateScheduleDto {
   @IsDateString()
   date: string;
 
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9_-]{2,32}$/i)
+  serviceTypeCode?: string;
+
+  @IsOptional()
+  @IsString()
+  bookingGroupId?: string;
+
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
   startTime: string;
 
@@ -70,4 +80,8 @@ export class CreateScheduleDto {
   @IsArray()
   @IsString({ each: true })
   referenceImages?: string[];
+
+  @IsOptional()
+  @IsObject()
+  serviceMeta?: Record<string, unknown>;
 }

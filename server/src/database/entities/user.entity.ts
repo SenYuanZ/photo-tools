@@ -7,6 +7,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { UserRole } from '../../common/enums/app.enums';
 import { Customer } from './customer.entity';
 import { Schedule } from './schedule.entity';
 import { UserSetting } from './user-setting.entity';
@@ -24,6 +25,13 @@ export class User {
 
   @Column({ type: 'varchar', length: 64 })
   nickname: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.PHOTOGRAPHER,
+  })
+  role: UserRole;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -6,8 +6,8 @@ import { Button, CellGroup, DatePicker, Field, Picker, Popup, Uploader, showToas
 import type { UploaderFileListItem } from 'vant'
 import {
   publicBookingApi,
-  type PublicAvailability,
-  type PublicPhotographer,
+  type PublicProvider,
+  type ServiceTypeItem,
 } from '../api/app'
 import { timeOptions } from '../constants/options'
 import { isAfterTime } from '../utils/time'
@@ -20,146 +20,108 @@ type ApiErrorLike = Error & {
   details?: unknown
 }
 
+type ServiceDraft = {
+  providerId: string
+  startTime: string
+  endTime: string
+  requirement: string
+  referenceFileList: UploadItem[]
+}
+
 const router = useRouter()
 
-const photographers = ref<PublicPhotographer[]>([])
-const loadingPhotographers = ref(false)
-
 const form = reactive({
-  photographerId: '',
   modelName: '',
   modelPhone: '',
   date: dayjs().format('YYYY-MM-DD'),
-  startTime: '10:00',
-  endTime: '11:00',
   location: '',
-  poseRequirement: '',
+  note: '',
+})
+
+const selectedServiceCodes = ref<string[]>(['photography'])
+const serviceTypes = ref<ServiceTypeItem[]>([])
+
+const providersByService = reactive<Record<string, PublicProvider[]>>({})
+const loadingProvidersByService = reactive<Record<string, boolean>>({})
+
+const serviceDrafts = reactive<Record<string, ServiceDraft>>({
+  photography: {
+    providerId: '',
+    startTime: '10:00',
+    endTime: '11:00',
+    requirement: '',
+    referenceFileList: [],
+  },
+  makeup: {
+    providerId: '',
+    startTime: '08:30',
+    endTime: '09:30',
+    requirement: '',
+    referenceFileList: [],
+  },
 })
 
 const selectedDateValues = ref(form.date.split('-'))
-const selectedStartOption = ref(form.startTime)
-const selectedEndOption = ref(form.endTime)
+const selectedStartOption = ref('10:00')
+const selectedEndOption = ref('11:00')
 
-const showPhotographerPicker = ref(false)
 const showDatePicker = ref(false)
+const showProviderPicker = ref(false)
 const showStartTimePicker = ref(false)
 const showEndTimePicker = ref(false)
 
+const pickerServiceCode = ref('photography')
+
 const uploading = ref(false)
 const submitting = ref(false)
-const referenceFileList = ref<UploadItem[]>([])
 
 const error = ref('')
 const success = ref('')
-const conflictHint = ref('')
-const availabilityLoading = ref(false)
-const availabilityError = ref('')
-const availability = ref<PublicAvailability | null>(null)
 
-const photographerColumns = computed(() =>
-  photographers.value.map((item) => ({
+const serviceTypeLabelMap = computed(() =>
+  new Map(serviceTypes.value.map((item) => [item.code, item.name])),
+)
+
+const activeServices = computed(() =>
+  selectedServiceCodes.value
+    .map((code) => serviceTypes.value.find((item) => item.code === code))
+    .filter(Boolean) as ServiceTypeItem[],
+)
+
+const providerColumns = computed(() =>
+  (providersByService[pickerServiceCode.value] || []).map((item) => ({
     text: `${item.nickname}`,
     value: item.id,
   })),
 )
 
-const selectedPhotographerLabel = computed(() => {
-  const item = photographers.value.find((current) => current.id === form.photographerId)
-  if (!item) {
-    return loadingPhotographers.value ? '正在加载摄影师...' : '请选择摄影师'
+const selectedProviderLabel = (serviceCode: string) => {
+  const providerId = serviceDrafts[serviceCode]?.providerId
+  if (!providerId) {
+    return loadingProvidersByService[serviceCode] ? '正在加载服务者...' : '请选择服务者'
   }
-  return `${item.nickname}`
-})
 
-const failedUploads = computed(() =>
-  referenceFileList.value.filter((item) => item.status === 'failed' && item.file),
-)
-
-const availableSlotSet = computed(() => new Set(availability.value?.availableSlots || []))
-
-const toMinutes = (value: string) => {
-  const [hours, minutes] = value.split(':').map(Number)
-  return hours * 60 + minutes
+  const target = (providersByService[serviceCode] || []).find((item) => item.id === providerId)
+  return target?.nickname || '请选择服务者'
 }
 
-const isRangeAvailable = (start: string, end: string) => {
-  if (!availability.value) {
-    return true
-  }
-  const startValue = toMinutes(start)
-  const endValue = toMinutes(end)
-  for (let cursor = startValue; cursor < endValue; cursor += 30) {
-    const slot = `${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`
-    if (!availableSlotSet.value.has(slot)) {
-      return false
-    }
-  }
-  return true
-}
-
-const canStartAt = (time: string) => {
-  if (!availability.value) {
-    return true
-  }
-  if (!availableSlotSet.value.has(time)) {
-    return false
-  }
-
-  return timeOptions.some((candidate) => toMinutes(candidate) > toMinutes(time) && isRangeAvailable(time, candidate))
-}
-
-const canEndAt = (time: string) => {
-  if (!form.startTime) {
-    return false
-  }
-  if (toMinutes(time) <= toMinutes(form.startTime)) {
-    return false
-  }
-  return isRangeAvailable(form.startTime, time)
-}
-
-const startTimeColumns = computed(() =>
-  timeOptions.map((time) => ({
-    text: canStartAt(time) ? time : `${time}（不可选）`,
-    value: time,
-    disabled: !canStartAt(time),
-  })),
-)
-
-const endTimeColumns = computed(() =>
-  timeOptions.map((time) => ({
-    text: canEndAt(time) ? time : `${time}（不可选）`,
-    value: time,
-    disabled: !canEndAt(time),
-  })),
-)
-
-const busyRangeText = computed(() =>
-  (availability.value?.busyRanges || []).map((item) => `${item.startTime}-${item.endTime}`),
-)
-
-const freeRangeText = computed(() =>
-  (availability.value?.freeRanges || []).map((item) => `${item.startTime}-${item.endTime}`),
-)
+const startColumns = computed(() => timeOptions.map((value) => ({ text: value, value })))
+const endColumns = computed(() => timeOptions.map((value) => ({ text: value, value })))
 
 const resolvePublicErrorMessage = (requestError: unknown, fallback: string) => {
   const apiError = requestError as ApiErrorLike
   const message = apiError.message || fallback
 
-  if (message.includes('Cannot GET /api/public/photographers')) {
-    return '公开约拍接口未生效，请重启后端服务后重试。'
+  if (message.includes('Cannot GET /api/public/providers')) {
+    return '公开服务者接口未生效，请重启后端服务后重试。'
   }
 
-  if (message.includes('Cannot GET /api/public/availability')) {
-    return '可约时段接口未生效，请重启后端服务后重试。'
-  }
-
-  if (message.includes('Cannot POST /api/public/reference-images')) {
-    return '公开图片上传接口未生效，请重启后端服务后重试。'
+  if (message.includes('Cannot GET /api/public/service-types')) {
+    return '公开服务类型接口未生效，请重启后端服务后重试。'
   }
 
   if (message.includes('Cannot POST /api/public/bookings')) {
-    return '公开约拍提交接口未生效，请重启后端服务后重试。'
+    return '公开约单提交接口未生效，请重启后端服务后重试。'
   }
 
   if (message.includes('Failed to fetch')) {
@@ -174,140 +136,128 @@ const normalizeDate = (values: string[]) => {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-const loadPhotographers = async () => {
-  loadingPhotographers.value = true
+const ensureDraft = (serviceCode: string) => {
+  if (serviceDrafts[serviceCode]) {
+    return serviceDrafts[serviceCode]
+  }
+
+  serviceDrafts[serviceCode] = {
+    providerId: '',
+    startTime: '10:00',
+    endTime: '11:00',
+    requirement: '',
+    referenceFileList: [],
+  }
+  return serviceDrafts[serviceCode]
+}
+
+const getExpectedRoleByService = (serviceCode: string) =>
+  serviceCode === 'makeup' ? 'makeup_artist' : 'photographer'
+
+const loadServiceTypes = async () => {
   try {
-    const list = await publicBookingApi.listPhotographers()
-    photographers.value = list
-    if (!form.photographerId && list.length) {
-      form.photographerId = list[0].id
-    }
-    if (!list.length) {
-      error.value = '当前暂无可预约摄影师，请先创建摄影师账号。'
-    }
+    const list = await publicBookingApi.listServiceTypes()
+    const filtered = list.filter((item) => item.code === 'photography' || item.code === 'makeup')
+    serviceTypes.value = filtered.length
+      ? filtered
+      : [
+          { id: 'fallback-photography', code: 'photography', name: '摄影服务', sortOrder: 10, isActive: true },
+          { id: 'fallback-makeup', code: 'makeup', name: '妆娘约妆', sortOrder: 20, isActive: true },
+        ]
   } catch (requestError) {
-    error.value = resolvePublicErrorMessage(requestError, '摄影师列表加载失败，请稍后重试')
-  } finally {
-    loadingPhotographers.value = false
+    error.value = resolvePublicErrorMessage(requestError, '服务类型加载失败，请稍后重试')
+    serviceTypes.value = [
+      { id: 'fallback-photography', code: 'photography', name: '摄影服务', sortOrder: 10, isActive: true },
+      { id: 'fallback-makeup', code: 'makeup', name: '妆娘约妆', sortOrder: 20, isActive: true },
+    ]
   }
 }
 
-onMounted(() => {
-  void loadPhotographers()
-})
-
-const fetchAvailability = async () => {
-  if (!form.photographerId || !form.date) {
-    availability.value = null
-    return
-  }
-
-  availabilityLoading.value = true
-  availabilityError.value = ''
+const loadProvidersForService = async (serviceCode: string) => {
+  loadingProvidersByService[serviceCode] = true
   try {
-    availability.value = await publicBookingApi.getAvailability(form.photographerId, form.date)
-
-    if (!canStartAt(form.startTime)) {
-      const firstAvailableStart = startTimeColumns.value.find((item) => !item.disabled)?.value || ''
-      form.startTime = firstAvailableStart
+    const providers = await publicBookingApi.listProviders(serviceCode)
+    const expectedRole = getExpectedRoleByService(serviceCode)
+    providersByService[serviceCode] = providers.filter((item) => item.role === expectedRole)
+    const draft = ensureDraft(serviceCode)
+    if (!draft.providerId && providersByService[serviceCode].length) {
+      draft.providerId = providersByService[serviceCode][0].id
     }
-
-    if (!canEndAt(form.endTime)) {
-      form.endTime = endTimeColumns.value.find((item) => !item.disabled)?.value || ''
-    }
-
-    selectedStartOption.value = form.startTime
-    selectedEndOption.value = form.endTime
   } catch (requestError) {
-    availability.value = null
-    availabilityError.value = resolvePublicErrorMessage(requestError, '可约时段加载失败，请稍后重试')
+    error.value = resolvePublicErrorMessage(requestError, '服务者列表加载失败，请稍后重试')
+    providersByService[serviceCode] = []
   } finally {
-    availabilityLoading.value = false
+    loadingProvidersByService[serviceCode] = false
   }
 }
 
 watch(
-  () => [form.photographerId, form.date],
-  ([photographerId]) => {
-    if (!photographerId) {
-      availability.value = null
+  selectedServiceCodes,
+  (codes) => {
+    if (!codes.length) {
+      selectedServiceCodes.value = ['photography']
       return
     }
-    void fetchAvailability()
+
+    codes.forEach((code) => {
+      ensureDraft(code)
+      if (!providersByService[code]) {
+        void loadProvidersForService(code)
+      }
+    })
   },
+  { immediate: true },
 )
+
+onMounted(async () => {
+  await loadServiceTypes()
+  await Promise.all(selectedServiceCodes.value.map((code) => loadProvidersForService(code)))
+})
+
+const toggleService = (serviceCode: string) => {
+  error.value = ''
+  success.value = ''
+
+  if (selectedServiceCodes.value.includes(serviceCode)) {
+    if (selectedServiceCodes.value.length === 1) {
+      showToast('至少保留一个服务类型')
+      return
+    }
+    selectedServiceCodes.value = selectedServiceCodes.value.filter((item) => item !== serviceCode)
+    return
+  }
+
+  if (selectedServiceCodes.value.length >= 2) {
+    showToast('一次最多选择两种服务')
+    return
+  }
+
+  selectedServiceCodes.value = [...selectedServiceCodes.value, serviceCode]
+}
 
 const openDate = () => {
   selectedDateValues.value = form.date.split('-')
   showDatePicker.value = true
 }
 
-const openStartTime = () => {
-  if (!form.photographerId) {
-    showToast('请先选择摄影师')
-    return
+const openProviderPicker = (serviceCode: string) => {
+  pickerServiceCode.value = serviceCode
+  if (!providersByService[serviceCode]?.length && !loadingProvidersByService[serviceCode]) {
+    void loadProvidersForService(serviceCode)
   }
-  if (availabilityLoading.value) {
-    showToast('正在获取可约时段，请稍候')
-    return
-  }
+  showProviderPicker.value = true
+}
 
-  if (!startTimeColumns.value.some((item) => !item.disabled)) {
-    showToast('该日期暂无可约开始时间')
-    return
-  }
-
-  selectedStartOption.value = form.startTime || startTimeColumns.value.find((item) => !item.disabled)?.value || ''
+const openStartTimePicker = (serviceCode: string) => {
+  pickerServiceCode.value = serviceCode
+  selectedStartOption.value = ensureDraft(serviceCode).startTime
   showStartTimePicker.value = true
 }
 
-const openEndTime = () => {
-  if (!form.startTime) {
-    showToast('请先选择开始时间')
-    return
-  }
-  if (!endTimeColumns.value.some((item) => !item.disabled)) {
-    showToast('当前开始时间无可用结束时间，请重新选择开始时间')
-    return
-  }
-
-  selectedEndOption.value = form.endTime || endTimeColumns.value.find((item) => !item.disabled)?.value || ''
+const openEndTimePicker = (serviceCode: string) => {
+  pickerServiceCode.value = serviceCode
+  selectedEndOption.value = ensureDraft(serviceCode).endTime
   showEndTimePicker.value = true
-}
-
-const openPhotographerPicker = async () => {
-  if (!photographers.value.length && !loadingPhotographers.value) {
-    await loadPhotographers()
-  }
-  showPhotographerPicker.value = true
-}
-
-const confirmStartTime = ({ selectedOptions }: { selectedOptions: Array<{ value: string; disabled?: boolean }> }) => {
-  const target = selectedOptions[0]
-  if (!target || target.disabled || !canStartAt(target.value)) {
-    showToast('该开始时间不可预约，请选择高亮时段')
-    return
-  }
-
-  form.startTime = target.value
-  selectedStartOption.value = target.value
-
-  if (!canEndAt(form.endTime)) {
-    form.endTime = endTimeColumns.value.find((item) => !item.disabled)?.value || ''
-  }
-  showStartTimePicker.value = false
-}
-
-const confirmEndTime = ({ selectedOptions }: { selectedOptions: Array<{ value: string; disabled?: boolean }> }) => {
-  const target = selectedOptions[0]
-  if (!target || target.disabled || !canEndAt(target.value)) {
-    showToast('该结束时间不可预约，请重新选择')
-    return
-  }
-
-  form.endTime = target.value
-  selectedEndOption.value = target.value
-  showEndTimePicker.value = false
 }
 
 const uploadSingle = async (item: UploadItem) => {
@@ -330,8 +280,13 @@ const uploadSingle = async (item: UploadItem) => {
   delete item.file
 }
 
-const onAfterRead = async (value: UploaderFileListItem | UploaderFileListItem[]) => {
+const onAfterRead = async (serviceCode: string, value: UploaderFileListItem | UploaderFileListItem[]) => {
   const uploadTargets = (Array.isArray(value) ? value : [value]) as UploadItem[]
+  const draft = ensureDraft(serviceCode)
+  if (!draft.referenceFileList) {
+    draft.referenceFileList = []
+  }
+
   uploading.value = true
   try {
     await Promise.all(
@@ -364,73 +319,86 @@ const retryUpload = async (item: UploadItem) => {
 }
 
 const resetFormAfterSuccess = () => {
-  const photographerId = form.photographerId
-  form.photographerId = photographerId
   form.modelName = ''
   form.modelPhone = ''
   form.date = dayjs().format('YYYY-MM-DD')
-  form.startTime = '10:00'
-  form.endTime = '11:00'
   form.location = ''
-  form.poseRequirement = ''
-  referenceFileList.value = []
+  form.note = ''
+
+  selectedServiceCodes.value.forEach((code) => {
+    const draft = ensureDraft(code)
+    draft.requirement = ''
+    draft.referenceFileList = []
+  })
 }
 
 const submit = async () => {
   error.value = ''
   success.value = ''
-  conflictHint.value = ''
 
   if (uploading.value) {
     error.value = '参考图仍在上传中，请稍候提交。'
     return
   }
 
-  if (
-    !form.photographerId ||
-    !form.modelName ||
-    !form.modelPhone ||
-    !form.date ||
-    !form.startTime ||
-    !form.endTime ||
-    !form.location ||
-    !form.poseRequirement
-  ) {
-    error.value = '请先补全摄影师、联系方式、地点和动作要求。'
+  if (!form.modelName || !form.modelPhone || !form.date || !form.location) {
+    error.value = '请先补全姓名、手机号、日期和地点。'
     return
   }
 
-  if (!isAfterTime(form.startTime, form.endTime)) {
-    error.value = '结束时间必须晚于开始时间。'
+  if (!selectedServiceCodes.value.length) {
+    error.value = '请至少选择一种服务类型。'
     return
+  }
+
+  const items = [] as Array<{
+    serviceTypeCode: string
+    providerId: string
+    startTime: string
+    endTime: string
+    requirement: string
+    referenceImages: string[]
+  }>
+
+  for (const serviceCode of selectedServiceCodes.value) {
+    const draft = ensureDraft(serviceCode)
+    if (!draft.providerId || !draft.startTime || !draft.endTime || !draft.requirement.trim()) {
+      error.value = `请补全${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}的信息。`
+      return
+    }
+
+    if (!isAfterTime(draft.startTime, draft.endTime)) {
+      error.value = `${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}的结束时间必须晚于开始时间。`
+      return
+    }
+
+    items.push({
+      serviceTypeCode: serviceCode,
+      providerId: draft.providerId,
+      startTime: draft.startTime,
+      endTime: draft.endTime,
+      requirement: draft.requirement.trim(),
+      referenceImages: draft.referenceFileList
+        .map((item) => item.uploadedUrl || item.url)
+        .filter(Boolean) as string[],
+    })
   }
 
   submitting.value = true
   try {
-    await publicBookingApi.create({
-      photographerId: form.photographerId,
+    const result = await publicBookingApi.create({
       modelName: form.modelName,
       modelPhone: form.modelPhone,
       date: form.date,
-      startTime: form.startTime,
-      endTime: form.endTime,
       location: form.location,
-      poseRequirement: form.poseRequirement,
-      referenceImages: referenceFileList.value
-        .map((item) => item.uploadedUrl || item.url)
-        .filter(Boolean) as string[],
+      note: form.note,
+      items,
     })
 
-    success.value = '约拍信息已提交，摄影师会在排单里看到你的动作要求和参考图。'
+    success.value = `提交成功，已创建协同单 ${result.bookingGroupId}，共 ${result.bookings.length} 条排单。`
     resetFormAfterSuccess()
-    void fetchAvailability()
   } catch (requestError) {
-    const apiError = requestError as ApiErrorLike
     error.value = resolvePublicErrorMessage(requestError, '提交失败，请稍后重试')
-    const conflict = (apiError.details as { message?: { conflict?: { date?: string; startTime?: string; endTime?: string } } } | undefined)?.message?.conflict
-    if (conflict?.date && conflict.startTime && conflict.endTime) {
-      conflictHint.value = `摄影师在 ${conflict.date} ${conflict.startTime}-${conflict.endTime} 已有安排，请换一个时段。`
-    }
   } finally {
     submitting.value = false
   }
@@ -443,98 +411,92 @@ const submit = async () => {
       <div class="model-hero px-4 py-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="title-font text-2xl text-rose-500">模特约拍入口</p>
-            <p class="text-xs text-slate-600">免登录提交约拍，动作要求会直接同步给摄影师</p>
+            <p class="title-font text-2xl text-rose-500">模特统一约单入口</p>
+            <p class="text-xs text-slate-600">同一天可同时提交摄影+妆造，系统会自动关联协同订单</p>
           </div>
-          <Button size="small" round plain type="primary" @click="router.push({ name: 'login' })">摄影师登录</Button>
+          <Button size="small" round plain type="primary" @click="router.push({ name: 'login' })">服务者登录</Button>
         </div>
       </div>
     </article>
 
     <article class="card mb-3 p-3">
       <CellGroup inset>
-        <Field
-          :model-value="selectedPhotographerLabel"
-          label="选择摄影师"
-          readonly
-          is-link
-          @click="openPhotographerPicker"
-        />
         <Field v-model="form.modelName" label="模特姓名" placeholder="请输入你的姓名" clearable />
         <Field v-model="form.modelPhone" label="联系电话" placeholder="请输入手机号" maxlength="11" clearable />
-        <Field :model-value="form.date" label="拍摄日期" readonly is-link @click="openDate" />
-        <Field :model-value="form.startTime" label="开始时间" readonly is-link @click="openStartTime" />
-        <Field :model-value="form.endTime" label="结束时间" readonly is-link @click="openEndTime" />
-        <Field v-model="form.location" label="拍摄地点" placeholder="例如：创意园A栋 / 某某公园" clearable />
+        <Field :model-value="form.date" label="服务日期" readonly is-link @click="openDate" />
+        <Field v-model="form.location" label="服务地点" placeholder="例如：创意园A栋 / 某某工作室" clearable />
+        <Field v-model="form.note" label="协同备注" placeholder="可选：例如同一主题风格，妆容偏日系" clearable />
+      </CellGroup>
+
+      <div class="mt-3 rounded-xl border border-[#f2d9e7] bg-white/90 p-2.5">
+        <p class="mb-2 text-xs font-bold text-slate-500">选择服务类型（可多选）</p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button
+            v-for="service in serviceTypes"
+            :key="service.code"
+            type="button"
+            class="service-chip"
+            :class="selectedServiceCodes.includes(service.code) ? 'service-chip--active' : ''"
+            @click="toggleService(service.code)"
+          >
+            <i class="fa-solid fa-circle-check mr-1" :class="selectedServiceCodes.includes(service.code) ? '' : 'text-slate-300'" />
+            {{ service.name }}
+          </button>
+        </div>
+      </div>
+    </article>
+
+    <article v-for="service in activeServices" :key="service.code" class="card mb-3 p-3" :class="service.code === 'makeup' ? 'soft-yellow' : 'soft-pink'">
+      <p class="mb-2 text-sm font-extrabold">
+        <i :class="service.code === 'makeup' ? 'fa-solid fa-wand-sparkles text-amber-500' : 'fa-solid fa-camera text-rose-500'" class="mr-1" />
+        {{ service.name }}信息
+      </p>
+
+      <CellGroup inset>
         <Field
-          v-model="form.poseRequirement"
-          label="动作要求"
+          :model-value="selectedProviderLabel(service.code)"
+          :label="service.code === 'makeup' ? '选择妆娘' : '选择摄影师'"
+          readonly
+          is-link
+          @click="openProviderPicker(service.code)"
+        />
+        <Field :model-value="serviceDrafts[service.code].startTime" label="开始时间" readonly is-link @click="openStartTimePicker(service.code)" />
+        <Field :model-value="serviceDrafts[service.code].endTime" label="结束时间" readonly is-link @click="openEndTimePicker(service.code)" />
+        <Field
+          v-model="serviceDrafts[service.code].requirement"
+          :label="service.code === 'makeup' ? '妆造需求' : '拍摄需求'"
           type="textarea"
           rows="3"
           autosize
-          placeholder="告诉摄影师你希望的动作风格、镜头感、情绪表达"
+          :placeholder="service.code === 'makeup' ? '例如：偏清透奶油肌、需要编发' : '例如：希望自然感抓拍、偏日系构图'"
         />
       </CellGroup>
 
-      <div class="mt-2 rounded-xl border border-[#f2d9e7] bg-white/90 p-2.5 text-xs">
-        <p v-if="availabilityLoading" class="text-blue-500">
-          <i class="fa-solid fa-spinner mr-1 animate-spin" />正在获取可预约时段...
-        </p>
-        <p v-else-if="availabilityError" class="text-amber-700">
-          <i class="fa-solid fa-triangle-exclamation mr-1" />{{ availabilityError }}
-        </p>
-        <template v-else-if="availability">
-          <p class="mb-1 text-slate-600">可选时间（绿色）与已占用时间（粉色）如下：</p>
-          <div class="mb-1 flex flex-wrap gap-1">
-            <span
-              v-for="item in freeRangeText"
-              :key="item"
-              class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700"
-            >
-              可约 {{ item }}
-            </span>
-            <span
-              v-if="!freeRangeText.length"
-              class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700"
-            >
-              当天暂无可约时段，请换日期
-            </span>
-          </div>
-          <div class="flex flex-wrap gap-1">
-            <span
-              v-for="item in busyRangeText"
-              :key="item"
-              class="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700"
-            >
-              占用 {{ item }}
-            </span>
-            <span v-if="!busyRangeText.length" class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
-              当天暂无限制
-            </span>
-          </div>
-        </template>
-      </div>
-
-      <div v-if="!loadingPhotographers && !photographers.length" class="mt-2 flex items-center justify-between text-xs text-amber-700">
-        <span>未获取到摄影师列表，请刷新后重试。</span>
-        <Button size="small" round plain type="primary" @click="loadPhotographers">刷新</Button>
-      </div>
+      <p
+        v-if="!loadingProvidersByService[service.code] && !(providersByService[service.code] || []).length"
+        class="mt-2 text-xs text-amber-700"
+      >
+        <i class="fa-solid fa-triangle-exclamation mr-1" />当前暂无可选服务者，请确认后端已升级并配置对应身份账号。
+      </p>
 
       <div class="mt-3">
-        <p class="mb-2 text-xs font-bold text-slate-500">动作参考图（最多 6 张）</p>
+        <p class="mb-2 text-xs font-bold text-slate-500">参考图（最多 6 张）</p>
         <Uploader
-          v-model="referenceFileList"
+          v-model="serviceDrafts[service.code].referenceFileList"
           :max-count="6"
           multiple
           :disabled="uploading"
-          :after-read="onAfterRead"
+          :after-read="(value: any) => onAfterRead(service.code, value)"
           :deletable="!uploading"
           preview-size="72"
           upload-text="上传参考图"
         />
-        <div v-if="failedUploads.length" class="mt-2 space-y-1">
+        <div
+          v-if="serviceDrafts[service.code].referenceFileList.filter((item) => item.status === 'failed' && item.file).length"
+          class="mt-2 space-y-1"
+        >
           <div
-            v-for="item in failedUploads"
+            v-for="item in serviceDrafts[service.code].referenceFileList.filter((file) => file.status === 'failed' && file.file)"
             :key="item.url || item.file?.name"
             class="flex items-center justify-between text-xs text-amber-700"
           >
@@ -549,29 +511,28 @@ const submit = async () => {
 
     <article v-if="error" class="card mb-3 p-3 text-xs text-amber-700 soft-yellow">
       <p class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1" />{{ error }}</p>
-      <p v-if="conflictHint" class="mt-1">{{ conflictHint }}</p>
     </article>
 
     <article v-if="success" class="card mb-3 p-3 text-xs text-blue-600 soft-blue">
       <i class="fa-solid fa-circle-check mr-1" />{{ success }}
     </article>
 
-    <Button block round type="primary" :loading="submitting" :disabled="loadingPhotographers || !photographers.length" @click="submit">
-      <i class="fa-solid fa-paper-plane mr-1" />提交约拍信息
+    <Button block round type="primary" :loading="submitting" @click="submit">
+      <i class="fa-solid fa-paper-plane mr-1" />提交统一约单
     </Button>
 
-    <Popup v-model:show="showPhotographerPicker" position="bottom" round>
+    <Popup v-model:show="showProviderPicker" position="bottom" round>
       <Picker
-        :columns="photographerColumns"
-        @cancel="showPhotographerPicker = false"
-        @confirm="({ selectedOptions }: any) => { form.photographerId = selectedOptions[0]?.value || ''; showPhotographerPicker = false }"
+        :columns="providerColumns"
+        @cancel="showProviderPicker = false"
+        @confirm="({ selectedOptions }: any) => { serviceDrafts[pickerServiceCode].providerId = selectedOptions[0]?.value || ''; showProviderPicker = false }"
       />
     </Popup>
 
     <Popup v-model:show="showDatePicker" position="bottom" round>
       <DatePicker
         v-model="selectedDateValues"
-        title="选择拍摄日期"
+        title="选择服务日期"
         @cancel="showDatePicker = false"
         @confirm="({ selectedValues }: any) => { form.date = normalizeDate(selectedValues); showDatePicker = false }"
       />
@@ -579,17 +540,17 @@ const submit = async () => {
 
     <Popup v-model:show="showStartTimePicker" position="bottom" round>
       <Picker
-        :columns="startTimeColumns"
+        :columns="startColumns"
         @cancel="showStartTimePicker = false"
-        @confirm="confirmStartTime"
+        @confirm="({ selectedOptions }: any) => { serviceDrafts[pickerServiceCode].startTime = selectedOptions[0]?.value || serviceDrafts[pickerServiceCode].startTime; showStartTimePicker = false }"
       />
     </Popup>
 
     <Popup v-model:show="showEndTimePicker" position="bottom" round>
       <Picker
-        :columns="endTimeColumns"
+        :columns="endColumns"
         @cancel="showEndTimePicker = false"
-        @confirm="confirmEndTime"
+        @confirm="({ selectedOptions }: any) => { serviceDrafts[pickerServiceCode].endTime = selectedOptions[0]?.value || serviceDrafts[pickerServiceCode].endTime; showEndTimePicker = false }"
       />
     </Popup>
   </section>
@@ -601,5 +562,20 @@ const submit = async () => {
     radial-gradient(circle at 15% 18%, #ffe8f2 0%, transparent 30%),
     radial-gradient(circle at 84% 12%, #e3f3ff 0%, transparent 35%),
     linear-gradient(140deg, #fff8fc 0%, #f3f9ff 48%, #fffbed 100%);
+}
+
+.service-chip {
+  border: 1px solid #f2d9e7;
+  border-radius: 12px;
+  background: #fff;
+  color: #64748b;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.service-chip--active {
+  border-color: #ff9ec3;
+  background: #fff1f7;
+  color: #c63f79;
 }
 </style>

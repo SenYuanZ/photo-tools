@@ -1,4 +1,10 @@
-import { IsDateString, IsIn, IsOptional } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class QuerySchedulesDto {
   @IsOptional()
@@ -8,4 +14,9 @@ export class QuerySchedulesDto {
   @IsOptional()
   @IsDateString()
   date?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9_-]{2,32}$/i)
+  serviceTypeCode?: string;
 }

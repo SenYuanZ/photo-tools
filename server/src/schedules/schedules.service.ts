@@ -7,12 +7,19 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ReminderType } from '../common/enums/app.enums';
+import {
+  ReminderType,
+  ServiceTypeCode,
+  UserRole,
+} from '../common/enums/app.enums';
 import { CustomerTypesService } from '../customer-types/customer-types.service';
+import { ServiceTypesService } from '../service-types/service-types.service';
 import { isTimeOverlap, isTimeRangeValid } from '../common/utils/time.util';
+import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
 import { UserSetting } from '../database/entities/user-setting.entity';
+import { User } from '../database/entities/user.entity';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { QueryHistoryDto } from './dto/query-history.dto';
 import { QuerySchedulesDto } from './dto/query-schedules.dto';
@@ -29,7 +36,12 @@ export class SchedulesService {
     private readonly customersRepository: Repository<Customer>,
     @InjectRepository(UserSetting)
     private readonly settingsRepository: Repository<UserSetting>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+    @InjectRepository(BookingGroup)
+    private readonly bookingGroupsRepository: Repository<BookingGroup>,
     private readonly customerTypesService: CustomerTypesService,
+    private readonly serviceTypesService: ServiceTypesService,
   ) {}
 
   async findAll(userId: string, query: QuerySchedulesDto) {
@@ -56,13 +68,19 @@ export class SchedulesService {
       }
     }
 
+    if (query.serviceTypeCode) {
+      builder.andWhere('schedule.service_type_code = :serviceTypeCode', {
+        serviceTypeCode: query.serviceTypeCode,
+      });
+    }
+
     return builder.getMany();
   }
 
   async findOne(userId: string, id: string) {
     const schedule = await this.schedulesRepository.findOne({
       where: { id, userId },
-      relations: ['customer'],
+      relations: ['customer', 'bookingGroup'],
     });
     if (!schedule) {
       throw new NotFoundException('排单不存在');
@@ -73,6 +91,24 @@ export class SchedulesService {
   async create(userId: string, payload: CreateScheduleDto) {
     if (!isTimeRangeValid(payload.startTime, payload.endTime)) {
       throw new BadRequestException('结束时间必须晚于开始时间');
+    }
+
+    const serviceTypeCode = payload.serviceTypeCode
+      ? await this.serviceTypesService.ensureUsableCode(payload.serviceTypeCode)
+      : await this.getDefaultServiceTypeCodeByUserRole(userId);
+
+    let bookingGroupId = payload.bookingGroupId ?? null;
+    if (bookingGroupId) {
+      const bookingGroup = await this.bookingGroupsRepository.findOne({
+        where: { id: bookingGroupId },
+      });
+      if (!bookingGroup) {
+        throw new NotFoundException('协同订单不存在');
+      }
+      if (bookingGroup.date !== payload.date) {
+        throw new BadRequestException('协同订单日期与排单日期不一致');
+      }
+      bookingGroupId = bookingGroup.id;
     }
 
     if (payload.customerId && payload.temporaryCustomer) {
@@ -138,6 +174,9 @@ export class SchedulesService {
       endTime: payload.endTime,
       location: payload.location,
       note: payload.note ?? '',
+      serviceTypeCode,
+      bookingGroupId,
+      serviceMeta: payload.serviceMeta ?? null,
       depositStatus: payload.depositStatus,
       amount: payload.amount,
       reminders,
@@ -212,6 +251,26 @@ export class SchedulesService {
       }
     }
 
+    if (payload.serviceTypeCode) {
+      schedule.serviceTypeCode =
+        await this.serviceTypesService.ensureUsableCode(
+          payload.serviceTypeCode,
+        );
+    }
+
+    if (payload.bookingGroupId) {
+      const bookingGroup = await this.bookingGroupsRepository.findOne({
+        where: { id: payload.bookingGroupId },
+      });
+      if (!bookingGroup) {
+        throw new NotFoundException('协同订单不存在');
+      }
+      if (bookingGroup.date !== (payload.date ?? schedule.date)) {
+        throw new BadRequestException('协同订单日期与排单日期不一致');
+      }
+      schedule.bookingGroupId = bookingGroup.id;
+    }
+
     const conflict = await this.findConflict(
       userId,
       nextDate,
@@ -259,6 +318,12 @@ export class SchedulesService {
       builder.andWhere('customer.type = :type', { type: query.type });
     }
 
+    if (query.serviceTypeCode) {
+      builder.andWhere('schedule.service_type_code = :serviceTypeCode', {
+        serviceTypeCode: query.serviceTypeCode,
+      });
+    }
+
     return builder.getMany();
   }
 
@@ -280,5 +345,20 @@ export class SchedulesService {
       }
       return isTimeOverlap(item.startTime, item.endTime, startTime, endTime);
     });
+  }
+
+  private async getDefaultServiceTypeCodeByUserRole(userId: string) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === UserRole.MAKEUP_ARTIST) {
+      return this.serviceTypesService.ensureUsableCode(ServiceTypeCode.MAKEUP);
+    }
+
+    return this.serviceTypesService.ensureUsableCode(
+      ServiceTypeCode.PHOTOGRAPHY,
+    );
   }
 }

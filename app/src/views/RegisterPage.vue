@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, CellGroup, Field } from 'vant'
+import { Button, CellGroup, Field, Picker, Popup } from 'vant'
 import { authApi } from '../api/app'
 import AuthCameraBanner from '../components/AuthCameraBanner.vue'
 import { useAppStore } from '../stores/app'
 
 const router = useRouter()
 const store = useAppStore()
+const ROLE_KEY = 'photo_order_role'
 
 const form = reactive({
   account: '',
@@ -15,12 +16,23 @@ const form = reactive({
   password: '',
   confirmPassword: '',
   inviteCode: '',
+  role: 'photographer',
   captcha: '',
 })
 
 const loading = ref(false)
 const feedback = ref('')
 const feedbackType = ref<'success' | 'error'>('success')
+const showRolePicker = ref(false)
+
+const roleColumns = [
+  { text: '摄影师', value: 'photographer' },
+  { text: '妆娘', value: 'makeup_artist' },
+]
+
+const roleLabel = computed(() =>
+  roleColumns.find((item) => item.value === form.role)?.text ?? '请选择账号身份',
+)
 
 const makeCaptcha = () =>
   Math.random()
@@ -67,11 +79,13 @@ const submit = async () => {
 
   loading.value = true
   try {
+    localStorage.setItem(ROLE_KEY, form.role)
     await authApi.register({
       account: form.account.trim(),
       nickname: form.nickname.trim(),
       password: form.password,
       inviteCode: form.inviteCode.trim().toUpperCase(),
+      role: form.role as 'photographer' | 'makeup_artist',
     })
 
     setFeedback('success', '注册成功，正在自动登录...')
@@ -91,11 +105,11 @@ const submit = async () => {
 
 <template>
   <section class="auth-shell bounce-in">
-    <AuthCameraBanner subtitle="创建摄影师账号" tip="邀请码注册后即可进入首页，开始管理你的客户与拍摄档期。" />
+    <AuthCameraBanner subtitle="创建服务者账号" tip="可注册摄影师或妆娘账号，邀请码通过后即可进入排单管理。" />
 
     <article class="card auth-card p-4">
       <div class="mb-2 flex items-center justify-between">
-        <p class="title-font text-xl text-rose-500">摄影师注册</p>
+        <p class="title-font text-xl text-rose-500">账号注册</p>
         <button class="chip" type="button" @click="router.push({ name: 'login' })">
           <i class="fa-solid fa-chevron-left" />返回登录
         </button>
@@ -103,6 +117,7 @@ const submit = async () => {
 
       <CellGroup inset>
         <Field v-model="form.account" label="账号" placeholder="3-32位，字母数字下划线" clearable />
+        <Field :model-value="roleLabel" label="账号身份" readonly is-link @click="showRolePicker = true" />
         <Field v-model="form.nickname" label="昵称" placeholder="例如：林娜摄影" clearable />
         <Field v-model="form.password" label="密码" type="password" placeholder="至少 6 位" />
         <Field v-model="form.confirmPassword" label="确认密码" type="password" placeholder="请再次输入密码" />
@@ -123,6 +138,14 @@ const submit = async () => {
         <i class="fa-solid fa-camera mr-1" />注册并登录
       </Button>
     </article>
+
+    <Popup v-model:show="showRolePicker" position="bottom" round>
+      <Picker
+        :columns="roleColumns"
+        @cancel="showRolePicker = false"
+        @confirm="({ selectedOptions }: any) => { form.role = selectedOptions[0]?.value || form.role; showRolePicker = false }"
+      />
+    </Popup>
   </section>
 </template>
 

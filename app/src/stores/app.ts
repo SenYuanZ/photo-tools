@@ -9,19 +9,23 @@ import type {
   Schedule,
   SchedulePayload,
   ThemeName,
+  UserRole,
 } from '../types/models'
 import {
   authApi,
   customerApi,
   customerTypeApi,
   scheduleApi,
+  serviceTypeApi,
   settingsApi,
   type CustomerTypeItem,
+  type ServiceTypeItem,
 } from '../api/app'
 import { clearToken, getToken, setToken } from '../api/http'
 import { isTimeOverlap } from '../utils/time'
 
 const ACCOUNT_KEY = 'photo_order_account'
+const ROLE_KEY = 'photo_order_role'
 
 type ApiErrorLike = Error & {
   details?: {
@@ -40,6 +44,9 @@ const mergeCustomer = (list: Customer[], item: Customer) => {
 
 const normalizeSchedule = (item: Schedule): Schedule => ({
   ...item,
+  serviceTypeCode: item.serviceTypeCode || 'photography',
+  bookingGroupId: item.bookingGroupId ?? null,
+  serviceMeta: item.serviceMeta ?? null,
   referenceImages: item.referenceImages || [],
 })
 
@@ -54,9 +61,11 @@ const normalizeCustomer = (item: Customer): Customer => {
 export const useAppStore = defineStore('app', () => {
   const isLoggedIn = ref(false)
   const account = ref(localStorage.getItem(ACCOUNT_KEY) || '')
+  const userRole = ref<UserRole>((localStorage.getItem(ROLE_KEY) as UserRole) || 'photographer')
   const theme = ref<ThemeName>('pink')
   const customers = ref<Customer[]>([])
   const customerTypes = ref<CustomerTypeItem[]>([])
+  const serviceTypes = ref<ServiceTypeItem[]>([])
   const schedules = ref<Schedule[]>([])
   const defaultReminders = ref<ReminderType[]>(['1d', '1h'])
   const backupEnabled = ref(true)
@@ -64,6 +73,7 @@ export const useAppStore = defineStore('app', () => {
 
   const customerMap = computed(() => new Map(customers.value.map((item) => [item.id, item])))
   const customerTypeMap = computed(() => new Map(customerTypes.value.map((item) => [item.code, item.name])))
+  const serviceTypeMap = computed(() => new Map(serviceTypes.value.map((item) => [item.code, item.name])))
 
   const stats = computed(() => {
     const todayDate = dayjs().format('YYYY-MM-DD')
@@ -103,6 +113,7 @@ export const useAppStore = defineStore('app', () => {
     ])
 
     let customerTypeData: CustomerTypeItem[] = []
+    let serviceTypeData: ServiceTypeItem[] = []
     try {
       customerTypeData = await customerTypeApi.list()
     } catch {
@@ -116,8 +127,22 @@ export const useAppStore = defineStore('app', () => {
       }))
     }
 
+    try {
+      serviceTypeData = await serviceTypeApi.list()
+    } catch {
+      const fallbackCodes = [...new Set(schedulesData.map((item) => item.serviceTypeCode).filter(Boolean))]
+      serviceTypeData = (fallbackCodes.length ? fallbackCodes : ['photography']).map((code, index) => ({
+        id: `fallback-${code}`,
+        code,
+        name: code,
+        sortOrder: (index + 1) * 10,
+        isActive: true,
+      }))
+    }
+
     customers.value = customersData.map(normalizeCustomer)
     customerTypes.value = customerTypeData
+    serviceTypes.value = serviceTypeData
     schedules.value = schedulesData.map(normalizeSchedule)
     theme.value = settingsData.theme
     defaultReminders.value = settingsData.defaultReminders
@@ -128,6 +153,8 @@ export const useAppStore = defineStore('app', () => {
     const result = await authApi.login(payload)
     setToken(result.token)
     account.value = result.user.nickname || result.user.account
+    userRole.value = result.user.role || (localStorage.getItem(ROLE_KEY) as UserRole) || 'photographer'
+    localStorage.setItem(ROLE_KEY, userRole.value)
     localStorage.setItem(ACCOUNT_KEY, account.value)
     isLoggedIn.value = true
     await loadInitialData()
@@ -137,14 +164,17 @@ export const useAppStore = defineStore('app', () => {
   const logout = () => {
     isLoggedIn.value = false
     account.value = ''
+    userRole.value = 'photographer'
     customers.value = []
     customerTypes.value = []
+    serviceTypes.value = []
     schedules.value = []
     defaultReminders.value = ['1d', '1h']
     backupEnabled.value = true
     hydrated.value = true
     clearToken()
     localStorage.removeItem(ACCOUNT_KEY)
+    localStorage.removeItem(ROLE_KEY)
   }
 
   const setTheme = async (nextTheme: ThemeName) => {
@@ -338,14 +368,17 @@ export const useAppStore = defineStore('app', () => {
 
   const getCustomerById = (id: string) => customerMap.value.get(id)
   const getCustomerTypeName = (code: string) => customerTypeMap.value.get(code) || code
+  const getServiceTypeName = (code: string) => serviceTypeMap.value.get(code) || code
   const getScheduleById = (id: string) => schedules.value.find((item) => item.id === id)
 
   return {
     isLoggedIn,
     account,
+    userRole,
     theme,
     customers,
     customerTypes,
+    serviceTypes,
     schedules,
     stats,
     defaultReminders,
@@ -365,6 +398,7 @@ export const useAppStore = defineStore('app', () => {
     refreshHistory,
     getCustomerById,
     getCustomerTypeName,
+    getServiceTypeName,
     getScheduleById,
     getConflict,
   }

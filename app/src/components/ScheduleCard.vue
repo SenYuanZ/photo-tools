@@ -54,6 +54,9 @@ const cardToneClass = computed(() => {
         <span v-if="inProgress" class="status-live">
           <span class="status-dot" />拍摄中
         </span>
+        <span class="chip border border-blue-100 bg-blue-50 text-blue-500">
+          {{ store.getServiceTypeName(schedule.serviceTypeCode) }}
+        </span>
         <span class="text-sm font-extrabold" :class="inProgress ? 'text-amber-600' : 'text-rose-500'"
           >{{ schedule.startTime }} - {{ schedule.endTime }}</span
         >

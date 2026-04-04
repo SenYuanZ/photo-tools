@@ -90,6 +90,7 @@ const resolveCustomer = (item: HistoryItem) => item.customer ?? store.getCustome
         </p>
         <p class="mt-1 text-xs text-slate-600">
           {{ item.startTime }} - {{ item.endTime }} · {{ item.location }} ·
+          {{ store.getServiceTypeName(item.serviceTypeCode) }} ·
           {{ depositStatusText[item.depositStatus] }}
         </p>
         <p class="mt-1 text-xs text-slate-500">备注：{{ item.note || '无' }}</p>

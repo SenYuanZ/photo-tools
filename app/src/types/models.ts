@@ -1,4 +1,5 @@
 export type CustomerType = string
+export type UserRole = 'photographer' | 'makeup_artist'
 export type DepositStatus = 'unpaid' | 'paid' | 'full'
 export type ReminderType = '1d' | '1h'
 export type ThemeName = 'pink' | 'blue' | 'yellow'
@@ -23,6 +24,9 @@ export interface Customer {
 export interface Schedule {
   id: string
   customerId: string
+  serviceTypeCode: string
+  bookingGroupId: string | null
+  serviceMeta: Record<string, unknown> | null
   date: string
   startTime: string
   endTime: string
@@ -57,6 +61,9 @@ export interface CustomerPayload {
 
 export interface SchedulePayload {
   customerId?: string
+  serviceTypeCode?: string
+  bookingGroupId?: string
+  serviceMeta?: Record<string, unknown>
   temporaryCustomer?: {
     name: string
     phone: string

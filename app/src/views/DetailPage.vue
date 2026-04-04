@@ -302,6 +302,7 @@ const retryReferenceUpload = async (item: UploadItem) => {
           <button class="chip ml-1" type="button" @click="copyPhone">复制</button>
           <a class="chip ml-1" :href="`tel:${customer.phone}`">拨号</a>
         </p>
+        <p>服务类型：{{ store.getServiceTypeName(schedule.serviceTypeCode) }}</p>
         <p>客户类型：{{ store.getCustomerTypeName(customer.type) }}</p>
         <p>
           备注标签：

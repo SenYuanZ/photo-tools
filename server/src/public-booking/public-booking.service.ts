@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { DepositStatus } from '../common/enums/app.enums';
+import { DepositStatus, UserRole } from '../common/enums/app.enums';
 import { CustomerTypesService } from '../customer-types/customer-types.service';
+import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
 import { User } from '../database/entities/user.entity';
+import { ServiceTypesService } from '../service-types/service-types.service';
 import { SchedulesService } from '../schedules/schedules.service';
+import { isTimeOverlap } from '../common/utils/time.util';
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
 
 const STEP_MINUTES = 30;
@@ -67,16 +75,26 @@ export class PublicBookingService {
     private readonly customersRepository: Repository<Customer>,
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
+    @InjectRepository(BookingGroup)
+    private readonly bookingGroupsRepository: Repository<BookingGroup>,
     private readonly schedulesService: SchedulesService,
     private readonly customerTypesService: CustomerTypesService,
+    private readonly serviceTypesService: ServiceTypesService,
   ) {}
 
-  async listPhotographers() {
+  async listProviders(serviceTypeCode?: string) {
+    let role: UserRole | undefined;
+    if (serviceTypeCode) {
+      role = this.resolveRoleByServiceType(serviceTypeCode);
+    }
+
     const users = await this.usersRepository.find({
+      where: role ? { role } : undefined,
       select: {
         id: true,
         account: true,
         nickname: true,
+        role: true,
       },
       order: {
         createdAt: 'ASC',
@@ -87,21 +105,44 @@ export class PublicBookingService {
       id: user.id,
       nickname: user.nickname,
       account: user.account,
+      role: user.role,
     }));
   }
 
-  async getAvailability(photographerId: string, date: string) {
-    const photographer = await this.usersRepository.findOne({
-      where: { id: photographerId },
-      select: { id: true },
+  async listServiceTypes() {
+    return this.serviceTypesService.findAllActive();
+  }
+
+  async getAvailability(
+    providerId: string,
+    date: string,
+    serviceTypeCode?: string,
+  ) {
+    const provider = await this.usersRepository.findOne({
+      where: { id: providerId },
+      select: {
+        id: true,
+        role: true,
+      },
     });
 
-    if (!photographer) {
-      throw new NotFoundException('摄影师不存在，请重新选择');
+    if (!provider) {
+      throw new NotFoundException('服务者不存在，请重新选择');
+    }
+
+    if (serviceTypeCode) {
+      const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
+      if (provider.role !== expectedRole) {
+        throw new BadRequestException('服务者与服务类型不匹配');
+      }
     }
 
     const schedules = await this.schedulesRepository.find({
-      where: { userId: photographerId, date },
+      where: {
+        userId: providerId,
+        date,
+        ...(serviceTypeCode ? { serviceTypeCode } : {}),
+      },
       order: { startTime: 'ASC' },
       select: {
         id: true,
@@ -126,7 +167,7 @@ export class PublicBookingService {
     const availableSlots = allSlots.filter((slot) => !blockedSet.has(slot));
 
     return {
-      photographerId,
+      providerId,
       date,
       stepMinutes: STEP_MINUTES,
       busyRanges: schedules.map((item) => ({
@@ -140,43 +181,163 @@ export class PublicBookingService {
   }
 
   async createBooking(payload: CreatePublicBookingDto) {
-    const photographer = await this.usersRepository.findOne({
-      where: { id: payload.photographerId },
-      select: {
-        id: true,
-        nickname: true,
-      },
-    });
+    const normalizedItems = await Promise.all(
+      payload.items.map(async (item) => {
+        const serviceTypeCode = await this.serviceTypesService.ensureUsableCode(
+          item.serviceTypeCode,
+        );
+        const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
 
-    if (!photographer) {
-      throw new NotFoundException('摄影师不存在，请重新选择');
+        const provider = await this.usersRepository.findOne({
+          where: { id: item.providerId },
+          select: {
+            id: true,
+            nickname: true,
+            role: true,
+          },
+        });
+
+        if (!provider) {
+          throw new NotFoundException('服务者不存在，请重新选择');
+        }
+
+        if (provider.role !== expectedRole) {
+          throw new BadRequestException('服务者与服务类型不匹配');
+        }
+
+        if (!item.referenceImages) {
+          item.referenceImages = [];
+        }
+
+        return {
+          ...item,
+          serviceTypeCode,
+          provider,
+        };
+      }),
+    );
+
+    const duplicatedServiceTypeCode = normalizedItems.find(
+      (item, index) =>
+        normalizedItems.findIndex(
+          (current) => current.serviceTypeCode === item.serviceTypeCode,
+        ) !== index,
+    );
+
+    if (duplicatedServiceTypeCode) {
+      throw new BadRequestException('同一次提交不允许重复选择相同服务类型');
     }
 
-    const customer = await this.findOrCreateCustomer(payload);
+    for (const item of normalizedItems) {
+      const schedules = await this.schedulesRepository.find({
+        where: {
+          userId: item.provider.id,
+          date: payload.date,
+        },
+        order: {
+          startTime: 'ASC',
+        },
+      });
 
-    const schedule = await this.schedulesService.create(photographer.id, {
-      customerId: customer.id,
+      const conflict = schedules.find((current) =>
+        isTimeOverlap(
+          current.startTime,
+          current.endTime,
+          item.startTime,
+          item.endTime,
+        ),
+      );
+
+      if (conflict) {
+        throw new ConflictException({
+          message: '该时段已有排单',
+          conflict,
+          serviceTypeCode: item.serviceTypeCode,
+        });
+      }
+    }
+
+    const bookingGroup = this.bookingGroupsRepository.create({
+      id: uuidv4(),
       date: payload.date,
-      startTime: payload.startTime,
-      endTime: payload.endTime,
+      modelName: payload.modelName,
+      modelPhone: payload.modelPhone,
       location: payload.location,
-      note: payload.poseRequirement,
-      referenceImages: payload.referenceImages ?? [],
-      depositStatus: DepositStatus.UNPAID,
-      amount: 0,
+      note: payload.note ?? '',
+      createdBy: normalizedItems[0].provider.id,
     });
+    await this.bookingGroupsRepository.save(bookingGroup);
+
+    const bookings = [] as Array<{
+      serviceTypeCode: string;
+      bookingId: string;
+      providerId: string;
+      providerName: string;
+    }>;
+
+    for (const item of normalizedItems) {
+      const customer = await this.findOrCreateCustomer({
+        providerId: item.provider.id,
+        modelName: payload.modelName,
+        modelPhone: payload.modelPhone,
+        location: payload.location,
+        requirement: item.requirement,
+      });
+
+      const schedule = await this.schedulesService.create(item.provider.id, {
+        customerId: customer.id,
+        date: payload.date,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        location: payload.location,
+        note: item.requirement,
+        referenceImages: item.referenceImages ?? [],
+        depositStatus: DepositStatus.UNPAID,
+        amount: 0,
+        serviceTypeCode: item.serviceTypeCode,
+        bookingGroupId: bookingGroup.id,
+        serviceMeta: {
+          source: 'public-model-booking',
+        },
+      });
+
+      bookings.push({
+        serviceTypeCode: item.serviceTypeCode,
+        bookingId: schedule.id,
+        providerId: item.provider.id,
+        providerName: item.provider.nickname,
+      });
+    }
 
     return {
       success: true,
-      bookingId: schedule.id,
-      photographer,
+      bookingGroupId: bookingGroup.id,
+      bookings,
     };
   }
 
-  private async findOrCreateCustomer(payload: CreatePublicBookingDto) {
+  private resolveRoleByServiceType(serviceTypeCode: string) {
+    if (serviceTypeCode === 'photography') {
+      return UserRole.PHOTOGRAPHER;
+    }
+
+    if (serviceTypeCode === 'makeup') {
+      return UserRole.MAKEUP_ARTIST;
+    }
+
+    throw new BadRequestException('暂不支持该服务类型');
+  }
+
+  private async findOrCreateCustomer(payload: {
+    providerId: string;
+    modelName: string;
+    modelPhone: string;
+    location: string;
+    requirement: string;
+  }) {
     const existingCustomer = await this.customersRepository.findOne({
       where: {
-        userId: payload.photographerId,
+        userId: payload.providerId,
         phone: payload.modelPhone,
       },
     });
@@ -190,14 +351,14 @@ export class PublicBookingService {
 
     const entity = this.customersRepository.create({
       id: uuidv4(),
-      userId: payload.photographerId,
+      userId: payload.providerId,
       name: payload.modelName,
       phone: payload.modelPhone,
       isLongTerm: false,
       type: defaultTypeCode,
       style: '',
       hobby: '',
-      specialNeed: payload.poseRequirement,
+      specialNeed: payload.requirement,
       depositStatus: DepositStatus.UNPAID,
       tailPaymentDate: null,
       outfit: '',

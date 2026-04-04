@@ -36,14 +36,30 @@ export class PublicBookingController {
 
   @Get('photographers')
   listPhotographers() {
-    return this.publicBookingService.listPhotographers();
+    return this.publicBookingService.listProviders('photography');
+  }
+
+  @Get('providers')
+  listProviders(@Query('serviceTypeCode') serviceTypeCode?: string) {
+    return this.publicBookingService.listProviders(serviceTypeCode);
+  }
+
+  @Get('service-types')
+  listServiceTypes() {
+    return this.publicBookingService.listServiceTypes();
   }
 
   @Get('availability')
   getAvailability(@Query() query: QueryPublicAvailabilityDto) {
+    const providerId = query.providerId || query.photographerId;
+    if (!providerId) {
+      throw new BadRequestException('请选择服务提供者');
+    }
+
     return this.publicBookingService.getAvailability(
-      query.photographerId,
+      providerId,
       query.date,
+      query.serviceTypeCode,
     );
   }
 

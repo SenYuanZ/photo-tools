@@ -1,10 +1,16 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useAppStore } from '../stores/app'
 
 const store = useAppStore()
 const router = useRouter()
+
+const isMakeupRole = computed(() => store.userRole === 'makeup_artist')
+const roleLabel = computed(() => (isMakeupRole.value ? '妆娘' : '摄影师'))
+const entryTitle = computed(() => (isMakeupRole.value ? '约妆录入' : '排单录入'))
+const entryDesc = computed(() => (isMakeupRole.value ? '关联客户并安排妆造档期' : '关联客户并校验冲突'))
 
 const jump = (name: string) => router.push({ name })
 
@@ -38,8 +44,8 @@ const copyModelBookingLink = async () => {
           class="h-14 w-14 rounded-2xl object-cover"
         />
         <div>
-          <p class="title-font text-2xl text-blue-500">{{ store.account || '摄影师' }}</p>
-          <p class="text-xs text-slate-500">今日待拍 {{ store.stats.todayCount }} 组</p>
+          <p class="title-font text-2xl text-blue-500">{{ store.account || roleLabel }}</p>
+          <p class="text-xs text-slate-500">今日待服务 {{ store.stats.todayCount }} 组</p>
         </div>
       </div>
       <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
@@ -55,8 +61,8 @@ const copyModelBookingLink = async () => {
         <p class="mt-1 text-xs text-slate-500">客户资料录入与编辑</p>
       </button>
       <button class="card p-3 text-left soft-yellow" type="button" @click="jump('schedule-new')">
-        <p class="font-extrabold"><i class="fa-solid fa-calendar-plus mr-1 text-amber-500" />排单录入</p>
-        <p class="mt-1 text-xs text-slate-500">关联客户并校验冲突</p>
+        <p class="font-extrabold"><i class="fa-solid fa-calendar-plus mr-1 text-amber-500" />{{ entryTitle }}</p>
+        <p class="mt-1 text-xs text-slate-500">{{ entryDesc }}</p>
       </button>
       <button class="card p-3 text-left soft-pink" type="button" @click="jump('customers')">
         <p class="font-extrabold"><i class="fa-solid fa-address-book mr-1 text-rose-500" />客户管理</p>

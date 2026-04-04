@@ -97,6 +97,16 @@ const temporaryTypeLabel = computed(
 
 const timeColumns = [timeHourOptions, timeMinuteOptions]
 
+const isMakeupRole = computed(() => store.userRole === 'makeup_artist')
+const pageTitle = computed(() => (isMakeupRole.value ? '约妆录入' : '排单录入'))
+const serviceLabel = computed(() => (isMakeupRole.value ? '约妆' : '拍摄'))
+const locationLabel = computed(() => (isMakeupRole.value ? '约妆地点' : '拍摄地点'))
+const locationPlaceholder = computed(() => (isMakeupRole.value ? '请输入约妆地点' : '请输入拍摄地点'))
+const notePlaceholder = computed(() => (isMakeupRole.value ? '填写妆造备注' : '填写拍摄备注'))
+const referenceTitle = computed(() => (isMakeupRole.value ? '妆容参考图（最多 6 张）' : '动作参考图（最多 6 张）'))
+const submitLabel = computed(() => (isMakeupRole.value ? '提交约妆' : '提交排单'))
+const serviceTypeCode = computed(() => (isMakeupRole.value ? 'makeup' : 'photography'))
+
 const conflictSchedule = computed(() => (conflictId.value ? store.getScheduleById(conflictId.value) : undefined))
 const conflictCustomerName = computed(() => {
   if (!conflictSchedule.value) {
@@ -170,7 +180,7 @@ const submit = async () => {
   }
 
   if (!form.date || !form.startTime || !form.endTime) {
-    error.value = '请补全拍摄时间。'
+    error.value = '请补全服务时间。'
     return
   }
 
@@ -215,6 +225,7 @@ const submit = async () => {
       depositStatus: form.depositStatus as 'unpaid' | 'paid' | 'full',
       amount: Number(form.amount) || 0,
       reminders: [...store.defaultReminders],
+      serviceTypeCode: serviceTypeCode.value,
       ...(form.entryMode === 'existing'
         ? {
             customerId: form.customerId,
@@ -230,16 +241,16 @@ const submit = async () => {
 
     if (!result.ok) {
       conflictId.value = result.conflict.id
-      error.value = '该时段已有排单，请更换时间。'
+      error.value = '该时段已有安排，请更换时间。'
       return
     }
 
-    success.value = '排单录入成功，已同步到首页。'
+    success.value = `${pageTitle.value}成功，已同步到首页。`
     setTimeout(() => {
       router.push({ name: 'home' })
     }, 500)
   } catch (requestError) {
-    error.value = (requestError as Error).message || '排单提交失败，请稍后重试'
+    error.value = (requestError as Error).message || '提交失败，请稍后重试'
   }
 }
 
@@ -304,7 +315,7 @@ const retryUpload = async (item: UploadItem) => {
 
 <template>
   <section class="bounce-in">
-    <PageHeader title="排单录入" back @back="router.back()" />
+    <PageHeader :title="pageTitle" back @back="router.back()" />
 
     <article class="card mb-3 p-3">
       <div class="mb-3 grid grid-cols-2 gap-2">
@@ -346,10 +357,10 @@ const retryUpload = async (item: UploadItem) => {
             @click="showTemporaryTypePicker = true"
           />
         </template>
-        <Field :model-value="form.date" label="拍摄日期" readonly is-link @click="openDate" />
+        <Field :model-value="form.date" :label="`${serviceLabel}日期`" readonly is-link @click="openDate" />
         <Field :model-value="form.startTime" label="开始时间" readonly is-link @click="openStartTime" />
         <Field :model-value="form.endTime" label="结束时间" readonly is-link @click="openEndTime" />
-        <Field v-model="form.location" label="拍摄地点" placeholder="请输入拍摄地点" clearable />
+        <Field v-model="form.location" :label="locationLabel" :placeholder="locationPlaceholder" clearable />
         <Field
           :model-value="depositStatusLabel"
           label="定金状态"
@@ -358,11 +369,11 @@ const retryUpload = async (item: UploadItem) => {
           @click="showDepositPicker = true"
         />
         <Field v-model="form.amount" label="定金金额" type="number" placeholder="请输入金额" />
-        <Field v-model="form.note" label="备注信息" type="textarea" rows="2" autosize placeholder="填写拍摄备注" />
+        <Field v-model="form.note" label="备注信息" type="textarea" rows="2" autosize :placeholder="notePlaceholder" />
       </CellGroup>
 
       <div class="mt-3">
-        <p class="mb-2 text-xs font-bold text-slate-500">动作参考图（最多 6 张）</p>
+        <p class="mb-2 text-xs font-bold text-slate-500">{{ referenceTitle }}</p>
         <Uploader
           v-model="referenceFileList"
           :max-count="6"
@@ -397,7 +408,7 @@ const retryUpload = async (item: UploadItem) => {
     </article>
 
     <Button block round type="primary" @click="submit">
-      <i class="fa-solid fa-paper-plane mr-1" />提交排单
+      <i class="fa-solid fa-paper-plane mr-1" />{{ submitLabel }}
     </Button>
 
     <Popup v-model:show="showCustomerPicker" position="bottom" round>
@@ -427,7 +438,7 @@ const retryUpload = async (item: UploadItem) => {
     <Popup v-model:show="showDatePicker" position="bottom" round>
       <DatePicker
         v-model="selectedDateValues"
-        title="选择拍摄日期"
+        :title="`选择${serviceLabel}日期`"
         @cancel="showDatePicker = false"
         @confirm="({ selectedValues }: any) => { form.date = normalizeDate(selectedValues); showDatePicker = false }"
       />
