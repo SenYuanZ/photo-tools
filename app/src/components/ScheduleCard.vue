@@ -52,7 +52,7 @@ const cardToneClass = computed(() => {
       </p>
       <div class="flex items-center gap-1.5">
         <span v-if="inProgress" class="status-live">
-          <span class="status-dot" />拍摄中
+          <span class="status-dot" />服务中
         </span>
         <span class="chip border border-blue-100 bg-blue-50 text-blue-500">
           {{ store.getServiceTypeName(schedule.serviceTypeCode) }}
