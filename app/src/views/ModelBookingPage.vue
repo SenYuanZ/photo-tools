@@ -58,7 +58,7 @@ const availability = ref<PublicAvailability | null>(null)
 
 const photographerColumns = computed(() =>
   photographers.value.map((item) => ({
-    text: `${item.nickname}（${item.account}）`,
+    text: `${item.nickname}`,
     value: item.id,
   })),
 )
@@ -68,7 +68,7 @@ const selectedPhotographerLabel = computed(() => {
   if (!item) {
     return loadingPhotographers.value ? '正在加载摄影师...' : '请选择摄影师'
   }
-  return `${item.nickname}（${item.account}）`
+  return `${item.nickname}`
 })
 
 const failedUploads = computed(() =>
