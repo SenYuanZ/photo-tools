@@ -23,9 +23,16 @@ const customerIdFromQuery = typeof route.query.customerId === 'string' ? route.q
 const dateFromQuery = typeof route.query.date === 'string' ? route.query.date : dayjs().format('YYYY-MM-DD')
 const startFromQuery = typeof route.query.start === 'string' ? route.query.start : '10:00'
 const endFromQuery = typeof route.query.end === 'string' ? route.query.end : '11:30'
+const entryModeFromQuery = customerIdFromQuery ? 'existing' : 'temporary'
+
+type EntryMode = 'existing' | 'temporary'
 
 const form = reactive({
+  entryMode: entryModeFromQuery as EntryMode,
   customerId: customerIdFromQuery,
+  temporaryCustomerName: '',
+  temporaryCustomerPhone: '',
+  temporaryCustomerType: '',
   date: dateFromQuery,
   startTime: startFromQuery,
   endTime: endFromQuery,
@@ -44,6 +51,7 @@ const showDatePicker = ref(false)
 const showStartTimePicker = ref(false)
 const showEndTimePicker = ref(false)
 const showDepositPicker = ref(false)
+const showTemporaryTypePicker = ref(false)
 const uploading = ref(false)
 
 type UploadItem = UploaderFileListItem & {
@@ -60,7 +68,7 @@ const selectedDateValues = ref(form.date.split('-'))
 const selectedStartTimeValues = ref(form.startTime.split(':'))
 const selectedEndTimeValues = ref(form.endTime.split(':'))
 
-const customers = computed(() => store.customers)
+const customers = computed(() => store.customers.filter((item) => item.isLongTerm !== false))
 const customerColumns = computed(() =>
   customers.value.map((item) => ({
     text: `${item.name} · ${item.phone}`,
@@ -74,8 +82,17 @@ const selectedCustomerLabel = computed(() => {
 })
 
 const depositStatusColumns = depositStatusOptions.map(([value, text]) => ({ text, value }))
+const temporaryTypeColumns = computed(() =>
+  store.customerTypes.map((item) => ({
+    text: item.name,
+    value: item.code,
+  })),
+)
 const depositStatusLabel = computed(
   () => depositStatusOptions.find(([value]) => value === form.depositStatus)?.[1] ?? '请选择定金状态',
+)
+const temporaryTypeLabel = computed(
+  () => (form.temporaryCustomerType ? store.getCustomerTypeName(form.temporaryCustomerType) : '请选择客户类型'),
 )
 
 const timeColumns = [timeHourOptions, timeMinuteOptions]
@@ -96,6 +113,9 @@ const normalizeDate = (values: string[]) => {
 watch(
   () => form.customerId,
   (id) => {
+    if (form.entryMode !== 'existing') {
+      return
+    }
     const customer = store.getCustomerById(id)
     if (!customer) {
       return
@@ -106,6 +126,23 @@ watch(
   },
   { immediate: true },
 )
+
+watch(
+  () => store.customerTypes,
+  (list) => {
+    if (!form.temporaryCustomerType && list.length) {
+      form.temporaryCustomerType = list[0].code
+    }
+  },
+  { immediate: true },
+)
+
+const switchMode = (mode: EntryMode) => {
+  form.entryMode = mode
+  error.value = ''
+  success.value = ''
+  conflictId.value = ''
+}
 
 const openDate = () => {
   selectedDateValues.value = form.date.split('-')
@@ -132,8 +169,31 @@ const submit = async () => {
     return
   }
 
-  if (!form.customerId || !form.date || !form.startTime || !form.endTime) {
-    error.value = '请选择客户并补全拍摄时间。'
+  if (!form.date || !form.startTime || !form.endTime) {
+    error.value = '请补全拍摄时间。'
+    return
+  }
+
+  if (form.entryMode === 'existing' && !form.customerId) {
+    error.value = '请选择长期客户。'
+    return
+  }
+
+  if (
+    form.entryMode === 'temporary' &&
+    (!form.temporaryCustomerName.trim() || !form.temporaryCustomerPhone.trim())
+  ) {
+    error.value = '请填写临时客户姓名和手机号。'
+    return
+  }
+
+  if (form.entryMode === 'temporary' && !store.customerTypes.length) {
+    error.value = '当前未配置客户类型，请先在数据库中维护客户类型。'
+    return
+  }
+
+  if (form.entryMode === 'temporary' && !form.temporaryCustomerType) {
+    error.value = '请先选择客户类型。'
     return
   }
 
@@ -144,7 +204,6 @@ const submit = async () => {
 
   try {
     const result = await store.addSchedule({
-      customerId: form.customerId,
       date: form.date,
       startTime: form.startTime,
       endTime: form.endTime,
@@ -156,6 +215,17 @@ const submit = async () => {
       depositStatus: form.depositStatus as 'unpaid' | 'paid' | 'full',
       amount: Number(form.amount) || 0,
       reminders: [...store.defaultReminders],
+      ...(form.entryMode === 'existing'
+        ? {
+            customerId: form.customerId,
+          }
+        : {
+            temporaryCustomer: {
+              name: form.temporaryCustomerName.trim(),
+              phone: form.temporaryCustomerPhone.trim(),
+              type: form.temporaryCustomerType,
+            },
+          }),
     })
 
     if (!result.ok) {
@@ -238,18 +308,44 @@ const retryUpload = async (item: UploadItem) => {
 
     <article class="card mb-3 p-3">
       <div class="mb-3 grid grid-cols-2 gap-2">
-        <Button block round type="primary">关联已有客户</Button>
-        <Button block round plain type="primary" @click="router.push({ name: 'customer-new' })">新增客户</Button>
+        <Button block round :type="form.entryMode === 'existing' ? 'primary' : 'default'" @click="switchMode('existing')">
+          关联长期客户
+        </Button>
+        <Button block round :type="form.entryMode === 'temporary' ? 'primary' : 'default'" @click="switchMode('temporary')">
+          临时客户直录
+        </Button>
       </div>
 
+      <p class="mb-2 text-xs text-slate-500">
+        <i class="fa-solid fa-circle-info mr-1 text-blue-400" />
+        临时客户用于一次性排单，不会展示在客户管理中；长期客户请在客户录入里维护。
+      </p>
+
+      <Button block round plain type="primary" class="mb-3" @click="router.push({ name: 'customer-new' })">
+        新增长期客户
+      </Button>
+
       <CellGroup inset>
-        <Field
-          :model-value="selectedCustomerLabel"
-          label="选择客户"
-          readonly
-          is-link
-          @click="showCustomerPicker = true"
-        />
+        <template v-if="form.entryMode === 'existing'">
+          <Field
+            :model-value="selectedCustomerLabel"
+            label="选择客户"
+            readonly
+            is-link
+            @click="showCustomerPicker = true"
+          />
+        </template>
+        <template v-else>
+          <Field v-model="form.temporaryCustomerName" label="临时客户" placeholder="请输入姓名" clearable />
+          <Field v-model="form.temporaryCustomerPhone" label="联系电话" type="tel" placeholder="请输入手机号" clearable />
+          <Field
+            :model-value="temporaryTypeLabel"
+            label="客户类型"
+            readonly
+            is-link
+            @click="showTemporaryTypePicker = true"
+          />
+        </template>
         <Field :model-value="form.date" label="拍摄日期" readonly is-link @click="openDate" />
         <Field :model-value="form.startTime" label="开始时间" readonly is-link @click="openStartTime" />
         <Field :model-value="form.endTime" label="结束时间" readonly is-link @click="openEndTime" />
@@ -309,6 +405,14 @@ const retryUpload = async (item: UploadItem) => {
         :columns="customerColumns"
         @cancel="showCustomerPicker = false"
         @confirm="({ selectedOptions }: any) => { form.customerId = selectedOptions[0]?.value || ''; showCustomerPicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showTemporaryTypePicker" position="bottom" round>
+      <Picker
+        :columns="temporaryTypeColumns"
+        @cancel="showTemporaryTypePicker = false"
+        @confirm="({ selectedOptions }: any) => { form.temporaryCustomerType = selectedOptions[0]?.value || form.temporaryCustomerType; showTemporaryTypePicker = false }"
       />
     </Popup>
 

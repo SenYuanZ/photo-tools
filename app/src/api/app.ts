@@ -64,6 +64,14 @@ export interface InviteCodeItem {
   updatedAt: string
 }
 
+export interface CustomerTypeItem {
+  id: string
+  code: string
+  name: string
+  sortOrder: number
+  isActive: boolean
+}
+
 export interface PublicAvailability {
   photographerId: string
   date: string
@@ -124,6 +132,12 @@ export const customerApi = {
     return request<{ success: boolean }>(`/customers/${id}`, {
       method: 'DELETE',
     })
+  },
+}
+
+export const customerTypeApi = {
+  list() {
+    return request<CustomerTypeItem[]>('/customer-types')
   },
 }
 

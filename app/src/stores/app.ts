@@ -10,7 +10,14 @@ import type {
   SchedulePayload,
   ThemeName,
 } from '../types/models'
-import { authApi, customerApi, scheduleApi, settingsApi } from '../api/app'
+import {
+  authApi,
+  customerApi,
+  customerTypeApi,
+  scheduleApi,
+  settingsApi,
+  type CustomerTypeItem,
+} from '../api/app'
 import { clearToken, getToken, setToken } from '../api/http'
 import { isTimeOverlap } from '../utils/time'
 
@@ -22,22 +29,41 @@ type ApiErrorLike = Error & {
   }
 }
 
+const mergeCustomer = (list: Customer[], item: Customer) => {
+  const index = list.findIndex((current) => current.id === item.id)
+  if (index >= 0) {
+    list[index] = item
+    return
+  }
+  list.unshift(item)
+}
+
 const normalizeSchedule = (item: Schedule): Schedule => ({
   ...item,
   referenceImages: item.referenceImages || [],
 })
+
+const normalizeCustomer = (item: Customer): Customer => {
+  const rawFlag = (item as unknown as { isLongTerm?: unknown }).isLongTerm
+  return {
+    ...item,
+    isLongTerm: !(rawFlag === false || rawFlag === 0 || rawFlag === '0'),
+  }
+}
 
 export const useAppStore = defineStore('app', () => {
   const isLoggedIn = ref(false)
   const account = ref(localStorage.getItem(ACCOUNT_KEY) || '')
   const theme = ref<ThemeName>('pink')
   const customers = ref<Customer[]>([])
+  const customerTypes = ref<CustomerTypeItem[]>([])
   const schedules = ref<Schedule[]>([])
   const defaultReminders = ref<ReminderType[]>(['1d', '1h'])
   const backupEnabled = ref(true)
   const hydrated = ref(false)
 
   const customerMap = computed(() => new Map(customers.value.map((item) => [item.id, item])))
+  const customerTypeMap = computed(() => new Map(customerTypes.value.map((item) => [item.code, item.name])))
 
   const stats = computed(() => {
     const todayDate = dayjs().format('YYYY-MM-DD')
@@ -76,7 +102,22 @@ export const useAppStore = defineStore('app', () => {
       settingsApi.get(),
     ])
 
-    customers.value = customersData
+    let customerTypeData: CustomerTypeItem[] = []
+    try {
+      customerTypeData = await customerTypeApi.list()
+    } catch {
+      const fallbackCodes = [...new Set(customersData.map((item) => item.type).filter(Boolean))]
+      customerTypeData = fallbackCodes.map((code, index) => ({
+        id: `fallback-${code}`,
+        code,
+        name: code,
+        sortOrder: (index + 1) * 10,
+        isActive: true,
+      }))
+    }
+
+    customers.value = customersData.map(normalizeCustomer)
+    customerTypes.value = customerTypeData
     schedules.value = schedulesData.map(normalizeSchedule)
     theme.value = settingsData.theme
     defaultReminders.value = settingsData.defaultReminders
@@ -97,6 +138,7 @@ export const useAppStore = defineStore('app', () => {
     isLoggedIn.value = false
     account.value = ''
     customers.value = []
+    customerTypes.value = []
     schedules.value = []
     defaultReminders.value = ['1d', '1h']
     backupEnabled.value = true
@@ -125,15 +167,17 @@ export const useAppStore = defineStore('app', () => {
 
   const addCustomer = async (payload: CustomerPayload) => {
     const item = await customerApi.create(payload)
-    customers.value.unshift(item)
-    return item
+    const normalized = normalizeCustomer(item)
+    customers.value.unshift(normalized)
+    return normalized
   }
 
   const updateCustomer = async (id: string, payload: Partial<CustomerPayload>) => {
     const updated = await customerApi.update(id, payload)
+    const normalized = normalizeCustomer(updated)
     const index = customers.value.findIndex((item) => item.id === id)
     if (index >= 0) {
-      customers.value[index] = updated
+      customers.value[index] = normalized
     }
     if (payload.location) {
       schedules.value = schedules.value.map((item) =>
@@ -145,7 +189,7 @@ export const useAppStore = defineStore('app', () => {
           : item,
       )
     }
-    return updated
+    return normalized
   }
 
   const deleteCustomer = async (id: string) => {
@@ -167,15 +211,72 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const addSchedule = async (payload: SchedulePayload) => {
+    let schedulePayload: SchedulePayload = { ...payload }
+
+    if (!schedulePayload.customerId && schedulePayload.temporaryCustomer) {
+      const temporary = schedulePayload.temporaryCustomer
+      const phone = temporary.phone.trim()
+
+      let customer = customers.value.find((item) => item.phone === phone)
+
+      if (!customer) {
+        try {
+          const fallbackType = temporary.type || customerTypes.value[0]?.code
+          if (!fallbackType) {
+            throw new Error('请先在数据库中配置可用的客户类型')
+          }
+
+          const created = await customerApi.create({
+            name: temporary.name.trim(),
+            phone,
+            isLongTerm: false,
+            type: fallbackType,
+            style: '',
+            hobby: '',
+            specialNeed: schedulePayload.note || '',
+            depositStatus: schedulePayload.depositStatus,
+            tailPaymentDate: '',
+            outfit: '',
+            location: schedulePayload.location,
+            companions: '',
+            tags: ['临时客户'],
+          })
+
+          customer = normalizeCustomer(created)
+          mergeCustomer(customers.value, customer)
+        } catch (error) {
+          const message = (error as Error).message || ''
+          if (!message.includes('已存在')) {
+            throw error
+          }
+
+          const remoteList = await customerApi.list(phone)
+          const matched = remoteList.map(normalizeCustomer).find((item) => item.phone === phone)
+          if (!matched) {
+            throw error
+          }
+
+          customer = matched
+          mergeCustomer(customers.value, matched)
+        }
+      }
+
+      schedulePayload = {
+        ...schedulePayload,
+        customerId: customer.id,
+        temporaryCustomer: undefined,
+      }
+    }
+
     try {
-        const item = await scheduleApi.create(payload)
-        const normalized = normalizeSchedule(item)
-        schedules.value.unshift(normalized)
-        return { ok: true as const, item: normalized }
+      const item = await scheduleApi.create(schedulePayload)
+      const normalized = normalizeSchedule(item)
+      schedules.value.unshift(normalized)
+      return { ok: true as const, item: normalized }
     } catch (error) {
       const apiError = error as ApiErrorLike
       const conflict = ((apiError.details?.message as { conflict?: Schedule } | undefined)?.conflict ??
-        getConflict(payload)) as Schedule | undefined
+        getConflict(schedulePayload)) as Schedule | undefined
       if (conflict) {
         return { ok: false as const, conflict }
       }
@@ -236,6 +337,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const getCustomerById = (id: string) => customerMap.value.get(id)
+  const getCustomerTypeName = (code: string) => customerTypeMap.value.get(code) || code
   const getScheduleById = (id: string) => schedules.value.find((item) => item.id === id)
 
   return {
@@ -243,6 +345,7 @@ export const useAppStore = defineStore('app', () => {
     account,
     theme,
     customers,
+    customerTypes,
     schedules,
     stats,
     defaultReminders,
@@ -261,6 +364,7 @@ export const useAppStore = defineStore('app', () => {
     deleteSchedule,
     refreshHistory,
     getCustomerById,
+    getCustomerTypeName,
     getScheduleById,
     getConflict,
   }

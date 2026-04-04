@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { depositStatusText } from '../constants/options'
+import { useAppStore } from '../stores/app'
 import type { Customer, Schedule } from '../types/models'
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: []
 }>()
+
+const store = useAppStore()
 
 const typeTagClass = computed(() => {
   const type = props.customer?.type
@@ -34,7 +37,7 @@ const typeTagClass = computed(() => {
     <div class="mb-2 flex items-center justify-between gap-2">
       <p class="font-extrabold">
         {{ customer?.name ?? '未知客户' }}
-        <span class="chip ml-1 border" :class="typeTagClass">{{ customer?.type ? { personal: '个人写真', couple: '情侣', family: '亲子', business: '商业', other: '其他' }[customer.type] : '其他' }}</span>
+        <span class="chip ml-1 border" :class="typeTagClass">{{ customer?.type ? store.getCustomerTypeName(customer.type) : '其他' }}</span>
       </p>
       <span class="text-sm font-extrabold text-rose-500"
         >{{ schedule.startTime }} - {{ schedule.endTime }}</span

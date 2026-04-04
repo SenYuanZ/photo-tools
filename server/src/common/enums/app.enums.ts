@@ -1,11 +1,3 @@
-export enum CustomerType {
-  PERSONAL = 'personal',
-  COUPLE = 'couple',
-  FAMILY = 'family',
-  BUSINESS = 'business',
-  OTHER = 'other',
-}
-
 export enum DepositStatus {
   UNPAID = 'unpaid',
   PAID = 'paid',

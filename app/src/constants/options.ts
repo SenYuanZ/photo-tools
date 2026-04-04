@@ -1,13 +1,4 @@
-import type { CustomerType, DepositStatus } from '../types/models'
-
-export const customerTypeText: Record<CustomerType, string> = {
-  personal: '个人写真',
-  couple: '情侣',
-  family: '亲子',
-  business: '商业',
-  exhibition: '漫展',
-  other: '其他',
-}
+import type { DepositStatus } from '../types/models'
 
 export const depositStatusText: Record<DepositStatus, string> = {
   unpaid: '未支付',
@@ -15,7 +6,6 @@ export const depositStatusText: Record<DepositStatus, string> = {
   full: '全款',
 }
 
-export const customerTypeOptions = Object.entries(customerTypeText)
 export const depositStatusOptions = Object.entries(depositStatusText)
 
 export const timeOptions = Array.from({ length: 48 }, (_, index) => {

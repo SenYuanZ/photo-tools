@@ -4,12 +4,12 @@ import { hash } from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  CustomerType,
   DepositStatus,
   ReminderType,
   ThemeName,
 } from '../common/enums/app.enums';
 import { Customer } from './entities/customer.entity';
+import { CustomerTypeOption } from './entities/customer-type.entity';
 import { InviteCode } from './entities/invite-code.entity';
 import { Schedule } from './entities/schedule.entity';
 import { UserSetting } from './entities/user-setting.entity';
@@ -28,6 +28,8 @@ export class SeedService implements OnApplicationBootstrap {
     private readonly settingsRepository: Repository<UserSetting>,
     @InjectRepository(Customer)
     private readonly customersRepository: Repository<Customer>,
+    @InjectRepository(CustomerTypeOption)
+    private readonly customerTypesRepository: Repository<CustomerTypeOption>,
     @InjectRepository(InviteCode)
     private readonly inviteCodesRepository: Repository<InviteCode>,
     @InjectRepository(Schedule)
@@ -35,6 +37,7 @@ export class SeedService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    await this.ensureCustomerTypes();
     await this.ensureInviteCodes();
 
     const existing = await this.usersRepository.findOne({
@@ -72,7 +75,7 @@ export class SeedService implements OnApplicationBootstrap {
       userId,
       name: '张小鹿',
       phone: '13812345678',
-      type: CustomerType.PERSONAL,
+      type: 'personal',
       style: '日系卡通',
       hobby: '喜欢可爱元素，不喜欢严肃摆姿',
       specialNeed: '带宠物拍摄，需要简单妆造',
@@ -89,7 +92,7 @@ export class SeedService implements OnApplicationBootstrap {
       userId,
       name: '林一朵',
       phone: '13888886666',
-      type: CustomerType.COUPLE,
+      type: 'couple',
       style: '电影感暖色调',
       hobby: '喜欢街景，偏好抓拍',
       specialNeed: '避免过度磨皮',
@@ -164,6 +167,35 @@ export class SeedService implements OnApplicationBootstrap {
     await this.schedulesRepository.save(schedules);
 
     this.logger.log('Seed data created: default user lina_photo / 123456');
+  }
+
+  private async ensureCustomerTypes() {
+    const defaults = [
+      { code: 'personal', name: '个人写真', sortOrder: 10 },
+      { code: 'couple', name: '情侣', sortOrder: 20 },
+      { code: 'family', name: '亲子', sortOrder: 30 },
+      { code: 'business', name: '商业', sortOrder: 40 },
+      { code: 'other', name: '其他', sortOrder: 90 },
+    ];
+
+    for (const item of defaults) {
+      const exists = await this.customerTypesRepository.findOne({
+        where: { code: item.code },
+      });
+      if (exists) {
+        continue;
+      }
+
+      const entity = this.customerTypesRepository.create({
+        id: uuidv4(),
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        isActive: true,
+      });
+
+      await this.customerTypesRepository.save(entity);
+    }
   }
 
   private async ensureInviteCodes() {

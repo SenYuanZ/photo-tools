@@ -4,7 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { CustomerTypesModule } from './customer-types/customer-types.module';
 import { Customer } from './database/entities/customer.entity';
+import { CustomerTypeOption } from './database/entities/customer-type.entity';
 import { InviteCode } from './database/entities/invite-code.entity';
 import { Schedule } from './database/entities/schedule.entity';
 import { UserSetting } from './database/entities/user-setting.entity';
@@ -32,7 +34,14 @@ import { SettingsModule } from './settings/settings.module';
         username: configService.get<string>('DB_USERNAME', 'root'),
         password: configService.get<string>('DB_PASSWORD', 'admin123'),
         database: configService.get<string>('DB_NAME', 'photo_order'),
-        entities: [User, UserSetting, Customer, Schedule, InviteCode],
+        entities: [
+          User,
+          UserSetting,
+          Customer,
+          Schedule,
+          InviteCode,
+          CustomerTypeOption,
+        ],
         synchronize: true,
         logging: false,
         charset: 'utf8mb4',
@@ -48,10 +57,12 @@ import { SettingsModule } from './settings/settings.module';
       Customer,
       Schedule,
       InviteCode,
+      CustomerTypeOption,
     ]),
     AuthModule,
     DashboardModule,
     PublicBookingModule,
+    CustomerTypesModule,
     InviteCodesModule,
     CustomersModule,
     SchedulesModule,

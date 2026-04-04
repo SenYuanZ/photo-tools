@@ -7,7 +7,6 @@ import type { UploaderFileListItem } from 'vant'
 import { scheduleApi } from '../api/app'
 import PageHeader from '../components/PageHeader.vue'
 import {
-  customerTypeText,
   depositStatusText,
   timeHourOptions,
   timeMinuteOptions,
@@ -303,7 +302,7 @@ const retryReferenceUpload = async (item: UploadItem) => {
           <button class="chip ml-1" type="button" @click="copyPhone">复制</button>
           <a class="chip ml-1" :href="`tel:${customer.phone}`">拨号</a>
         </p>
-        <p>客户类型：{{ customerTypeText[customer.type] }}</p>
+        <p>客户类型：{{ store.getCustomerTypeName(customer.type) }}</p>
         <p>
           备注标签：
           <span v-for="tag in customer.tags" :key="tag" class="chip ml-1">{{ tag }}</span>

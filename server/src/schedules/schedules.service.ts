@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { ReminderType } from '../common/enums/app.enums';
+import { CustomerTypesService } from '../customer-types/customer-types.service';
 import { isTimeOverlap, isTimeRangeValid } from '../common/utils/time.util';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
@@ -28,6 +29,7 @@ export class SchedulesService {
     private readonly customersRepository: Repository<Customer>,
     @InjectRepository(UserSetting)
     private readonly settingsRepository: Repository<UserSetting>,
+    private readonly customerTypesService: CustomerTypesService,
   ) {}
 
   async findAll(userId: string, query: QuerySchedulesDto) {
@@ -73,11 +75,14 @@ export class SchedulesService {
       throw new BadRequestException('结束时间必须晚于开始时间');
     }
 
-    const customer = await this.customersRepository.findOne({
-      where: { id: payload.customerId, userId },
-    });
-    if (!customer) {
-      throw new NotFoundException('客户不存在');
+    if (payload.customerId && payload.temporaryCustomer) {
+      throw new BadRequestException(
+        '请选择已有客户或填写临时客户，不能同时提交',
+      );
+    }
+
+    if (!payload.customerId && !payload.temporaryCustomer) {
+      throw new BadRequestException('请先选择已有客户或填写临时客户信息');
     }
 
     const conflict = await this.findConflict(
@@ -93,6 +98,27 @@ export class SchedulesService {
       });
     }
 
+    let customerId = payload.customerId;
+    if (customerId) {
+      const customer = await this.customersRepository.findOne({
+        where: { id: customerId, userId },
+      });
+      if (!customer) {
+        throw new NotFoundException('客户不存在');
+      }
+    } else if (payload.temporaryCustomer) {
+      const temporaryCustomer = await this.findOrCreateTemporaryCustomer(
+        userId,
+        payload.temporaryCustomer,
+        payload,
+      );
+      customerId = temporaryCustomer.id;
+    }
+
+    if (!customerId) {
+      throw new BadRequestException('客户信息不完整，无法创建排单');
+    }
+
     const setting = await this.settingsRepository.findOne({
       where: { userId },
     });
@@ -106,7 +132,7 @@ export class SchedulesService {
     const schedule = this.schedulesRepository.create({
       id: uuidv4(),
       userId,
-      customerId: payload.customerId,
+      customerId,
       date: payload.date,
       startTime: payload.startTime,
       endTime: payload.endTime,
@@ -118,6 +144,47 @@ export class SchedulesService {
       referenceImages: payload.referenceImages ?? [],
     });
     return this.schedulesRepository.save(schedule);
+  }
+
+  private async findOrCreateTemporaryCustomer(
+    userId: string,
+    temporaryCustomer: NonNullable<CreateScheduleDto['temporaryCustomer']>,
+    payload: CreateScheduleDto,
+  ) {
+    const typeCode = temporaryCustomer.type
+      ? await this.customerTypesService.ensureUsableCode(temporaryCustomer.type)
+      : await this.customerTypesService.getDefaultTypeCode();
+
+    const exists = await this.customersRepository.findOne({
+      where: {
+        userId,
+        phone: temporaryCustomer.phone,
+      },
+    });
+
+    if (exists) {
+      return exists;
+    }
+
+    const entity = this.customersRepository.create({
+      id: uuidv4(),
+      userId,
+      name: temporaryCustomer.name,
+      phone: temporaryCustomer.phone,
+      isLongTerm: false,
+      type: typeCode,
+      style: '',
+      hobby: '',
+      specialNeed: payload.note ?? '',
+      depositStatus: payload.depositStatus,
+      tailPaymentDate: null,
+      outfit: '',
+      location: payload.location,
+      companions: '',
+      tags: ['临时客户'],
+    });
+
+    return this.customersRepository.save(entity);
   }
 
   async update(userId: string, id: string, payload: UpdateScheduleDto) {

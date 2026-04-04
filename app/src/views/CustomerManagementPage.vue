@@ -3,7 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, CellGroup, Field, Picker, Popup } from 'vant'
 import PageHeader from '../components/PageHeader.vue'
-import { customerTypeOptions, customerTypeText, depositStatusOptions } from '../constants/options'
+import { depositStatusOptions } from '../constants/options'
 import { useAppStore } from '../stores/app'
 
 const router = useRouter()
@@ -17,7 +17,7 @@ const showDepositPicker = ref(false)
 const editForm = reactive({
   name: '',
   phone: '',
-  type: 'personal',
+  type: '',
   location: '',
   style: '',
   hobby: '',
@@ -25,23 +25,26 @@ const editForm = reactive({
   depositStatus: 'unpaid',
 })
 
-const customerTypeColumns = customerTypeOptions.map(([value, text]) => ({ text, value }))
+const customerTypeColumns = computed(() =>
+  store.customerTypes.map((item) => ({ text: item.name, value: item.code })),
+)
 const depositStatusColumns = depositStatusOptions.map(([value, text]) => ({ text, value }))
 
 const customerTypeLabel = computed(
-  () => customerTypeOptions.find(([value]) => value === editForm.type)?.[1] ?? '请选择客户类型',
+  () => (editForm.type ? store.getCustomerTypeName(editForm.type) : '请选择客户类型'),
 )
 const depositStatusLabel = computed(
   () => depositStatusOptions.find(([value]) => value === editForm.depositStatus)?.[1] ?? '请选择定金状态',
 )
 
 const list = computed(() => {
+  const longTermCustomers = store.customers.filter((item) => item.isLongTerm !== false)
   const key = keyword.value.trim()
   if (!key) {
-    return store.customers
+    return longTermCustomers
   }
-  return store.customers.filter((item) =>
-    [item.name, item.phone, customerTypeText[item.type]].some((field) => field.includes(key)),
+  return longTermCustomers.filter((item) =>
+    [item.name, item.phone, store.getCustomerTypeName(item.type)].some((field) => field.includes(key)),
   )
 })
 
@@ -69,7 +72,7 @@ const saveEdit = async () => {
   }
   await store.updateCustomer(editingId.value, {
     ...editForm,
-    type: editForm.type as 'personal' | 'couple' | 'family' | 'business' | 'other',
+    type: editForm.type,
     depositStatus: editForm.depositStatus as 'unpaid' | 'paid' | 'full',
   })
   editingId.value = ''
@@ -87,13 +90,17 @@ const remove = async (id: string) => {
   <section class="bounce-in">
     <PageHeader title="客户管理" back right-text="新增" @back="router.back()" @right="router.push({ name: 'customer-new' })" />
 
+    <article class="card mb-3 p-3 text-xs text-slate-600 soft-yellow">
+      <p><i class="fa-solid fa-circle-info mr-1 text-amber-500" />这里仅展示长期客户，临时客户仅用于排单不进入客户管理列表。</p>
+    </article>
+
     <Field v-model="keyword" class="mb-3 rounded-xl" clearable placeholder="搜索姓名 / 电话 / 客户类型" />
 
     <div class="space-y-2">
       <article v-for="item in list" :key="item.id" class="card p-3" :class="editingId === item.id ? 'soft-blue' : 'soft-pink'">
         <div class="flex items-center justify-between gap-2">
           <div>
-            <p class="font-extrabold">{{ item.name }} <span class="chip ml-1">{{ customerTypeText[item.type] }}</span></p>
+            <p class="font-extrabold">{{ item.name }} <span class="chip ml-1">{{ store.getCustomerTypeName(item.type) }}</span></p>
             <p class="mt-1 text-xs text-slate-500">{{ item.phone }} · {{ item.location || '未设置拍摄地点' }}</p>
           </div>
           <div class="flex gap-1">

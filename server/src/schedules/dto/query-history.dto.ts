@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, Matches } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class QueryHistoryDto {
   @IsOptional()
@@ -6,6 +6,7 @@ export class QueryHistoryDto {
   month?: string;
 
   @IsOptional()
-  @IsIn(['personal', 'couple', 'family', 'business', 'other'])
-  type?: 'personal' | 'couple' | 'family' | 'business' | 'other';
+  @IsString()
+  @MaxLength(32)
+  type?: string;
 }

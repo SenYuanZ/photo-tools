@@ -1,4 +1,4 @@
-export type CustomerType = 'personal' | 'couple' | 'family' | 'business' | 'other' | 'exhibition'
+export type CustomerType = string
 export type DepositStatus = 'unpaid' | 'paid' | 'full'
 export type ReminderType = '1d' | '1h'
 export type ThemeName = 'pink' | 'blue' | 'yellow'
@@ -7,6 +7,7 @@ export interface Customer {
   id: string
   name: string
   phone: string
+  isLongTerm: boolean
   type: CustomerType
   style: string
   hobby: string
@@ -41,6 +42,7 @@ export interface LoginPayload {
 export interface CustomerPayload {
   name: string
   phone: string
+  isLongTerm?: boolean
   type: CustomerType
   style: string
   hobby: string
@@ -54,7 +56,12 @@ export interface CustomerPayload {
 }
 
 export interface SchedulePayload {
-  customerId: string
+  customerId?: string
+  temporaryCustomer?: {
+    name: string
+    phone: string
+    type?: CustomerType
+  }
   date: string
   startTime: string
   endTime: string

@@ -9,7 +9,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { CustomerType, DepositStatus } from '../../common/enums/app.enums';
+import { DepositStatus } from '../../common/enums/app.enums';
 import { Schedule } from './schedule.entity';
 import { User } from './user.entity';
 
@@ -32,8 +32,11 @@ export class Customer {
   @Column({ type: 'varchar', length: 20 })
   phone: string;
 
-  @Column({ type: 'enum', enum: CustomerType })
-  type: CustomerType;
+  @Column({ name: 'is_long_term', type: 'tinyint', width: 1, default: 1 })
+  isLongTerm: boolean;
+
+  @Column({ type: 'varchar', length: 32 })
+  type: string;
 
   @Column({ type: 'varchar', length: 255, default: '' })
   style: string;

@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
@@ -8,13 +8,34 @@ import {
   IsOptional,
   IsString,
   Matches,
+  ValidateNested,
 } from 'class-validator';
 import { DepositStatus, ReminderType } from '../../common/enums/app.enums';
 
-export class CreateScheduleDto {
+class TemporaryCustomerDto {
   @IsString()
   @IsNotEmpty()
-  customerId: string;
+  name: string;
+
+  @Transform(({ value }) => String(value).trim())
+  @Matches(/^1[3-9]\d{9}$/)
+  phone: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9_-]{2,32}$/i)
+  type?: string;
+}
+
+export class CreateScheduleDto {
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TemporaryCustomerDto)
+  temporaryCustomer?: TemporaryCustomerDto;
 
   @IsDateString()
   date: string;

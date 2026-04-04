@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { CustomerType, DepositStatus } from '../common/enums/app.enums';
+import { DepositStatus } from '../common/enums/app.enums';
+import { CustomerTypesService } from '../customer-types/customer-types.service';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
 import { User } from '../database/entities/user.entity';
@@ -67,6 +68,7 @@ export class PublicBookingService {
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
     private readonly schedulesService: SchedulesService,
+    private readonly customerTypesService: CustomerTypesService,
   ) {}
 
   async listPhotographers() {
@@ -183,12 +185,16 @@ export class PublicBookingService {
       return existingCustomer;
     }
 
+    const defaultTypeCode =
+      await this.customerTypesService.getDefaultTypeCode();
+
     const entity = this.customersRepository.create({
       id: uuidv4(),
       userId: payload.photographerId,
       name: payload.modelName,
       phone: payload.modelPhone,
-      type: CustomerType.PERSONAL,
+      isLongTerm: false,
+      type: defaultTypeCode,
       style: '',
       hobby: '',
       specialNeed: payload.poseRequirement,

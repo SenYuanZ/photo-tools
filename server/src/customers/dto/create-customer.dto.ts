@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsOptional,
@@ -8,7 +9,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { CustomerType, DepositStatus } from '../../common/enums/app.enums';
+import { DepositStatus } from '../../common/enums/app.enums';
 
 export class CreateCustomerDto {
   @IsString()
@@ -19,8 +20,28 @@ export class CreateCustomerDto {
   @Matches(/^1[3-9]\d{9}$/)
   phone: string;
 
-  @IsEnum(CustomerType)
-  type: CustomerType;
+  @IsString()
+  @MaxLength(32)
+  type: string;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value === 'true';
+    }
+    if (typeof value === 'number') {
+      return value === 1;
+    }
+    return undefined;
+  })
+  @IsBoolean()
+  isLongTerm?: boolean;
 
   @IsOptional()
   @IsString()

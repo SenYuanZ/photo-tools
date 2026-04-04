@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { CustomerTypesService } from '../customer-types/customer-types.service';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -19,6 +20,7 @@ export class CustomersService {
     private readonly customersRepository: Repository<Customer>,
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
+    private readonly customerTypesService: CustomerTypesService,
   ) {}
 
   async findAll(userId: string, query: QueryCustomersDto) {
@@ -40,6 +42,10 @@ export class CustomersService {
   }
 
   async create(userId: string, payload: CreateCustomerDto) {
+    const normalizedTypeCode = await this.customerTypesService.ensureUsableCode(
+      payload.type,
+    );
+
     const exists = await this.customersRepository.findOne({
       where: { userId, phone: payload.phone },
     });
@@ -51,6 +57,8 @@ export class CustomersService {
       id: uuidv4(),
       userId,
       ...payload,
+      type: normalizedTypeCode,
+      isLongTerm: payload.isLongTerm ?? true,
       tags: payload.tags ?? [],
       tailPaymentDate: payload.tailPaymentDate ?? null,
       style: payload.style ?? '',
@@ -78,6 +86,12 @@ export class CustomersService {
       if (exists && exists.id !== id) {
         throw new ConflictException('手机号已被其他客户使用');
       }
+    }
+
+    if (payload.type) {
+      payload.type = await this.customerTypesService.ensureUsableCode(
+        payload.type,
+      );
     }
 
     Object.assign(customer, {

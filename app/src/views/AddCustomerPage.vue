@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, CellGroup, DatePicker, Field, Picker, Popup, TimePicker } from 'vant'
 import PageHeader from '../components/PageHeader.vue'
 import {
-  customerTypeOptions,
   depositStatusOptions,
   timeHourOptions,
   timeMinuteOptions,
@@ -19,7 +18,7 @@ const router = useRouter()
 const form = reactive({
   name: '',
   phone: '',
-  type: 'personal',
+  type: '',
   date: dayjs().format('YYYY-MM-DD'),
   startTime: '09:00',
   endTime: '11:00',
@@ -49,12 +48,17 @@ const selectedTailDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
 const selectedStartTimeValues = ref(form.startTime.split(':'))
 const selectedEndTimeValues = ref(form.endTime.split(':'))
 
-const customerTypeColumns = customerTypeOptions.map(([value, text]) => ({ text, value }))
+const customerTypeColumns = computed(() =>
+  store.customerTypes.map((item) => ({
+    text: item.name,
+    value: item.code,
+  })),
+)
 const depositStatusColumns = depositStatusOptions.map(([value, text]) => ({ text, value }))
 const timeColumns = [timeHourOptions, timeMinuteOptions]
 
 const customerTypeLabel = computed(
-  () => customerTypeOptions.find(([value]) => value === form.type)?.[1] ?? '请选择客户类型',
+  () => store.getCustomerTypeName(form.type || '') || '请选择客户类型',
 )
 const depositStatusLabel = computed(
   () => depositStatusOptions.find(([value]) => value === form.depositStatus)?.[1] ?? '请选择定金状态',
@@ -89,6 +93,11 @@ const saveCustomer = async () => {
   error.value = ''
   success.value = ''
 
+  if (!store.customerTypes.length) {
+    error.value = '当前未配置客户类型，请先在数据库中维护客户类型后再录入客户。'
+    return
+  }
+
   if (!form.name || !form.phone || !form.type || !form.date || !form.startTime || !form.endTime) {
     error.value = '请先填写所有必填项。'
     return
@@ -103,7 +112,8 @@ const saveCustomer = async () => {
     const created = await store.addCustomer({
       name: form.name,
       phone: form.phone,
-      type: form.type as 'personal' | 'couple' | 'family' | 'business' | 'other',
+      isLongTerm: true,
+      type: form.type,
       style: form.style,
       hobby: form.hobby,
       specialNeed: form.specialNeed,
@@ -131,11 +141,25 @@ const saveCustomer = async () => {
     error.value = (requestError as Error).message || '保存失败，请重试'
   }
 }
+
+watch(
+  () => store.customerTypes,
+  (list) => {
+    if (!form.type && list.length) {
+      form.type = list[0].code
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <section class="bounce-in">
-    <PageHeader title="添加客户信息" back @back="router.back()" />
+    <PageHeader title="添加长期客户" back @back="router.back()" />
+
+    <article class="card mb-3 p-3 text-xs text-slate-600 soft-yellow">
+      <p><i class="fa-solid fa-circle-info mr-1 text-amber-500" />这里用于录入长期客户，临时/一次性客户可直接在排单录入里填写。</p>
+    </article>
 
     <article class="card mb-3 p-3">
       <p class="mb-2 text-sm font-extrabold">

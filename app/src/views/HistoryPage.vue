@@ -4,7 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { CellGroup, Field, Loading, Picker, Popup } from 'vant'
 import PageHeader from '../components/PageHeader.vue'
-import { customerTypeOptions, customerTypeText, depositStatusText } from '../constants/options'
+import { depositStatusText } from '../constants/options'
 import { useAppStore } from '../stores/app'
 import type { Customer, Schedule } from '../types/models'
 
@@ -28,10 +28,13 @@ const monthOptions = computed(() => {
 })
 
 const monthColumns = computed(() => monthOptions.value.map((item) => ({ text: item, value: item })))
-const typeColumns = [{ text: '全部类型', value: 'all' }, ...customerTypeOptions.map(([value, text]) => ({ text, value }))]
+const typeColumns = computed(() => [
+  { text: '全部类型', value: 'all' },
+  ...store.customerTypes.map((item) => ({ text: item.name, value: item.code })),
+])
 
 const typeLabel = computed(() =>
-  type.value === 'all' ? '全部类型' : customerTypeOptions.find(([value]) => value === type.value)?.[1] ?? '全部类型',
+  type.value === 'all' ? '全部类型' : store.getCustomerTypeName(type.value),
 )
 
 const confirmMonth = ({ selectedOptions }: { selectedOptions: Array<{ value: string }> }) => {
@@ -83,7 +86,7 @@ const resolveCustomer = (item: HistoryItem) => item.customer ?? store.getCustome
       >
         <p class="font-extrabold">
           {{ dayjs(item.date).format('MM/DD') }} · {{ resolveCustomer(item)?.name }} ·
-          {{ customerTypeText[resolveCustomer(item)?.type ?? 'other'] }}
+          {{ store.getCustomerTypeName(resolveCustomer(item)?.type ?? '') }}
         </p>
         <p class="mt-1 text-xs text-slate-600">
           {{ item.startTime }} - {{ item.endTime }} · {{ item.location }} ·
