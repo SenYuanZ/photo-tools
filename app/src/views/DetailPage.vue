@@ -297,6 +297,7 @@ const retryReferenceUpload = async (item: UploadItem) => {
     <article class="card mb-3 p-3 soft-yellow">
       <p class="mb-2 text-sm font-extrabold"><i class="fa-solid fa-user mr-1 text-amber-500" />客户基础信息</p>
       <div class="space-y-1 text-sm">
+        <p>客户姓名：{{ customer.name }}</p>
         <p>
           联系电话：{{ customer.phone }}
           <button class="chip ml-1" type="button" @click="copyPhone">复制</button>
