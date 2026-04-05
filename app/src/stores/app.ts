@@ -152,6 +152,7 @@ export const useAppStore = defineStore('app', () => {
       avatarUrl: profileData.avatarUrl || '',
       bio: profileData.bio || '',
       portfolioImages: profileData.portfolioImages || [],
+      portfolioPublic: Boolean(profileData.portfolioPublic),
     }
     schedules.value = schedulesData.map(normalizeSchedule)
     theme.value = settingsData.theme
@@ -210,13 +211,14 @@ export const useAppStore = defineStore('app', () => {
     backupEnabled.value = updated.backupEnabled
   }
 
-  const updateProfile = async (payload: Partial<Pick<ProfileData, 'nickname' | 'avatarUrl' | 'bio' | 'portfolioImages'>>) => {
+  const updateProfile = async (payload: Partial<Pick<ProfileData, 'nickname' | 'avatarUrl' | 'bio' | 'portfolioImages' | 'portfolioPublic'>>) => {
     const updated = await profileApi.update(payload)
     profile.value = {
       ...updated,
       avatarUrl: updated.avatarUrl || '',
       bio: updated.bio || '',
       portfolioImages: updated.portfolioImages || [],
+      portfolioPublic: Boolean(updated.portfolioPublic),
     }
     account.value = profile.value.nickname || profile.value.account
     userRole.value = profile.value.role || userRole.value

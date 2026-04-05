@@ -22,6 +22,7 @@ export class ProfileService {
         avatarUrl: true,
         bio: true,
         portfolioImages: true,
+        portfolioPublic: true,
       },
     });
 
@@ -34,6 +35,7 @@ export class ProfileService {
       avatarUrl: user.avatarUrl || '',
       bio: user.bio || '',
       portfolioImages: user.portfolioImages || [],
+      portfolioPublic: Boolean(user.portfolioPublic),
     };
   }
 
@@ -62,6 +64,10 @@ export class ProfileService {
       user.portfolioImages = payload.portfolioImages;
     }
 
+    if (payload.portfolioPublic !== undefined) {
+      user.portfolioPublic = payload.portfolioPublic;
+    }
+
     const saved = await this.usersRepository.save(user);
 
     return {
@@ -72,6 +78,7 @@ export class ProfileService {
       avatarUrl: saved.avatarUrl || '',
       bio: saved.bio || '',
       portfolioImages: saved.portfolioImages || [],
+      portfolioPublic: Boolean(saved.portfolioPublic),
     };
   }
 }

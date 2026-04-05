@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
@@ -33,4 +34,23 @@ export class UpdateProfileDto {
   @ArrayMaxSize(12)
   @IsString({ each: true })
   portfolioImages?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value === 1;
+    }
+    if (typeof value === 'string') {
+      return value === 'true' || value === '1';
+    }
+    return undefined;
+  })
+  @IsBoolean()
+  portfolioPublic?: boolean;
 }

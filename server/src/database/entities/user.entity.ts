@@ -56,4 +56,12 @@ export class User {
 
   @Column({ name: 'portfolio_images', type: 'json', nullable: true })
   portfolioImages: string[] | null;
+
+  @Column({
+    name: 'portfolio_public',
+    type: 'tinyint',
+    width: 1,
+    default: 0,
+  })
+  portfolioPublic: boolean;
 }

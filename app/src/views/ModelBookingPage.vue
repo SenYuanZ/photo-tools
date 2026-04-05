@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, CellGroup, DatePicker, Field, Picker, Popup, Uploader, showToast } from 'vant'
+import { Button, CellGroup, DatePicker, Field, Picker, Popup, Uploader, showImagePreview, showToast } from 'vant'
 import type { UploaderFileListItem } from 'vant'
 import {
   publicBookingApi,
@@ -103,6 +103,27 @@ const selectedProviderLabel = (serviceCode: string) => {
 
   const target = (providersByService[serviceCode] || []).find((item) => item.id === providerId)
   return target?.nickname || '请选择服务者'
+}
+
+const selectedProvider = (serviceCode: string) => {
+  const providerId = serviceDrafts[serviceCode]?.providerId
+  if (!providerId) {
+    return undefined
+  }
+  return (providersByService[serviceCode] || []).find((item) => item.id === providerId)
+}
+
+const previewProviderPortfolio = (serviceCode: string, startPosition = 0) => {
+  const provider = selectedProvider(serviceCode)
+  const images = provider?.portfolioImages || []
+  if (!images.length) {
+    return
+  }
+
+  showImagePreview({
+    images,
+    startPosition,
+  })
 }
 
 const startColumns = computed(() => timeOptions.map((value) => ({ text: value, value })))
@@ -478,6 +499,43 @@ const submit = async () => {
       >
         <i class="fa-solid fa-triangle-exclamation mr-1" />当前暂无可选服务者，请确认后端已升级并配置对应身份账号。
       </p>
+
+      <div v-if="selectedProvider(service.code)" class="mt-2 rounded-xl border border-blue-100 bg-white/90 p-2.5">
+        <div class="flex items-center gap-2">
+          <img
+            :src="selectedProvider(service.code)?.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80'"
+            alt="服务者头像"
+            class="h-10 w-10 rounded-xl object-cover"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-extrabold text-slate-700">
+              {{ selectedProvider(service.code)?.nickname }}
+              <span class="chip ml-1">{{ service.code === 'makeup' ? '妆娘' : '摄影师' }}</span>
+            </p>
+            <p class="truncate text-[11px] text-slate-500">
+              {{ selectedProvider(service.code)?.bio || '该服务者暂未填写个人简介。' }}
+            </p>
+          </div>
+        </div>
+
+        <div v-if="selectedProvider(service.code)?.portfolioPublic && (selectedProvider(service.code)?.portfolioImages || []).length" class="mt-2">
+          <div class="mb-1 flex items-center justify-between">
+            <p class="text-[11px] font-bold text-slate-500">公开作品集</p>
+            <button class="chip" type="button" @click="previewProviderPortfolio(service.code, 0)">查看全部</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              v-for="(image, index) in (selectedProvider(service.code)?.portfolioImages || []).slice(0, 3)"
+              :key="`${service.code}-portfolio-${index}`"
+              type="button"
+              class="overflow-hidden rounded-lg border border-blue-100"
+              @click="previewProviderPortfolio(service.code, index)"
+            >
+              <img :src="image" alt="公开作品" class="h-16 w-full object-cover" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="mt-3">
         <p class="mb-2 text-xs font-bold text-slate-500">参考图（最多 6 张）</p>

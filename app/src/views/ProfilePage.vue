@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, CellGroup, Field, Uploader, showImagePreview } from 'vant'
+import { Button, Cell, CellGroup, Field, Switch, Uploader, showImagePreview } from 'vant'
 import type { UploaderFileListItem } from 'vant'
 import { profileApi } from '../api/app'
 import PageHeader from '../components/PageHeader.vue'
@@ -24,6 +24,7 @@ const form = reactive({
   nickname: '',
   avatarUrl: '',
   bio: '',
+  portfolioPublic: false,
 })
 
 const avatarFileList = ref<UploadItem[]>([])
@@ -50,6 +51,7 @@ watch(
     form.nickname = profile.nickname || ''
     form.avatarUrl = profile.avatarUrl || ''
     form.bio = profile.bio || ''
+    form.portfolioPublic = Boolean(profile.portfolioPublic)
 
     avatarFileList.value = form.avatarUrl
       ? [
@@ -179,6 +181,7 @@ const saveProfile = async () => {
       nickname: form.nickname.trim(),
       avatarUrl: form.avatarUrl.trim(),
       bio: form.bio.trim(),
+      portfolioPublic: form.portfolioPublic,
       portfolioImages: portfolioFileList.value
         .map((item) => item.uploadedUrl || item.url)
         .filter(Boolean) as string[],
@@ -208,6 +211,11 @@ const saveProfile = async () => {
           autosize
           placeholder="介绍你的风格、擅长领域和服务特点"
         />
+        <Cell title="公开作品集到模特端" center>
+          <template #right-icon>
+            <Switch v-model="form.portfolioPublic" size="20" />
+          </template>
+        </Cell>
       </CellGroup>
 
       <div class="mt-3">
@@ -242,6 +250,9 @@ const saveProfile = async () => {
       />
 
       <p class="mt-2 text-xs text-slate-500">建议上传你常用风格的代表作品，方便后续展示与沟通。</p>
+      <p class="mt-1 text-xs" :class="form.portfolioPublic ? 'text-blue-500' : 'text-slate-400'">
+        {{ form.portfolioPublic ? '当前已开启：模特端可查看你的作品集。' : '当前未开启：作品集仅自己可见。' }}
+      </p>
 
       <div v-if="failedPortfolioUploads.length" class="mt-2 space-y-1">
         <div

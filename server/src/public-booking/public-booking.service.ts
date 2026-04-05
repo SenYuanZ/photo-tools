@@ -95,6 +95,10 @@ export class PublicBookingService {
         account: true,
         nickname: true,
         role: true,
+        avatarUrl: true,
+        bio: true,
+        portfolioImages: true,
+        portfolioPublic: true,
       },
       order: {
         createdAt: 'ASC',
@@ -106,6 +110,10 @@ export class PublicBookingService {
       nickname: user.nickname,
       account: user.account,
       role: user.role,
+      avatarUrl: user.avatarUrl || '',
+      bio: user.bio || '',
+      portfolioPublic: Boolean(user.portfolioPublic),
+      portfolioImages: user.portfolioPublic ? user.portfolioImages || [] : [],
     }));
   }
 

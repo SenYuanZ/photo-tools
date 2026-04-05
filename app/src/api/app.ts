@@ -42,6 +42,7 @@ export interface ProfileData {
   avatarUrl: string
   bio: string
   portfolioImages: string[]
+  portfolioPublic: boolean
 }
 
 export interface SettingsData {
@@ -57,6 +58,10 @@ export interface PublicProvider {
   nickname: string
   account: string
   role: UserRole
+  avatarUrl: string
+  bio: string
+  portfolioPublic: boolean
+  portfolioImages: string[]
 }
 
 export interface PublicBookingPayload {
@@ -300,7 +305,7 @@ export const profileApi = {
   get() {
     return request<ProfileData>('/profile')
   },
-  update(payload: Partial<Pick<ProfileData, 'nickname' | 'avatarUrl' | 'bio' | 'portfolioImages'>>) {
+  update(payload: Partial<Pick<ProfileData, 'nickname' | 'avatarUrl' | 'bio' | 'portfolioImages' | 'portfolioPublic'>>) {
     return request<ProfileData>('/profile', {
       method: 'PATCH',
       body: payload,
