@@ -68,6 +68,7 @@ export interface PublicBookingPayload {
   modelName: string
   modelPhone: string
   date: string
+  customerTypeCode: string
   location: string
   note?: string
   items: Array<{
@@ -404,6 +405,11 @@ export const publicBookingApi = {
   },
   listServiceTypes() {
     return request<ServiceTypeItem[]>('/public/service-types', {
+      skipAuth: true,
+    })
+  },
+  listCustomerTypes() {
+    return request<CustomerTypeItem[]>('/public/customer-types', {
       skipAuth: true,
     })
   },

@@ -53,6 +53,10 @@ export class CreatePublicBookingDto {
   @IsDateString()
   date: string;
 
+  @IsString()
+  @Matches(/^[a-z0-9_-]{2,32}$/i)
+  customerTypeCode: string;
+
   @Transform(({ value }) => String(value).trim())
   @IsString()
   @IsNotEmpty()

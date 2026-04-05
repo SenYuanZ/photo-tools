@@ -121,6 +121,10 @@ export class PublicBookingService {
     return this.serviceTypesService.findAllActive();
   }
 
+  async listCustomerTypes() {
+    return this.customerTypesService.findAllActive();
+  }
+
   async getAvailability(
     providerId: string,
     date: string,
@@ -290,6 +294,7 @@ export class PublicBookingService {
         modelPhone: payload.modelPhone,
         location: payload.location,
         requirement: item.requirement,
+        customerTypeCode: payload.customerTypeCode,
       });
 
       const schedule = await this.schedulesService.create(item.provider.id, {
@@ -342,7 +347,12 @@ export class PublicBookingService {
     modelPhone: string;
     location: string;
     requirement: string;
+    customerTypeCode: string;
   }) {
+    const normalizedTypeCode = await this.customerTypesService.ensureUsableCode(
+      payload.customerTypeCode,
+    );
+
     const existingCustomer = await this.customersRepository.findOne({
       where: {
         userId: payload.providerId,
@@ -351,11 +361,15 @@ export class PublicBookingService {
     });
 
     if (existingCustomer) {
+      if (
+        existingCustomer.isLongTerm === false &&
+        existingCustomer.type !== normalizedTypeCode
+      ) {
+        existingCustomer.type = normalizedTypeCode;
+        await this.customersRepository.save(existingCustomer);
+      }
       return existingCustomer;
     }
-
-    const defaultTypeCode =
-      await this.customerTypesService.getDefaultTypeCode();
 
     const entity = this.customersRepository.create({
       id: uuidv4(),
@@ -363,7 +377,7 @@ export class PublicBookingService {
       name: payload.modelName,
       phone: payload.modelPhone,
       isLongTerm: false,
-      type: defaultTypeCode,
+      type: normalizedTypeCode,
       style: '',
       hobby: '',
       specialNeed: payload.requirement,

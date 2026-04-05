@@ -399,7 +399,12 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const getCustomerById = (id: string) => customerMap.value.get(id)
-  const getCustomerTypeName = (code: string) => customerTypeMap.value.get(code) || code
+  const getCustomerTypeName = (code: string) => {
+    if (!code) {
+      return '未设置'
+    }
+    return customerTypeMap.value.get(code) || code
+  }
   const getServiceTypeName = (code: string) => serviceTypeMap.value.get(code) || code
   const getScheduleById = (id: string) => schedules.value.find((item) => item.id === id)
 

@@ -49,6 +49,11 @@ export class PublicBookingController {
     return this.publicBookingService.listServiceTypes();
   }
 
+  @Get('customer-types')
+  listCustomerTypes() {
+    return this.publicBookingService.listCustomerTypes();
+  }
+
   @Get('availability')
   getAvailability(@Query() query: QueryPublicAvailabilityDto) {
     const providerId = query.providerId || query.photographerId;

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { Button, CellGroup, DatePicker, Field, Picker, Popup, Uploader, showImagePreview, showToast } from 'vant'
 import type { UploaderFileListItem } from 'vant'
 import {
+  type CustomerTypeItem,
   publicBookingApi,
   type PublicProvider,
   type ServiceTypeItem,
@@ -49,12 +50,14 @@ const form = reactive({
   modelName: '',
   modelPhone: '',
   date: dayjs().format('YYYY-MM-DD'),
+  customerTypeCode: '',
   location: '',
   note: '',
 })
 
 const selectedServiceCodes = ref<string[]>(['photography'])
 const serviceTypes = ref<ServiceTypeItem[]>([])
+const customerTypes = ref<CustomerTypeItem[]>([])
 
 const providersByService = reactive<Record<string, PublicProvider[]>>({})
 const loadingProvidersByService = reactive<Record<string, boolean>>({})
@@ -81,6 +84,7 @@ const serviceDrafts = reactive<Record<string, ServiceDraft>>({
 const selectedDateValues = ref(form.date.split('-'))
 
 const showDatePicker = ref(false)
+const showCustomerTypePicker = ref(false)
 const showProviderPicker = ref(false)
 const showStartTimePicker = ref(false)
 const showEndTimePicker = ref(false)
@@ -109,6 +113,20 @@ const providerColumns = computed(() =>
     value: item.id,
   })),
 )
+
+const customerTypeColumns = computed(() =>
+  customerTypes.value.map((item) => ({
+    text: item.name,
+    value: item.code,
+  })),
+)
+
+const customerTypeLabel = computed(() => {
+  if (!form.customerTypeCode) {
+    return '请选择客户类型'
+  }
+  return customerTypes.value.find((item) => item.code === form.customerTypeCode)?.name || form.customerTypeCode
+})
 
 const availabilityStateOfPicker = computed(() => ensureAvailabilityState(pickerServiceCode.value))
 
@@ -175,6 +193,10 @@ const resolvePublicErrorMessage = (requestError: unknown, fallback: string) => {
 
   if (message.includes('Cannot GET /api/public/service-types')) {
     return '公开服务类型接口未生效，请重启后端服务后重试。'
+  }
+
+  if (message.includes('Cannot GET /api/public/customer-types')) {
+    return '公开客户类型接口未生效，请重启后端服务后重试。'
   }
 
   if (message.includes('Cannot POST /api/public/bookings')) {
@@ -366,6 +388,34 @@ const loadServiceTypes = async () => {
   }
 }
 
+const loadCustomerTypes = async () => {
+  try {
+    const list = await publicBookingApi.listCustomerTypes()
+    customerTypes.value = list.length
+      ? list
+      : [
+          { id: 'fallback-personal', code: 'personal', name: '个人写真', sortOrder: 10, isActive: true },
+          { id: 'fallback-couple', code: 'couple', name: '情侣', sortOrder: 20, isActive: true },
+          { id: 'fallback-family', code: 'family', name: '亲子', sortOrder: 30, isActive: true },
+          { id: 'fallback-business', code: 'business', name: '商业', sortOrder: 40, isActive: true },
+          { id: 'fallback-other', code: 'other', name: '其他', sortOrder: 90, isActive: true },
+        ]
+  } catch (requestError) {
+    error.value = resolvePublicErrorMessage(requestError, '客户类型加载失败，请稍后重试')
+    customerTypes.value = [
+      { id: 'fallback-personal', code: 'personal', name: '个人写真', sortOrder: 10, isActive: true },
+      { id: 'fallback-couple', code: 'couple', name: '情侣', sortOrder: 20, isActive: true },
+      { id: 'fallback-family', code: 'family', name: '亲子', sortOrder: 30, isActive: true },
+      { id: 'fallback-business', code: 'business', name: '商业', sortOrder: 40, isActive: true },
+      { id: 'fallback-other', code: 'other', name: '其他', sortOrder: 90, isActive: true },
+    ]
+  }
+
+  if (!form.customerTypeCode && customerTypes.value.length) {
+    form.customerTypeCode = customerTypes.value[0].code
+  }
+}
+
 const loadProvidersForService = async (serviceCode: string) => {
   loadingProvidersByService[serviceCode] = true
   try {
@@ -425,7 +475,7 @@ watch(
 )
 
 onMounted(async () => {
-  await loadServiceTypes()
+  await Promise.all([loadServiceTypes(), loadCustomerTypes()])
   await Promise.all(selectedServiceCodes.value.map((code) => loadProvidersForService(code)))
 })
 
@@ -573,6 +623,11 @@ const submit = async () => {
     return
   }
 
+  if (!form.customerTypeCode) {
+    error.value = '请先选择客户类型。'
+    return
+  }
+
   if (!selectedServiceCodes.value.length) {
     error.value = '请至少选择一种服务类型。'
     return
@@ -623,6 +678,7 @@ const submit = async () => {
       modelName: form.modelName,
       modelPhone: form.modelPhone,
       date: form.date,
+      customerTypeCode: form.customerTypeCode,
       location: form.location,
       note: form.note,
       items,
@@ -656,6 +712,7 @@ const submit = async () => {
       <CellGroup inset>
         <Field v-model="form.modelName" label="模特姓名" placeholder="请输入你的姓名" clearable />
         <Field v-model="form.modelPhone" label="联系电话" placeholder="请输入手机号" maxlength="11" clearable />
+        <Field :model-value="customerTypeLabel" label="客户类型" readonly is-link @click="showCustomerTypePicker = true" />
         <Field :model-value="form.date" label="服务日期" readonly is-link @click="openDate" />
         <Field v-model="form.location" label="服务地点" placeholder="例如：创意园A栋 / 某某工作室" clearable />
         <Field v-model="form.note" label="协同备注" placeholder="可选：例如同一主题风格，妆容偏日系" clearable />
@@ -864,6 +921,14 @@ const submit = async () => {
         title="选择服务日期"
         @cancel="showDatePicker = false"
         @confirm="({ selectedValues }: any) => { form.date = normalizeDate(selectedValues); showDatePicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showCustomerTypePicker" position="bottom" round>
+      <Picker
+        :columns="customerTypeColumns"
+        @cancel="showCustomerTypePicker = false"
+        @confirm="({ selectedOptions }: any) => { form.customerTypeCode = selectedOptions[0]?.value || form.customerTypeCode; showCustomerTypePicker = false }"
       />
     </Popup>
 
