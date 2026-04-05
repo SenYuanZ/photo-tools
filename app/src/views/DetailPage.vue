@@ -53,6 +53,11 @@ const editForm = reactive({
   note: '',
 })
 
+const paymentForm = reactive({
+  depositStatus: 'unpaid' as 'unpaid' | 'paid' | 'full',
+  amount: '0',
+})
+
 watch(
   schedule,
   (value) => {
@@ -64,6 +69,8 @@ watch(
     editForm.endTime = value.endTime
     editForm.location = value.location
     editForm.note = value.note
+    paymentForm.depositStatus = value.depositStatus
+    paymentForm.amount = String(value.amount ?? 0)
 
     selectedDateValues.value = editForm.date.split('-')
     selectedStartTimeValues.value = editForm.startTime.split(':')
@@ -149,6 +156,44 @@ const saveEdit = async () => {
 
   feedback.value = '排单信息已更新。'
   isEditing.value = false
+}
+
+const savePaymentStatus = async () => {
+  if (!schedule.value) {
+    return
+  }
+
+  const amount = Number(paymentForm.amount)
+  if (Number.isNaN(amount)) {
+    feedback.value = '请输入有效金额。'
+    return
+  }
+
+  if (amount < 0) {
+    feedback.value = '金额不能为负数。'
+    return
+  }
+
+  if ((paymentForm.depositStatus === 'paid' || paymentForm.depositStatus === 'full') && amount <= 0) {
+    feedback.value = '已支付或全款状态时金额必须大于 0。'
+    return
+  }
+
+  try {
+    const result = await store.updateSchedule(schedule.value.id, {
+      depositStatus: paymentForm.depositStatus,
+      amount,
+    })
+
+    if (!result.ok) {
+      feedback.value = '更新收款状态失败：存在档期冲突。'
+      return
+    }
+
+    feedback.value = '收款状态已更新。'
+  } catch (error) {
+    feedback.value = (error as Error).message || '更新收款状态失败，请稍后重试。'
+  }
 }
 
 const remove = async () => {
@@ -325,6 +370,52 @@ const retryReferenceUpload = async (item: UploadItem) => {
           提前 1 小时
         </button>
       </div>
+    </article>
+
+    <article class="card mb-4 p-3 soft-yellow">
+      <p class="mb-2 text-sm font-extrabold"><i class="fa-solid fa-wallet mr-1 text-amber-500" />收款确认</p>
+      <div class="grid grid-cols-3 gap-2 text-xs">
+        <button
+          type="button"
+          class="btn-secondary"
+          :class="paymentForm.depositStatus === 'unpaid' ? 'ring-2 ring-rose-200 bg-rose-50 text-rose-500' : ''"
+          @click="paymentForm.depositStatus = 'unpaid'"
+        >
+          未支付
+        </button>
+        <button
+          type="button"
+          class="btn-secondary"
+          :class="paymentForm.depositStatus === 'paid' ? 'ring-2 ring-blue-200 bg-blue-50 text-blue-500' : ''"
+          @click="paymentForm.depositStatus = 'paid'"
+        >
+          已支付
+        </button>
+        <button
+          type="button"
+          class="btn-secondary"
+          :class="paymentForm.depositStatus === 'full' ? 'ring-2 ring-emerald-200 bg-emerald-50 text-emerald-600' : ''"
+          @click="paymentForm.depositStatus = 'full'"
+        >
+          全款
+        </button>
+      </div>
+
+      <Field
+        v-model="paymentForm.amount"
+        class="mt-2 rounded-xl"
+        label="实收金额"
+        type="number"
+        placeholder="请输入到账金额"
+      />
+
+      <p class="mt-1 text-xs text-slate-500">
+        建议到账后再确认状态；切回未支付时将保留历史金额记录。
+      </p>
+
+      <Button block round type="primary" class="mt-2" @click="savePaymentStatus">
+        <i class="fa-solid fa-money-check-dollar mr-1" />保存收款状态
+      </Button>
     </article>
 
     <article v-if="isEditing || schedule.referenceImages?.length" class="card mb-4 p-3 soft-blue">

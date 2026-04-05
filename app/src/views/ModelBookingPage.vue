@@ -684,7 +684,7 @@ const submit = async () => {
       items,
     })
 
-    success.value = `提交成功，已创建协同单 ${result.bookingGroupId}，共 ${result.bookings.length} 条排单。`
+    success.value = `提交成功，已创建协同单 ${result.bookingGroupId}，共 ${result.bookings.length} 条排单。默认未支付，到账后请在排单详情确认收款状态。`
     resetFormAfterSuccess()
   } catch (requestError) {
     error.value = resolvePublicErrorMessage(requestError, '提交失败，请稍后重试')

@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import {
+  DepositStatus,
   ReminderType,
   ServiceTypeCode,
   UserRole,
@@ -92,6 +93,8 @@ export class SchedulesService {
     if (!isTimeRangeValid(payload.startTime, payload.endTime)) {
       throw new BadRequestException('结束时间必须晚于开始时间');
     }
+
+    this.validatePayment(payload.depositStatus, payload.amount);
 
     const serviceTypeCode = payload.serviceTypeCode
       ? await this.serviceTypesService.ensureUsableCode(payload.serviceTypeCode)
@@ -242,6 +245,13 @@ export class SchedulesService {
       throw new BadRequestException('结束时间必须晚于开始时间');
     }
 
+    if (payload.depositStatus !== undefined || payload.amount !== undefined) {
+      this.validatePayment(
+        payload.depositStatus ?? schedule.depositStatus,
+        payload.amount ?? schedule.amount,
+      );
+    }
+
     if (payload.customerId && payload.customerId !== schedule.customerId) {
       const customer = await this.customersRepository.findOne({
         where: { id: payload.customerId, userId },
@@ -360,5 +370,19 @@ export class SchedulesService {
     return this.serviceTypesService.ensureUsableCode(
       ServiceTypeCode.PHOTOGRAPHY,
     );
+  }
+
+  private validatePayment(depositStatus: DepositStatus, amount: number) {
+    if (amount < 0) {
+      throw new BadRequestException('金额不能为负数');
+    }
+
+    if (
+      (depositStatus === DepositStatus.PAID ||
+        depositStatus === DepositStatus.FULL) &&
+      amount <= 0
+    ) {
+      throw new BadRequestException('已支付或全款状态时金额必须大于 0');
+    }
   }
 }
