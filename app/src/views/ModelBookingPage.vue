@@ -28,6 +28,21 @@ type ServiceDraft = {
   referenceFileList: UploadItem[]
 }
 
+type TimeRange = {
+  startTime: string
+  endTime: string
+}
+
+type AvailabilityState = {
+  loading: boolean
+  error: string
+  blockedSlots: string[]
+  availableSlots: string[]
+  busyRanges: TimeRange[]
+  freeRanges: TimeRange[]
+  lastKey: string
+}
+
 const router = useRouter()
 
 const form = reactive({
@@ -43,6 +58,8 @@ const serviceTypes = ref<ServiceTypeItem[]>([])
 
 const providersByService = reactive<Record<string, PublicProvider[]>>({})
 const loadingProvidersByService = reactive<Record<string, boolean>>({})
+const availabilityByService = reactive<Record<string, AvailabilityState>>({})
+const availabilityRequestSeq = reactive<Record<string, number>>({})
 
 const serviceDrafts = reactive<Record<string, ServiceDraft>>({
   photography: {
@@ -62,8 +79,6 @@ const serviceDrafts = reactive<Record<string, ServiceDraft>>({
 })
 
 const selectedDateValues = ref(form.date.split('-'))
-const selectedStartOption = ref('10:00')
-const selectedEndOption = ref('11:00')
 
 const showDatePicker = ref(false)
 const showProviderPicker = ref(false)
@@ -94,6 +109,8 @@ const providerColumns = computed(() =>
     value: item.id,
   })),
 )
+
+const availabilityStateOfPicker = computed(() => ensureAvailabilityState(pickerServiceCode.value))
 
 const selectedProviderLabel = (serviceCode: string) => {
   const providerId = serviceDrafts[serviceCode]?.providerId
@@ -126,8 +143,27 @@ const previewProviderPortfolio = (serviceCode: string, startPosition = 0) => {
   })
 }
 
-const startColumns = computed(() => timeOptions.map((value) => ({ text: value, value })))
-const endColumns = computed(() => timeOptions.map((value) => ({ text: value, value })))
+const startColumns = computed(() =>
+  timeOptions.map((value) => ({
+    text: value,
+    value,
+    disabled:
+      availabilityStateOfPicker.value.availableSlots.length > 0
+        ? !availabilityStateOfPicker.value.availableSlots.includes(value)
+        : false,
+  })),
+)
+
+const endColumns = computed(() => {
+  const draft = ensureDraft(pickerServiceCode.value)
+  const validEndSlots = getValidEndSlots(pickerServiceCode.value, draft.startTime)
+
+  return timeOptions.map((value) => ({
+    text: value,
+    value,
+    disabled: validEndSlots.length ? !validEndSlots.includes(value) : false,
+  }))
+})
 
 const resolvePublicErrorMessage = (requestError: unknown, fallback: string) => {
   const apiError = requestError as ApiErrorLike
@@ -172,6 +208,142 @@ const ensureDraft = (serviceCode: string) => {
   return serviceDrafts[serviceCode]
 }
 
+const ensureAvailabilityState = (serviceCode: string) => {
+  if (availabilityByService[serviceCode]) {
+    return availabilityByService[serviceCode]
+  }
+
+  availabilityByService[serviceCode] = {
+    loading: false,
+    error: '',
+    blockedSlots: [],
+    availableSlots: [],
+    busyRanges: [],
+    freeRanges: [],
+    lastKey: '',
+  }
+
+  return availabilityByService[serviceCode]
+}
+
+const getValidEndSlots = (serviceCode: string, startTime: string) => {
+  const availabilityState = ensureAvailabilityState(serviceCode)
+  if (!startTime || !availabilityState.freeRanges.length) {
+    return [] as string[]
+  }
+
+  const range = availabilityState.freeRanges.find((item) =>
+    item.startTime <= startTime && startTime < item.endTime,
+  )
+
+  if (!range) {
+    return []
+  }
+
+  return timeOptions.filter((slot) => slot > startTime && slot <= range.endTime)
+}
+
+const normalizeDraftTimeByAvailability = (serviceCode: string) => {
+  const draft = ensureDraft(serviceCode)
+  const availabilityState = ensureAvailabilityState(serviceCode)
+
+  if (!availabilityState.availableSlots.length) {
+    return
+  }
+
+  if (!availabilityState.availableSlots.includes(draft.startTime)) {
+    draft.startTime = availabilityState.availableSlots[0]
+  }
+
+  const validEndSlots = getValidEndSlots(serviceCode, draft.startTime)
+  if (!validEndSlots.length) {
+    draft.endTime = ''
+    return
+  }
+
+  if (!validEndSlots.includes(draft.endTime)) {
+    draft.endTime = validEndSlots[0]
+  }
+}
+
+const loadAvailability = async (serviceCode: string) => {
+  const draft = ensureDraft(serviceCode)
+  const availabilityState = ensureAvailabilityState(serviceCode)
+
+  if (!draft.providerId || !form.date) {
+    availabilityState.loading = false
+    availabilityState.error = ''
+    availabilityState.blockedSlots = []
+    availabilityState.availableSlots = []
+    availabilityState.busyRanges = []
+    availabilityState.freeRanges = []
+    availabilityState.lastKey = ''
+    return
+  }
+
+  const requestKey = `${serviceCode}-${draft.providerId}-${form.date}`
+  if (availabilityState.lastKey === requestKey) {
+    return
+  }
+
+  const nextSeq = (availabilityRequestSeq[serviceCode] || 0) + 1
+  availabilityRequestSeq[serviceCode] = nextSeq
+  availabilityState.loading = true
+  availabilityState.error = ''
+
+  try {
+    const result = await publicBookingApi.getAvailability(draft.providerId, form.date, serviceCode)
+    if (availabilityRequestSeq[serviceCode] !== nextSeq) {
+      return
+    }
+
+    availabilityState.blockedSlots = result.blockedSlots || []
+    availabilityState.availableSlots = result.availableSlots || []
+    availabilityState.busyRanges = result.busyRanges || []
+    availabilityState.freeRanges = result.freeRanges || []
+    availabilityState.lastKey = requestKey
+    normalizeDraftTimeByAvailability(serviceCode)
+  } catch (requestError) {
+    if (availabilityRequestSeq[serviceCode] !== nextSeq) {
+      return
+    }
+    availabilityState.error = resolvePublicErrorMessage(requestError, '档期加载失败，请稍后重试')
+    availabilityState.blockedSlots = []
+    availabilityState.availableSlots = []
+    availabilityState.busyRanges = []
+    availabilityState.freeRanges = []
+    availabilityState.lastKey = ''
+  } finally {
+    if (availabilityRequestSeq[serviceCode] === nextSeq) {
+      availabilityState.loading = false
+    }
+  }
+}
+
+const slotTagClass = (slot: string, serviceCode: string) => {
+  const availabilityState = ensureAvailabilityState(serviceCode)
+  if (availabilityState.blockedSlots.includes(slot)) {
+    return 'chip border border-rose-200 bg-rose-50 text-rose-500'
+  }
+  if (availabilityState.availableSlots.includes(slot)) {
+    return 'chip border border-emerald-200 bg-emerald-50 text-emerald-600'
+  }
+  return 'chip border border-slate-200 bg-slate-50 text-slate-400'
+}
+
+const applyFreeRange = (serviceCode: string, range: TimeRange) => {
+  const draft = ensureDraft(serviceCode)
+  draft.startTime = range.startTime
+  draft.endTime = range.endTime
+  showToast(`已填入 ${range.startTime} - ${range.endTime}`)
+}
+
+const refreshAvailabilityByCurrentSelection = () => {
+  selectedServiceCodes.value.forEach((code) => {
+    void loadAvailability(code)
+  })
+}
+
 const getExpectedRoleByService = (serviceCode: string) =>
   serviceCode === 'makeup' ? 'makeup_artist' : 'photographer'
 
@@ -201,6 +373,9 @@ const loadProvidersForService = async (serviceCode: string) => {
     const expectedRole = getExpectedRoleByService(serviceCode)
     providersByService[serviceCode] = providers.filter((item) => item.role === expectedRole)
     const draft = ensureDraft(serviceCode)
+    if (draft.providerId && !providersByService[serviceCode].find((item) => item.id === draft.providerId)) {
+      draft.providerId = ''
+    }
     if (!draft.providerId && providersByService[serviceCode].length) {
       draft.providerId = providersByService[serviceCode][0].id
     }
@@ -222,12 +397,31 @@ watch(
 
     codes.forEach((code) => {
       ensureDraft(code)
+      ensureAvailabilityState(code)
       if (!providersByService[code]) {
         void loadProvidersForService(code)
       }
+      void loadAvailability(code)
     })
   },
   { immediate: true },
+)
+
+watch(
+  () => form.date,
+  () => {
+    selectedServiceCodes.value.forEach((code) => {
+      ensureAvailabilityState(code).lastKey = ''
+    })
+    refreshAvailabilityByCurrentSelection()
+  },
+)
+
+watch(
+  () => selectedServiceCodes.value.map((code) => `${code}:${ensureDraft(code).providerId}`).join('|'),
+  () => {
+    refreshAvailabilityByCurrentSelection()
+  },
 )
 
 onMounted(async () => {
@@ -271,13 +465,25 @@ const openProviderPicker = (serviceCode: string) => {
 
 const openStartTimePicker = (serviceCode: string) => {
   pickerServiceCode.value = serviceCode
-  selectedStartOption.value = ensureDraft(serviceCode).startTime
+  const draft = ensureDraft(serviceCode)
+  if (!draft.providerId) {
+    showToast('请先选择服务者')
+    return
+  }
   showStartTimePicker.value = true
 }
 
 const openEndTimePicker = (serviceCode: string) => {
   pickerServiceCode.value = serviceCode
-  selectedEndOption.value = ensureDraft(serviceCode).endTime
+  const draft = ensureDraft(serviceCode)
+  if (!draft.providerId) {
+    showToast('请先选择服务者')
+    return
+  }
+  if (!draft.startTime) {
+    showToast('请先选择开始时间')
+    return
+  }
   showEndTimePicker.value = true
 }
 
@@ -390,6 +596,12 @@ const submit = async () => {
 
     if (!isAfterTime(draft.startTime, draft.endTime)) {
       error.value = `${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}的结束时间必须晚于开始时间。`
+      return
+    }
+
+    const validEndSlots = getValidEndSlots(serviceCode, draft.startTime)
+    if (!validEndSlots.length || !validEndSlots.includes(draft.endTime)) {
+      error.value = `${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}当前时间不在可约档期，请重新选择。`
       return
     }
 
@@ -535,6 +747,65 @@ const submit = async () => {
             </button>
           </div>
         </div>
+      </div>
+
+      <div class="mt-2 rounded-xl border border-emerald-100 bg-emerald-50/70 p-2.5">
+        <p class="mb-1 text-xs font-bold text-slate-600">
+          <i class="fa-regular fa-clock mr-1 text-emerald-500" />当日档期
+        </p>
+
+        <p v-if="availabilityByService[service.code]?.loading" class="text-xs text-slate-500">正在加载档期...</p>
+        <p v-else-if="availabilityByService[service.code]?.error" class="text-xs text-amber-700">
+          {{ availabilityByService[service.code]?.error }}
+        </p>
+        <template v-else>
+          <div class="mb-1">
+            <p class="mb-1 text-[11px] font-bold text-rose-500">已占用时段</p>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="range in availabilityByService[service.code]?.busyRanges || []"
+                :key="`${service.code}-busy-${range.startTime}-${range.endTime}`"
+                class="chip border border-rose-200 bg-rose-50 text-rose-500"
+              >
+                {{ range.startTime }} - {{ range.endTime }}
+              </span>
+              <span v-if="!(availabilityByService[service.code]?.busyRanges || []).length" class="text-[11px] text-slate-400">
+                当天暂无已占用时段
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <p class="mb-1 text-[11px] font-bold text-emerald-600">可约时间段</p>
+            <div class="flex flex-wrap gap-1">
+              <button
+                v-for="range in availabilityByService[service.code]?.freeRanges || []"
+                :key="`${service.code}-free-${range.startTime}-${range.endTime}`"
+                type="button"
+                class="chip border border-emerald-200 bg-emerald-50 text-emerald-600"
+                @click="applyFreeRange(service.code, range)"
+              >
+                {{ range.startTime }} - {{ range.endTime }}
+              </button>
+              <span v-if="!(availabilityByService[service.code]?.freeRanges || []).length" class="text-[11px] text-slate-400">
+                当天暂无可约时间
+              </span>
+            </div>
+            <p v-if="(availabilityByService[service.code]?.freeRanges || []).length" class="mt-1 text-[11px] text-slate-400">
+              点击任一可约时间段可一键填入开始与结束时间
+            </p>
+          </div>
+
+          <div class="mt-2 flex flex-wrap gap-1">
+            <span
+              v-for="slot in ['08:00', '09:00', '10:00', '13:00', '15:00', '18:00']"
+              :key="`${service.code}-slot-${slot}`"
+              :class="slotTagClass(slot, service.code)"
+            >
+              {{ slot }}
+            </span>
+          </div>
+        </template>
       </div>
 
       <div class="mt-3">
