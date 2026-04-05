@@ -15,10 +15,12 @@ import {
   authApi,
   customerApi,
   customerTypeApi,
+  profileApi,
   scheduleApi,
   serviceTypeApi,
   settingsApi,
   type CustomerTypeItem,
+  type ProfileData,
   type ServiceTypeItem,
 } from '../api/app'
 import { clearToken, getToken, setToken } from '../api/http'
@@ -66,6 +68,7 @@ export const useAppStore = defineStore('app', () => {
   const customers = ref<Customer[]>([])
   const customerTypes = ref<CustomerTypeItem[]>([])
   const serviceTypes = ref<ServiceTypeItem[]>([])
+  const profile = ref<ProfileData | null>(null)
   const schedules = ref<Schedule[]>([])
   const defaultReminders = ref<ReminderType[]>(['1d', '1h'])
   const backupEnabled = ref(true)
@@ -106,10 +109,11 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const loadInitialData = async () => {
-    const [customersData, schedulesData, settingsData] = await Promise.all([
+    const [customersData, schedulesData, settingsData, profileData] = await Promise.all([
       customerApi.list(),
       scheduleApi.list(),
       settingsApi.get(),
+      profileApi.get(),
     ])
 
     let customerTypeData: CustomerTypeItem[] = []
@@ -143,10 +147,20 @@ export const useAppStore = defineStore('app', () => {
     customers.value = customersData.map(normalizeCustomer)
     customerTypes.value = customerTypeData
     serviceTypes.value = serviceTypeData
+    profile.value = {
+      ...profileData,
+      avatarUrl: profileData.avatarUrl || '',
+      bio: profileData.bio || '',
+      portfolioImages: profileData.portfolioImages || [],
+    }
     schedules.value = schedulesData.map(normalizeSchedule)
     theme.value = settingsData.theme
     defaultReminders.value = settingsData.defaultReminders
     backupEnabled.value = settingsData.backupEnabled
+    account.value = profile.value.nickname || profile.value.account
+    userRole.value = profile.value.role || userRole.value
+    localStorage.setItem(ACCOUNT_KEY, account.value)
+    localStorage.setItem(ROLE_KEY, userRole.value)
   }
 
   const login = async (payload: LoginPayload) => {
@@ -168,6 +182,7 @@ export const useAppStore = defineStore('app', () => {
     customers.value = []
     customerTypes.value = []
     serviceTypes.value = []
+    profile.value = null
     schedules.value = []
     defaultReminders.value = ['1d', '1h']
     backupEnabled.value = true
@@ -193,6 +208,21 @@ export const useAppStore = defineStore('app', () => {
     theme.value = updated.theme
     defaultReminders.value = updated.defaultReminders
     backupEnabled.value = updated.backupEnabled
+  }
+
+  const updateProfile = async (payload: Partial<Pick<ProfileData, 'nickname' | 'avatarUrl' | 'bio' | 'portfolioImages'>>) => {
+    const updated = await profileApi.update(payload)
+    profile.value = {
+      ...updated,
+      avatarUrl: updated.avatarUrl || '',
+      bio: updated.bio || '',
+      portfolioImages: updated.portfolioImages || [],
+    }
+    account.value = profile.value.nickname || profile.value.account
+    userRole.value = profile.value.role || userRole.value
+    localStorage.setItem(ACCOUNT_KEY, account.value)
+    localStorage.setItem(ROLE_KEY, userRole.value)
+    return profile.value
   }
 
   const addCustomer = async (payload: CustomerPayload) => {
@@ -379,6 +409,7 @@ export const useAppStore = defineStore('app', () => {
     customers,
     customerTypes,
     serviceTypes,
+    profile,
     schedules,
     stats,
     defaultReminders,
@@ -389,6 +420,7 @@ export const useAppStore = defineStore('app', () => {
     logout,
     setTheme,
     updateSettings,
+    updateProfile,
     addCustomer,
     updateCustomer,
     deleteCustomer,

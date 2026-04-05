@@ -26,6 +26,12 @@ export class User {
   @Column({ type: 'varchar', length: 64 })
   nickname: string;
 
+  @Column({ name: 'avatar_url', type: 'varchar', length: 255, default: '' })
+  avatarUrl: string;
+
+  @Column({ type: 'varchar', length: 255, default: '' })
+  bio: string;
+
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -47,4 +53,7 @@ export class User {
 
   @OneToMany(() => Schedule, (schedule) => schedule.user)
   schedules: Schedule[];
+
+  @Column({ name: 'portfolio_images', type: 'json', nullable: true })
+  portfolioImages: string[] | null;
 }

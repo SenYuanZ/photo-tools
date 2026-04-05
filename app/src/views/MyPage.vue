@@ -11,6 +11,12 @@ const isMakeupRole = computed(() => store.userRole === 'makeup_artist')
 const roleLabel = computed(() => (isMakeupRole.value ? '妆娘' : '摄影师'))
 const entryTitle = computed(() => (isMakeupRole.value ? '约妆录入' : '排单录入'))
 const entryDesc = computed(() => (isMakeupRole.value ? '关联客户并安排妆造档期' : '关联客户并校验冲突'))
+const displayName = computed(() => store.profile?.nickname || store.account || roleLabel.value)
+const avatarUrl = computed(
+  () =>
+    store.profile?.avatarUrl ||
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80',
+)
 
 const jump = (name: string) => router.push({ name })
 
@@ -39,12 +45,12 @@ const copyModelBookingLink = async () => {
     <header class="card mb-4 p-4 soft-blue">
       <div class="flex items-center gap-3">
         <img
-          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80"
+          :src="avatarUrl"
           alt="头像"
           class="h-14 w-14 rounded-2xl object-cover"
         />
         <div>
-          <p class="title-font text-2xl text-blue-500">{{ store.account || roleLabel }}</p>
+          <p class="title-font text-2xl text-blue-500">{{ displayName }}</p>
           <p class="text-xs text-slate-500">今日待服务 {{ store.stats.todayCount }} 组</p>
         </div>
       </div>
@@ -71,6 +77,10 @@ const copyModelBookingLink = async () => {
       <button class="card p-3 text-left soft-blue" type="button" @click="jump('history')">
         <p class="font-extrabold"><i class="fa-solid fa-clock-rotate-left mr-1 text-blue-500" />历史排单</p>
         <p class="mt-1 text-xs text-slate-500">日期和类型筛选复盘</p>
+      </button>
+      <button class="card col-span-2 p-3 text-left soft-blue" type="button" @click="jump('profile')">
+        <p class="font-extrabold"><i class="fa-solid fa-id-badge mr-1 text-blue-500" />个人资料与作品集</p>
+        <p class="mt-1 text-xs text-slate-500">可修改昵称、头像、简介并管理作品图片</p>
       </button>
       <button class="card col-span-2 p-3 text-left soft-yellow" type="button" @click="jump('settings')">
         <p class="font-extrabold"><i class="fa-solid fa-sliders mr-1 text-amber-500" />个人设置</p>

@@ -16,6 +16,7 @@ import { User } from './database/entities/user.entity';
 import { SeedService } from './database/seed.service';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PublicBookingModule } from './public-booking/public-booking.module';
+import { ProfileModule } from './profile/profile.module';
 import { CustomersModule } from './customers/customers.module';
 import { InviteCodesModule } from './invite-codes/invite-codes.module';
 import { SchedulesModule } from './schedules/schedules.module';
@@ -69,6 +70,7 @@ import { SettingsModule } from './settings/settings.module';
     AuthModule,
     DashboardModule,
     PublicBookingModule,
+    ProfileModule,
     CustomerTypesModule,
     ServiceTypesModule,
     InviteCodesModule,

@@ -73,6 +73,12 @@ const routes = [
     meta: { requiresAuth: true, tab: 'my' },
   },
   {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/ProfilePage.vue'),
+    meta: { requiresAuth: true, tab: 'my' },
+  },
+  {
     path: '/invite-codes',
     name: 'invite-codes',
     component: () => import('../views/InviteCodeManagementPage.vue'),

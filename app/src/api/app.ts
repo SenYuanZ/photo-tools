@@ -34,6 +34,16 @@ export interface DashboardOverview {
   monthCount: number
 }
 
+export interface ProfileData {
+  id: string
+  account: string
+  nickname: string
+  role: UserRole
+  avatarUrl: string
+  bio: string
+  portfolioImages: string[]
+}
+
 export interface SettingsData {
   id: number
   userId: string
@@ -282,6 +292,64 @@ export const settingsApi = {
     return request<SettingsData>('/settings', {
       method: 'PATCH',
       body: payload,
+    })
+  },
+}
+
+export const profileApi = {
+  get() {
+    return request<ProfileData>('/profile')
+  },
+  update(payload: Partial<Pick<ProfileData, 'nickname' | 'avatarUrl' | 'bio' | 'portfolioImages'>>) {
+    return request<ProfileData>('/profile', {
+      method: 'PATCH',
+      body: payload,
+    })
+  },
+  uploadPortfolioImage(file: File, onProgress?: (percent: number) => void) {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000/api'
+    const token = getToken()
+
+    return new Promise<{ url: string; thumbnail: string }>((resolve, reject) => {
+      const formData = new FormData()
+      formData.append('files', file)
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE_URL}/profile/portfolio-images`, true)
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      }
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable || !onProgress) {
+          return
+        }
+        const percent = Math.min(99, Math.max(0, Math.round((event.loaded / event.total) * 100)))
+        onProgress(percent)
+      }
+
+      xhr.onerror = () => {
+        reject(new Error('上传失败，请检查网络后重试'))
+      }
+
+      xhr.onload = () => {
+        try {
+          const payload = xhr.responseText ? JSON.parse(xhr.responseText) : null
+          if (xhr.status >= 200 && xhr.status < 300 && payload?.urls?.length) {
+            onProgress?.(100)
+            resolve({
+              url: payload.urls[0],
+              thumbnail: payload.thumbnails?.[0] || payload.urls[0],
+            })
+            return
+          }
+          reject(new Error(payload?.message || '上传失败'))
+        } catch {
+          reject(new Error('上传失败'))
+        }
+      }
+
+      xhr.send(formData)
     })
   },
 }
