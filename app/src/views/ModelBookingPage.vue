@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, CellGroup, DatePicker, Field, Picker, Popup, Uploader, showImagePreview, showToast } from 'vant'
 import type { UploaderFileListItem } from 'vant'
@@ -44,7 +44,38 @@ type AvailabilityState = {
   lastKey: string
 }
 
+type ProviderAvailabilitySummary = {
+  loading: boolean
+  key: string
+  freeRangeCount: number | null
+  availableSlotCount: number | null
+}
+
 const router = useRouter()
+const RECENT_PROVIDER_STORAGE_KEY = 'photo_order_recent_providers'
+
+const parseRecentProviderStorage = () => {
+  try {
+    const raw = localStorage.getItem(RECENT_PROVIDER_STORAGE_KEY)
+    if (!raw) {
+      return {
+        photography: [],
+        makeup: [],
+      } as Record<string, string[]>
+    }
+
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    return {
+      photography: Array.isArray(parsed.photography) ? parsed.photography.filter((item) => typeof item === 'string') : [],
+      makeup: Array.isArray(parsed.makeup) ? parsed.makeup.filter((item) => typeof item === 'string') : [],
+    }
+  } catch {
+    return {
+      photography: [],
+      makeup: [],
+    } as Record<string, string[]>
+  }
+}
 
 const form = reactive({
   modelName: '',
@@ -63,6 +94,10 @@ const providersByService = reactive<Record<string, PublicProvider[]>>({})
 const loadingProvidersByService = reactive<Record<string, boolean>>({})
 const availabilityByService = reactive<Record<string, AvailabilityState>>({})
 const availabilityRequestSeq = reactive<Record<string, number>>({})
+const providerAvailabilityByService = reactive<
+  Record<string, Record<string, ProviderAvailabilitySummary>>
+>({})
+const providerAvailabilityRequestSeq = reactive<Record<string, number>>({})
 
 const serviceDrafts = reactive<Record<string, ServiceDraft>>({
   photography: {
@@ -96,6 +131,11 @@ const submitting = ref(false)
 
 const error = ref('')
 const success = ref('')
+const providerKeywordInput = ref('')
+const providerKeyword = ref('')
+const recentProviderIdsByService = reactive<Record<string, string[]>>(parseRecentProviderStorage())
+
+let providerKeywordTimer = 0
 
 const serviceTypeLabelMap = computed(() =>
   new Map(serviceTypes.value.map((item) => [item.code, item.name])),
@@ -107,12 +147,147 @@ const activeServices = computed(() =>
     .filter(Boolean) as ServiceTypeItem[],
 )
 
-const providerColumns = computed(() =>
-  (providersByService[pickerServiceCode.value] || []).map((item) => ({
-    text: `${item.nickname}`,
-    value: item.id,
-  })),
-)
+const providersOfPicker = computed(() => providersByService[pickerServiceCode.value] || [])
+
+const filterProviderWithKeyword = (provider: PublicProvider) => {
+  const keyword = providerKeyword.value.trim().toLowerCase()
+  if (!keyword) {
+    return true
+  }
+
+  return [provider.nickname, provider.account, provider.bio]
+    .join(' ')
+    .toLowerCase()
+    .includes(keyword)
+}
+
+const ensureProviderAvailabilitySummary = (serviceCode: string, providerId: string) => {
+  if (!providerAvailabilityByService[serviceCode]) {
+    providerAvailabilityByService[serviceCode] = {}
+  }
+
+  if (!providerAvailabilityByService[serviceCode][providerId]) {
+    providerAvailabilityByService[serviceCode][providerId] = {
+      loading: false,
+      key: '',
+      freeRangeCount: null,
+      availableSlotCount: null,
+    }
+  }
+
+  return providerAvailabilityByService[serviceCode][providerId]
+}
+
+const getProviderAvailabilitySummary = (serviceCode: string, providerId: string) =>
+  providerAvailabilityByService[serviceCode]?.[providerId]
+
+const getProviderAvailabilityScore = (serviceCode: string, providerId: string) => {
+  const summary = getProviderAvailabilitySummary(serviceCode, providerId)
+  if (!summary || summary.key !== form.date) {
+    return -1
+  }
+  if (summary.loading) {
+    return -0.5
+  }
+  if (summary.freeRangeCount === null) {
+    return -1
+  }
+  return summary.freeRangeCount
+}
+
+const getProviderAvailabilityText = (serviceCode: string, providerId: string) => {
+  const summary = getProviderAvailabilitySummary(serviceCode, providerId)
+  if (!summary || summary.key !== form.date) {
+    return '待统计'
+  }
+  if (summary.loading) {
+    return '统计中'
+  }
+  if ((summary.freeRangeCount ?? 0) <= 0) {
+    return '无可约'
+  }
+  return `可约${summary.freeRangeCount}段`
+}
+
+const getProviderAvailabilityClass = (serviceCode: string, providerId: string) => {
+  const summary = getProviderAvailabilitySummary(serviceCode, providerId)
+  if (!summary || summary.key !== form.date || summary.loading) {
+    return 'text-slate-400'
+  }
+  if ((summary.freeRangeCount ?? 0) <= 0) {
+    return 'text-rose-400'
+  }
+  return 'text-emerald-600'
+}
+
+const sortProvidersByAvailability = (serviceCode: string, providers: PublicProvider[]) =>
+  [...providers].sort((left, right) => {
+    const leftScore = getProviderAvailabilityScore(serviceCode, left.id)
+    const rightScore = getProviderAvailabilityScore(serviceCode, right.id)
+    if (leftScore !== rightScore) {
+      return rightScore - leftScore
+    }
+    return left.nickname.localeCompare(right.nickname, 'zh-CN')
+  })
+
+const recentProvidersOfPicker = computed(() => {
+  const recentIds = recentProviderIdsByService[pickerServiceCode.value] || []
+  if (!recentIds.length) {
+    return [] as PublicProvider[]
+  }
+
+  const map = new Map(providersOfPicker.value.map((item) => [item.id, item]))
+  return recentIds
+    .map((id) => map.get(id))
+    .filter((item): item is PublicProvider => Boolean(item))
+    .filter(filterProviderWithKeyword)
+    .sort((left, right) => {
+      const leftScore = getProviderAvailabilityScore(pickerServiceCode.value, left.id)
+      const rightScore = getProviderAvailabilityScore(pickerServiceCode.value, right.id)
+      return rightScore - leftScore
+    })
+})
+
+const commonProvidersOfPicker = computed(() => {
+  const recentSet = new Set((recentProviderIdsByService[pickerServiceCode.value] || []))
+  return sortProvidersByAvailability(
+    pickerServiceCode.value,
+    providersOfPicker.value
+    .filter((item) => !recentSet.has(item.id))
+    .filter(filterProviderWithKeyword),
+  )
+})
+
+const selectedProviderIdOfPicker = computed(() => ensureDraft(pickerServiceCode.value).providerId)
+
+const persistRecentProviderStorage = () => {
+  localStorage.setItem(
+    RECENT_PROVIDER_STORAGE_KEY,
+    JSON.stringify({
+      photography: recentProviderIdsByService.photography || [],
+      makeup: recentProviderIdsByService.makeup || [],
+    }),
+  )
+}
+
+const markRecentProvider = (serviceCode: string, providerId: string) => {
+  const current = recentProviderIdsByService[serviceCode] || []
+  recentProviderIdsByService[serviceCode] = [providerId, ...current.filter((item) => item !== providerId)].slice(0, 5)
+  persistRecentProviderStorage()
+}
+
+const clearRecentProviders = (serviceCode: string) => {
+  recentProviderIdsByService[serviceCode] = []
+  persistRecentProviderStorage()
+}
+
+const chooseProvider = (serviceCode: string, providerId: string) => {
+  const draft = ensureDraft(serviceCode)
+  draft.providerId = providerId
+  markRecentProvider(serviceCode, providerId)
+  ensureAvailabilityState(serviceCode).lastKey = ''
+  showProviderPicker.value = false
+}
 
 const customerTypeColumns = computed(() =>
   customerTypes.value.map((item) => ({
@@ -324,6 +499,13 @@ const loadAvailability = async (serviceCode: string) => {
     availabilityState.busyRanges = result.busyRanges || []
     availabilityState.freeRanges = result.freeRanges || []
     availabilityState.lastKey = requestKey
+
+    const summary = ensureProviderAvailabilitySummary(serviceCode, draft.providerId)
+    summary.key = form.date
+    summary.loading = false
+    summary.availableSlotCount = result.availableSlots?.length ?? 0
+    summary.freeRangeCount = result.freeRanges?.length ?? 0
+
     normalizeDraftTimeByAvailability(serviceCode)
   } catch (requestError) {
     if (availabilityRequestSeq[serviceCode] !== nextSeq) {
@@ -340,6 +522,67 @@ const loadAvailability = async (serviceCode: string) => {
       availabilityState.loading = false
     }
   }
+}
+
+const loadProviderAvailabilitySummary = async (serviceCode: string, providerId: string) => {
+  if (!form.date) {
+    return
+  }
+
+  const summary = ensureProviderAvailabilitySummary(serviceCode, providerId)
+  if (summary.key === form.date && (summary.loading || summary.freeRangeCount !== null)) {
+    return
+  }
+
+  const seqKey = `${serviceCode}:${providerId}`
+  const nextSeq = (providerAvailabilityRequestSeq[seqKey] || 0) + 1
+  providerAvailabilityRequestSeq[seqKey] = nextSeq
+
+  summary.loading = true
+  summary.key = form.date
+
+  try {
+    const result = await publicBookingApi.getAvailability(providerId, form.date, serviceCode)
+    if (providerAvailabilityRequestSeq[seqKey] !== nextSeq) {
+      return
+    }
+
+    summary.availableSlotCount = result.availableSlots?.length ?? 0
+    summary.freeRangeCount = result.freeRanges?.length ?? 0
+  } catch {
+    if (providerAvailabilityRequestSeq[seqKey] !== nextSeq) {
+      return
+    }
+
+    summary.availableSlotCount = null
+    summary.freeRangeCount = null
+    summary.key = ''
+  } finally {
+    if (providerAvailabilityRequestSeq[seqKey] === nextSeq) {
+      summary.loading = false
+    }
+  }
+}
+
+const prefetchProviderAvailabilitySummaries = async (serviceCode: string) => {
+  const providers = providersByService[serviceCode] || []
+  if (!providers.length) {
+    return
+  }
+
+  const queue = [...providers]
+  const workerCount = Math.min(4, queue.length)
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (queue.length) {
+        const target = queue.shift()
+        if (!target) {
+          return
+        }
+        await loadProviderAvailabilitySummary(serviceCode, target.id)
+      }
+    }),
+  )
 }
 
 const slotTagClass = (slot: string, serviceCode: string) => {
@@ -429,6 +672,8 @@ const loadProvidersForService = async (serviceCode: string) => {
     if (!draft.providerId && providersByService[serviceCode].length) {
       draft.providerId = providersByService[serviceCode][0].id
     }
+
+    void prefetchProviderAvailabilitySummaries(serviceCode)
   } catch (requestError) {
     error.value = resolvePublicErrorMessage(requestError, '服务者列表加载失败，请稍后重试')
     providersByService[serviceCode] = []
@@ -462,8 +707,20 @@ watch(
   () => {
     selectedServiceCodes.value.forEach((code) => {
       ensureAvailabilityState(code).lastKey = ''
+      const summaries = providerAvailabilityByService[code]
+      if (summaries) {
+        Object.values(summaries).forEach((summary) => {
+          summary.key = ''
+          summary.freeRangeCount = null
+          summary.availableSlotCount = null
+          summary.loading = false
+        })
+      }
     })
     refreshAvailabilityByCurrentSelection()
+    selectedServiceCodes.value.forEach((code) => {
+      void prefetchProviderAvailabilitySummaries(code)
+    })
   },
 )
 
@@ -473,6 +730,17 @@ watch(
     refreshAvailabilityByCurrentSelection()
   },
 )
+
+watch(providerKeywordInput, (value) => {
+  window.clearTimeout(providerKeywordTimer)
+  providerKeywordTimer = window.setTimeout(() => {
+    providerKeyword.value = value
+  }, 260)
+})
+
+onBeforeUnmount(() => {
+  window.clearTimeout(providerKeywordTimer)
+})
 
 onMounted(async () => {
   await Promise.all([loadServiceTypes(), loadCustomerTypes()])
@@ -507,8 +775,12 @@ const openDate = () => {
 
 const openProviderPicker = (serviceCode: string) => {
   pickerServiceCode.value = serviceCode
+  providerKeywordInput.value = ''
+  providerKeyword.value = ''
   if (!providersByService[serviceCode]?.length && !loadingProvidersByService[serviceCode]) {
     void loadProvidersForService(serviceCode)
+  } else {
+    void prefetchProviderAvailabilitySummaries(serviceCode)
   }
   showProviderPicker.value = true
 }
@@ -908,11 +1180,99 @@ const submit = async () => {
     </Button>
 
     <Popup v-model:show="showProviderPicker" position="bottom" round>
-      <Picker
-        :columns="providerColumns"
-        @cancel="showProviderPicker = false"
-        @confirm="({ selectedOptions }: any) => { serviceDrafts[pickerServiceCode].providerId = selectedOptions[0]?.value || ''; showProviderPicker = false }"
-      />
+      <section class="max-h-[78vh] p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <p class="text-sm font-extrabold text-slate-700">
+            选择{{ pickerServiceCode === 'makeup' ? '妆娘' : '摄影师' }}
+          </p>
+          <button class="chip" type="button" @click="showProviderPicker = false">关闭</button>
+        </div>
+
+        <Field
+          v-model="providerKeywordInput"
+          class="mb-2 rounded-xl"
+          clearable
+          placeholder="搜索昵称 / 账号 / 简介关键词"
+        >
+          <template #left-icon>
+            <i class="fa-solid fa-magnifying-glass text-slate-400" />
+          </template>
+        </Field>
+
+        <div class="max-h-[58vh] overflow-y-auto">
+          <article v-if="recentProvidersOfPicker.length" class="mb-2">
+            <div class="mb-1 flex items-center justify-between">
+              <p class="text-xs font-bold text-slate-500">最近选择</p>
+              <button class="chip" type="button" @click="clearRecentProviders(pickerServiceCode)">清空</button>
+            </div>
+
+            <button
+              v-for="provider in recentProvidersOfPicker"
+              :key="`recent-${provider.id}`"
+              type="button"
+              class="mb-1 w-full rounded-xl border p-2 text-left"
+              :class="selectedProviderIdOfPicker === provider.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'"
+              @click="chooseProvider(pickerServiceCode, provider.id)"
+            >
+              <div class="flex items-center gap-2">
+                <img
+                  :src="provider.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80'"
+                  alt="服务者头像"
+                  class="h-9 w-9 rounded-lg object-cover"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-xs font-extrabold text-slate-700">
+                    {{ provider.nickname }}
+                    <span class="chip ml-1">{{ provider.role === 'makeup_artist' ? '妆娘' : '摄影师' }}</span>
+                  </p>
+                  <p class="truncate text-[11px] text-slate-500">{{ provider.bio || provider.account }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[11px] font-bold" :class="getProviderAvailabilityClass(pickerServiceCode, provider.id)">
+                    {{ getProviderAvailabilityText(pickerServiceCode, provider.id) }}
+                  </p>
+                </div>
+              </div>
+            </button>
+          </article>
+
+          <article>
+            <p class="mb-1 text-xs font-bold text-slate-500">全部可选（{{ commonProvidersOfPicker.length }}，按可约时段排序）</p>
+            <button
+              v-for="provider in commonProvidersOfPicker"
+              :key="provider.id"
+              type="button"
+              class="mb-1 w-full rounded-xl border p-2 text-left"
+              :class="selectedProviderIdOfPicker === provider.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'"
+              @click="chooseProvider(pickerServiceCode, provider.id)"
+            >
+              <div class="flex items-center gap-2">
+                <img
+                  :src="provider.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80'"
+                  alt="服务者头像"
+                  class="h-9 w-9 rounded-lg object-cover"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-xs font-extrabold text-slate-700">
+                    {{ provider.nickname }}
+                    <span class="chip ml-1">{{ provider.role === 'makeup_artist' ? '妆娘' : '摄影师' }}</span>
+                  </p>
+                  <p class="truncate text-[11px] text-slate-500">{{ provider.bio || provider.account }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[11px] font-bold" :class="getProviderAvailabilityClass(pickerServiceCode, provider.id)">
+                    {{ getProviderAvailabilityText(pickerServiceCode, provider.id) }}
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <p v-if="!recentProvidersOfPicker.length && !commonProvidersOfPicker.length" class="py-6 text-center text-xs text-slate-400">
+              暂无匹配结果，试试其他关键词
+            </p>
+          </article>
+        </div>
+      </section>
     </Popup>
 
     <Popup v-model:show="showDatePicker" position="bottom" round>
