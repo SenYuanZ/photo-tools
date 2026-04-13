@@ -239,7 +239,7 @@ export const scheduleApi = {
     })
   },
   uploadReferenceImage(file: File, onProgress?: (percent: number) => void) {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000/api'
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
     const token = getToken()
 
     return new Promise<{ url: string; thumbnail: string }>((resolve, reject) => {
@@ -313,7 +313,7 @@ export const profileApi = {
     })
   },
   uploadPortfolioImage(file: File, onProgress?: (percent: number) => void) {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000/api'
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
     const token = getToken()
 
     return new Promise<{ url: string; thumbnail: string }>((resolve, reject) => {
@@ -440,7 +440,7 @@ export const publicBookingApi = {
     })
   },
   uploadReferenceImage(file: File, onProgress?: (percent: number) => void) {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000/api'
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
     return new Promise<{ url: string; thumbnail: string }>((resolve, reject) => {
       const formData = new FormData()

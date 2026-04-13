@@ -10,7 +10,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -18,7 +17,6 @@ import {
 import { mkdirSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import sharp from 'sharp';
@@ -78,19 +76,10 @@ export class SchedulesController {
       },
     }),
   )
-  async uploadReferenceImages(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Req() request: Request,
-  ) {
+  async uploadReferenceImages(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files?.length) {
       throw new BadRequestException('请上传 jpg/png/webp 图片文件');
     }
-
-    const protocol =
-      request.headers['x-forwarded-proto']?.toString() ||
-      request.protocol ||
-      'http';
-    const host = request.get('host') || '127.0.0.1:3000';
 
     try {
       const uploaded = await Promise.all(
@@ -113,8 +102,8 @@ export class SchedulesController {
             .toFile(thumbPath);
 
           return {
-            url: `${protocol}://${host}/uploads/references/${filename}`,
-            thumbnail: `${protocol}://${host}/uploads/references/thumbs/${filename}`,
+            url: `/uploads/references/${filename}`,
+            thumbnail: `/uploads/references/thumbs/${filename}`,
           };
         }),
       );

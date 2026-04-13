@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Patch,
   Post,
-  Req,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -19,7 +18,6 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import type { Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import sharp from 'sharp';
@@ -64,19 +62,10 @@ export class ProfileController {
       },
     }),
   )
-  async uploadPortfolioImages(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Req() request: Request,
-  ) {
+  async uploadPortfolioImages(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files?.length) {
       throw new BadRequestException('请上传 jpg/png/webp 图片文件');
     }
-
-    const protocol =
-      request.headers['x-forwarded-proto']?.toString() ||
-      request.protocol ||
-      'http';
-    const host = request.get('host') || '127.0.0.1:3000';
 
     try {
       const uploaded = await Promise.all(
@@ -99,8 +88,8 @@ export class ProfileController {
             .toFile(thumbPath);
 
           return {
-            url: `${protocol}://${host}/uploads/portfolio/${filename}`,
-            thumbnail: `${protocol}://${host}/uploads/portfolio/thumbs/${filename}`,
+            url: `/uploads/portfolio/${filename}`,
+            thumbnail: `/uploads/portfolio/thumbs/${filename}`,
           };
         }),
       );

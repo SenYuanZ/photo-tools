@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../database/entities/user.entity';
+import {
+  normalizeUploadUrl,
+  normalizeUploadUrls,
+} from '../common/utils/upload-url.util';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -32,9 +36,9 @@ export class ProfileService {
 
     return {
       ...user,
-      avatarUrl: user.avatarUrl || '',
+      avatarUrl: normalizeUploadUrl(user.avatarUrl),
       bio: user.bio || '',
-      portfolioImages: user.portfolioImages || [],
+      portfolioImages: normalizeUploadUrls(user.portfolioImages),
       portfolioPublic: Boolean(user.portfolioPublic),
     };
   }
@@ -53,7 +57,7 @@ export class ProfileService {
     }
 
     if (payload.avatarUrl !== undefined) {
-      user.avatarUrl = payload.avatarUrl;
+      user.avatarUrl = normalizeUploadUrl(payload.avatarUrl);
     }
 
     if (payload.bio !== undefined) {
@@ -61,7 +65,7 @@ export class ProfileService {
     }
 
     if (payload.portfolioImages !== undefined) {
-      user.portfolioImages = payload.portfolioImages;
+      user.portfolioImages = normalizeUploadUrls(payload.portfolioImages);
     }
 
     if (payload.portfolioPublic !== undefined) {
@@ -75,9 +79,9 @@ export class ProfileService {
       account: saved.account,
       nickname: saved.nickname,
       role: saved.role,
-      avatarUrl: saved.avatarUrl || '',
+      avatarUrl: normalizeUploadUrl(saved.avatarUrl),
       bio: saved.bio || '',
-      portfolioImages: saved.portfolioImages || [],
+      portfolioImages: normalizeUploadUrls(saved.portfolioImages),
       portfolioPublic: Boolean(saved.portfolioPublic),
     };
   }

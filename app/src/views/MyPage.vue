@@ -29,10 +29,37 @@ const openModelBooking = () => {
   router.push({ name: 'model-booking' })
 }
 
+const copyByExecCommand = (text: string) => {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.top = '-9999px'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  textarea.setSelectionRange(0, textarea.value.length)
+  const success = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  return success
+}
+
+const copyText = async (text: string) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return true
+  }
+
+  return copyByExecCommand(text)
+}
+
 const copyModelBookingLink = async () => {
-  const link = `${window.location.origin}/model-booking`
+  const link = `${window.location.origin}${router.resolve({ name: 'model-booking' }).href}`
   try {
-    await navigator.clipboard.writeText(link)
+    const copied = await copyText(link)
+    if (!copied) {
+      throw new Error('copy failed')
+    }
     showToast('约拍链接已复制')
   } catch {
     showToast('复制失败，请手动复制')

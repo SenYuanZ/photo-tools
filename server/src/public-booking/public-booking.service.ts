@@ -16,6 +16,10 @@ import { User } from '../database/entities/user.entity';
 import { ServiceTypesService } from '../service-types/service-types.service';
 import { SchedulesService } from '../schedules/schedules.service';
 import { isTimeOverlap } from '../common/utils/time.util';
+import {
+  normalizeUploadUrl,
+  normalizeUploadUrls,
+} from '../common/utils/upload-url.util';
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
 
 const STEP_MINUTES = 30;
@@ -110,10 +114,12 @@ export class PublicBookingService {
       nickname: user.nickname,
       account: user.account,
       role: user.role,
-      avatarUrl: user.avatarUrl || '',
+      avatarUrl: normalizeUploadUrl(user.avatarUrl),
       bio: user.bio || '',
       portfolioPublic: Boolean(user.portfolioPublic),
-      portfolioImages: user.portfolioPublic ? user.portfolioImages || [] : [],
+      portfolioImages: user.portfolioPublic
+        ? normalizeUploadUrls(user.portfolioImages)
+        : [],
     }));
   }
 

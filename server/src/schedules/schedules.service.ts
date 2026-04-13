@@ -16,6 +16,7 @@ import {
 import { CustomerTypesService } from '../customer-types/customer-types.service';
 import { ServiceTypesService } from '../service-types/service-types.service';
 import { isTimeOverlap, isTimeRangeValid } from '../common/utils/time.util';
+import { normalizeUploadUrls } from '../common/utils/upload-url.util';
 import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
@@ -75,7 +76,11 @@ export class SchedulesService {
       });
     }
 
-    return builder.getMany();
+    const schedules = await builder.getMany();
+    return schedules.map((item) => ({
+      ...item,
+      referenceImages: normalizeUploadUrls(item.referenceImages),
+    }));
   }
 
   async findOne(userId: string, id: string) {
@@ -86,7 +91,10 @@ export class SchedulesService {
     if (!schedule) {
       throw new NotFoundException('排单不存在');
     }
-    return schedule;
+    return {
+      ...schedule,
+      referenceImages: normalizeUploadUrls(schedule.referenceImages),
+    };
   }
 
   async create(userId: string, payload: CreateScheduleDto) {
@@ -183,9 +191,13 @@ export class SchedulesService {
       depositStatus: payload.depositStatus,
       amount: payload.amount,
       reminders,
-      referenceImages: payload.referenceImages ?? [],
+      referenceImages: normalizeUploadUrls(payload.referenceImages),
     });
-    return this.schedulesRepository.save(schedule);
+    const saved = await this.schedulesRepository.save(schedule);
+    return {
+      ...saved,
+      referenceImages: normalizeUploadUrls(saved.referenceImages),
+    };
   }
 
   private async findOrCreateTemporaryCustomer(
@@ -295,12 +307,16 @@ export class SchedulesService {
       });
     }
 
+    Object.assign(schedule, payload);
     if (payload.referenceImages) {
-      schedule.referenceImages = payload.referenceImages;
+      schedule.referenceImages = normalizeUploadUrls(payload.referenceImages);
     }
 
-    Object.assign(schedule, payload);
-    return this.schedulesRepository.save(schedule);
+    const saved = await this.schedulesRepository.save(schedule);
+    return {
+      ...saved,
+      referenceImages: normalizeUploadUrls(saved.referenceImages),
+    };
   }
 
   async remove(userId: string, id: string) {
@@ -334,7 +350,11 @@ export class SchedulesService {
       });
     }
 
-    return builder.getMany();
+    const schedules = await builder.getMany();
+    return schedules.map((item) => ({
+      ...item,
+      referenceImages: normalizeUploadUrls(item.referenceImages),
+    }));
   }
 
   private async findConflict(

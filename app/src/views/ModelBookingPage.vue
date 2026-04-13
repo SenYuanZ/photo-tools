@@ -378,6 +378,18 @@ const resolvePublicErrorMessage = (requestError: unknown, fallback: string) => {
     return '公开约单提交接口未生效，请重启后端服务后重试。'
   }
 
+  if (message.includes('File too large') || message.includes('LIMIT_FILE_SIZE')) {
+    return '图片不能超过 12MB，请压缩后重试。'
+  }
+
+  if (message.includes('请上传图片文件')) {
+    return '请上传图片文件（支持 JPG/PNG/WEBP/HEIC）。'
+  }
+
+  if (message.includes('图片处理失败')) {
+    return '当前图片格式暂不支持，请改用 JPG/PNG 后重试。'
+  }
+
   if (message.includes('Failed to fetch')) {
     return '无法连接后端服务，请确认 server 已启动。'
   }

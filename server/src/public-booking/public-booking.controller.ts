@@ -7,14 +7,12 @@ import {
   HttpStatus,
   Post,
   Query,
-  Req,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import type { Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import sharp from 'sharp';
@@ -27,8 +25,26 @@ const uploadThumbDir = join(uploadDir, 'thumbs');
 mkdirSync(uploadDir, { recursive: true });
 mkdirSync(uploadThumbDir, { recursive: true });
 
-const imageExtSet = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-const imageMimeSet = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const imageExtSet = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.heic',
+  '.heif',
+  '.avif',
+]);
+const imageMimeSet = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/heic-sequence',
+  'image/heif-sequence',
+  'image/avif',
+]);
 
 @Controller('public')
 export class PublicBookingController {
@@ -79,27 +95,23 @@ export class PublicBookingController {
     FilesInterceptor('files', 6, {
       storage: memoryStorage(),
       limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 12 * 1024 * 1024,
       },
       fileFilter: (_req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();
-        callback(null, imageExtSet.has(ext) && imageMimeSet.has(file.mimetype));
+        const mime = (file.mimetype || '').toLowerCase();
+        const isImageMime = mime.startsWith('image/');
+        callback(
+          null,
+          (isImageMime && imageMimeSet.has(mime)) || imageExtSet.has(ext),
+        );
       },
     }),
   )
-  async uploadReferenceImages(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Req() request: Request,
-  ) {
+  async uploadReferenceImages(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files?.length) {
-      throw new BadRequestException('请上传 jpg/png/webp 图片文件');
+      throw new BadRequestException('请上传图片文件（支持 jpg/png/webp/heic）');
     }
-
-    const protocol =
-      request.headers['x-forwarded-proto']?.toString() ||
-      request.protocol ||
-      'http';
-    const host = request.get('host') || '127.0.0.1:3000';
 
     try {
       const uploaded = await Promise.all(
@@ -122,8 +134,8 @@ export class PublicBookingController {
             .toFile(thumbPath);
 
           return {
-            url: `${protocol}://${host}/uploads/references/${filename}`,
-            thumbnail: `${protocol}://${host}/uploads/references/thumbs/${filename}`,
+            url: `/uploads/references/${filename}`,
+            thumbnail: `/uploads/references/thumbs/${filename}`,
           };
         }),
       );
