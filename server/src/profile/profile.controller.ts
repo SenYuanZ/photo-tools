@@ -54,7 +54,7 @@ export class ProfileController {
     FilesInterceptor('files', 6, {
       storage: memoryStorage(),
       limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (_req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();

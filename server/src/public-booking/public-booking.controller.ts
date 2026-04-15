@@ -95,7 +95,7 @@ export class PublicBookingController {
     FilesInterceptor('files', 6, {
       storage: memoryStorage(),
       limits: {
-        fileSize: 12 * 1024 * 1024,
+        fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (_req, file, callback) => {
         const ext = extname(file.originalname).toLowerCase();

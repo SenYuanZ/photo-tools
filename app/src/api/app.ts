@@ -8,6 +8,14 @@ import type {
 } from '../types/models'
 import { getToken, request } from './http'
 
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+function validateImageSize(file: File): void {
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new Error(`图片大小不能超过10MB，当前文件：${(file.size / 1024 / 1024).toFixed(1)}MB`)
+  }
+}
+
 export interface LoginResponse {
   token: string
   user: {
@@ -239,6 +247,8 @@ export const scheduleApi = {
     })
   },
   uploadReferenceImage(file: File, onProgress?: (percent: number) => void) {
+    validateImageSize(file)
+
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
     const token = getToken()
 
@@ -313,6 +323,8 @@ export const profileApi = {
     })
   },
   uploadPortfolioImage(file: File, onProgress?: (percent: number) => void) {
+    validateImageSize(file)
+
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
     const token = getToken()
 
@@ -440,6 +452,8 @@ export const publicBookingApi = {
     })
   },
   uploadReferenceImage(file: File, onProgress?: (percent: number) => void) {
+    validateImageSize(file)
+
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
     return new Promise<{ url: string; thumbnail: string }>((resolve, reject) => {
