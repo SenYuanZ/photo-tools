@@ -994,10 +994,10 @@ const submit = async () => {
 
     <article class="card mb-3 p-3">
       <CellGroup inset>
-        <Field v-model="form.modelName" label="模特姓名" placeholder="请输入你的姓名" clearable />
-        <Field v-model="form.modelPhone" label="联系电话" placeholder="请输入手机号" maxlength="11" clearable />
-        <Field :model-value="customerTypeLabel" label="客户类型" readonly is-link @click="showCustomerTypePicker = true" />
-        <Field :model-value="form.date" label="服务日期" readonly is-link @click="openDate" />
+        <Field v-model="form.modelName" label="模特姓名" required placeholder="请输入你的姓名" clearable />
+        <Field v-model="form.modelPhone" label="联系电话" required placeholder="请输入手机号" maxlength="11" clearable />
+        <Field :model-value="customerTypeLabel" label="客户类型" required readonly is-link @click="showCustomerTypePicker = true" />
+        <Field :model-value="form.date" label="服务日期" required readonly is-link @click="openDate" />
         <Field v-model="form.location" label="服务地点" placeholder="例如：创意园A栋 / 某某工作室" clearable />
         <Field v-model="form.note" label="协同备注" placeholder="可选：例如同一主题风格，妆容偏日系" clearable />
       </CellGroup>
@@ -1030,12 +1030,13 @@ const submit = async () => {
         <Field
           :model-value="selectedProviderLabel(service.code)"
           :label="service.code === 'makeup' ? '选择妆娘' : '选择摄影师'"
+          required
           readonly
           is-link
           @click="openProviderPicker(service.code)"
         />
-        <Field :model-value="serviceDrafts[service.code].startTime" label="开始时间" readonly is-link @click="openStartTimePicker(service.code)" />
-        <Field :model-value="serviceDrafts[service.code].endTime" label="结束时间" readonly is-link @click="openEndTimePicker(service.code)" />
+        <Field :model-value="serviceDrafts[service.code].startTime" label="开始时间" required readonly is-link @click="openStartTimePicker(service.code)" />
+        <Field :model-value="serviceDrafts[service.code].endTime" label="结束时间" required readonly is-link @click="openEndTimePicker(service.code)" />
         <Field
           v-model="serviceDrafts[service.code].requirement"
           :label="service.code === 'makeup' ? '妆造需求' : '拍摄需求'"

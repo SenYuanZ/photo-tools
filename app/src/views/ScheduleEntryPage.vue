@@ -206,6 +206,10 @@ const submit = async () => {
     error.value = '请先选择客户类型。'
     return
   }
+  if (!form.location) {
+    error.value = '请填写服务地点。'
+    return
+  }
 
   if (!isAfterTime(form.startTime, form.endTime)) {
     error.value = '结束时间必须晚于开始时间。'
@@ -341,29 +345,32 @@ const retryUpload = async (item: UploadItem) => {
           <Field
             :model-value="selectedCustomerLabel"
             label="选择客户"
+            required
             readonly
             is-link
             @click="showCustomerPicker = true"
           />
         </template>
         <template v-else>
-          <Field v-model="form.temporaryCustomerName" label="临时客户" placeholder="请输入姓名" clearable />
-          <Field v-model="form.temporaryCustomerPhone" label="联系电话" type="tel" placeholder="请输入手机号" clearable />
+          <Field v-model="form.temporaryCustomerName" label="临时客户" required placeholder="请输入姓名" clearable />
+          <Field v-model="form.temporaryCustomerPhone" label="联系电话" required type="tel" placeholder="请输入手机号" clearable />
           <Field
             :model-value="temporaryTypeLabel"
             label="客户类型"
+            required
             readonly
             is-link
             @click="showTemporaryTypePicker = true"
           />
         </template>
-        <Field :model-value="form.date" :label="`${serviceLabel}日期`" readonly is-link @click="openDate" />
-        <Field :model-value="form.startTime" label="开始时间" readonly is-link @click="openStartTime" />
-        <Field :model-value="form.endTime" label="结束时间" readonly is-link @click="openEndTime" />
-        <Field v-model="form.location" :label="locationLabel" :placeholder="locationPlaceholder" clearable />
+        <Field :model-value="form.date" :label="`${serviceLabel}日期`" required readonly is-link @click="openDate" />
+        <Field :model-value="form.startTime" label="开始时间" required readonly is-link @click="openStartTime" />
+        <Field :model-value="form.endTime" label="结束时间" required readonly is-link @click="openEndTime" />
+        <Field v-model="form.location" :label="locationLabel" required :placeholder="locationPlaceholder" clearable />
         <Field
           :model-value="depositStatusLabel"
           label="定金状态"
+          required
           readonly
           is-link
           @click="showDepositPicker = true"
