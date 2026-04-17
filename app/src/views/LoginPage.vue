@@ -9,10 +9,15 @@ const router = useRouter()
 const store = useAppStore()
 
 const form = reactive({
-  account: 'lina_photo',
-  password: '123456',
+  account: '',
+  password: '',
   captcha: '',
 })
+
+if (import.meta.env.DEV) {
+  form.account = 'lina_photo'
+  form.password = '123456'
+}
 
 const loading = ref(false)
 const feedback = ref('')

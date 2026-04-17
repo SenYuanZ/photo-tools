@@ -681,9 +681,10 @@ const loadProvidersForService = async (serviceCode: string) => {
     if (draft.providerId && !providersByService[serviceCode].find((item) => item.id === draft.providerId)) {
       draft.providerId = ''
     }
-    if (!draft.providerId && providersByService[serviceCode].length) {
-      draft.providerId = providersByService[serviceCode][0].id
-    }
+    // 选择第一个服务者
+    // if (!draft.providerId && providersByService[serviceCode].length) {
+    //   draft.providerId = providersByService[serviceCode][0].id
+    // }
 
     void prefetchProviderAvailabilitySummaries(serviceCode)
   } catch (requestError) {
@@ -928,8 +929,21 @@ const submit = async () => {
 
   for (const serviceCode of selectedServiceCodes.value) {
     const draft = ensureDraft(serviceCode)
-    if (!draft.providerId || !draft.startTime || !draft.endTime || !draft.requirement.trim()) {
-      error.value = `请补全${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}的信息。`
+    const serviceLabel = serviceTypeLabelMap.value.get(serviceCode) || serviceCode
+    const providerLabel = serviceCode === 'makeup' ? '妆娘' : '摄影师'
+
+    if (!draft.providerId) {
+      error.value = `请选择${providerLabel}。`
+      return
+    }
+
+    if (!draft.startTime || !draft.endTime) {
+      error.value = `请补全${serviceLabel}的服务时间。`
+      return
+    }
+
+    if (!draft.requirement.trim()) {
+      error.value = `请填写${serviceLabel}的需求说明。`
       return
     }
 
