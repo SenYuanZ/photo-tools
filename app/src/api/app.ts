@@ -92,7 +92,7 @@ export interface PublicBookingPayload {
 export interface InviteCodeItem {
   id: string
   code: string
-  isActive: boolean
+  isActive: boolean | number
   maxUses: number | null
   usedCount: number
   remainingUses: number | null

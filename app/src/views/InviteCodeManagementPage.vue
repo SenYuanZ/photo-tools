@@ -37,6 +37,7 @@ const editForm = reactive({
 const listView = computed(() =>
   list.value.map((item) => ({
     ...item,
+    isActive: Boolean(item.isActive),
     usedText:
       item.maxUses === null
         ? `已用 ${item.usedCount} 次 / 不限次数`
@@ -48,7 +49,11 @@ const listView = computed(() =>
 const loadList = async () => {
   loading.value = true
   try {
-    list.value = await inviteCodeApi.list()
+    const rawList = await inviteCodeApi.list()
+    list.value = rawList.map(item => ({
+      ...item,
+      isActive: Boolean(item.isActive)
+    }))
   } finally {
     loading.value = false
   }
@@ -70,7 +75,7 @@ const openCreate = () => {
 const openEdit = (item: InviteCodeItem) => {
   editForm.id = item.id
   editForm.code = item.code
-  editForm.isActive = item.isActive
+  editForm.isActive = Boolean(item.isActive)
   editForm.maxUses = item.maxUses === null ? '' : String(item.maxUses)
   editForm.expiresAt = item.expiresAt ? dayjs(item.expiresAt).format('YYYY-MM-DDTHH:mm') : ''
   editForm.note = item.note || ''
