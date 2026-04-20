@@ -17,6 +17,8 @@ import { User } from '../database/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
+const DISPLAY_VISIBLE = 'Y';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -28,7 +30,7 @@ export class AuthService {
 
   async login(payload: LoginDto) {
     const user = await this.usersRepository.findOne({
-      where: { account: payload.account },
+      where: { account: payload.account, displayStatus: DISPLAY_VISIBLE },
     });
     if (!user) {
       throw new UnauthorizedException('账号或密码错误');
@@ -70,6 +72,9 @@ export class AuthService {
         .createQueryBuilder(InviteCode, 'inviteCode')
         .setLock('pessimistic_write')
         .where('inviteCode.code = :code', { code: inviteCodeText })
+        .andWhere('inviteCode.display_status = :visible', {
+          visible: DISPLAY_VISIBLE,
+        })
         .getOne();
 
       if (!inviteCode) {

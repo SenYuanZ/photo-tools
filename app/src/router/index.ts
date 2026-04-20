@@ -31,6 +31,12 @@ const routes = [
     meta: { requiresAuth: true, tab: 'home' },
   },
   {
+    path: '/calendar',
+    name: 'calendar',
+    component: () => import('../views/CalendarPage.vue'),
+    meta: { requiresAuth: true, tab: 'calendar' },
+  },
+  {
     path: '/my',
     name: 'my',
     component: () => import('../views/MyPage.vue'),

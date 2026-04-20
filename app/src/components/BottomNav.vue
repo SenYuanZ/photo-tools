@@ -7,7 +7,7 @@ const router = useRouter()
 
 const activeTab = computed(() => (route.meta.tab as string) ?? 'home')
 
-const jump = (name: 'home' | 'my') => {
+const jump = (name: 'home' | 'calendar' | 'my') => {
   router.push({ name })
 }
 </script>
@@ -22,6 +22,15 @@ const jump = (name: 'home' | 'my') => {
     >
       <i class="fa-solid fa-camera-retro" />
       <span>首页</span>
+    </button>
+    <button
+      class="nav-item"
+      :class="{ 'active-calendar': activeTab === 'calendar' }"
+      type="button"
+      @click="jump('calendar')"
+    >
+      <i class="fa-regular fa-calendar-days" />
+      <span>日历</span>
     </button>
     <button
       class="nav-item"

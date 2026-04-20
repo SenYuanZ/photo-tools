@@ -15,6 +15,8 @@ type InviteCodeView = InviteCode & {
   remainingUses: number | null;
 };
 
+const DISPLAY_VISIBLE = 'Y';
+
 const toView = (item: InviteCode): InviteCodeView => ({
   ...item,
   remainingUses:
@@ -30,6 +32,7 @@ export class InviteCodesService {
 
   async findAll() {
     const list = await this.inviteCodesRepository.find({
+      where: { displayStatus: DISPLAY_VISIBLE },
       order: {
         createdAt: 'DESC',
       },
@@ -61,7 +64,7 @@ export class InviteCodesService {
 
   async update(id: string, payload: UpdateInviteCodeDto) {
     const inviteCode = await this.inviteCodesRepository.findOne({
-      where: { id },
+      where: { id, displayStatus: DISPLAY_VISIBLE },
     });
     if (!inviteCode) {
       throw new NotFoundException('邀请码不存在');

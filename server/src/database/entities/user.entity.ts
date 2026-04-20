@@ -42,6 +42,9 @@ export class User {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
+  @Column({ name: 'display_status', type: 'char', length: 1, default: 'Y' })
+  displayStatus: string;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 

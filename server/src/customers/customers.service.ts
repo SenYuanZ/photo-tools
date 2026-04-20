@@ -13,6 +13,9 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomersDto } from './dto/query-customers.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
+const DISPLAY_VISIBLE = 'Y';
+const DISPLAY_HIDDEN = 'N';
+
 @Injectable()
 export class CustomersService {
   constructor(
@@ -27,6 +30,9 @@ export class CustomersService {
     const builder = this.customersRepository
       .createQueryBuilder('customer')
       .where('customer.user_id = :userId', { userId })
+      .andWhere('customer.display_status = :visible', {
+        visible: DISPLAY_VISIBLE,
+      })
       .orderBy('customer.created_at', 'DESC');
 
     if (query.keyword) {
@@ -49,8 +55,27 @@ export class CustomersService {
     const exists = await this.customersRepository.findOne({
       where: { userId, phone: payload.phone },
     });
-    if (exists) {
+    if (exists?.displayStatus === DISPLAY_VISIBLE) {
       throw new ConflictException('该手机号客户已存在');
+    }
+
+    if (exists?.displayStatus === DISPLAY_HIDDEN) {
+      Object.assign(exists, {
+        ...payload,
+        type: normalizedTypeCode,
+        isLongTerm: payload.isLongTerm ?? true,
+        tags: payload.tags ?? [],
+        tailPaymentDate: payload.tailPaymentDate ?? null,
+        style: payload.style ?? '',
+        hobby: payload.hobby ?? '',
+        specialNeed: payload.specialNeed ?? '',
+        outfit: payload.outfit ?? '',
+        location: payload.location ?? '',
+        companions: payload.companions ?? '',
+        displayStatus: DISPLAY_VISIBLE,
+      });
+
+      return this.customersRepository.save(exists);
     }
 
     const entity = this.customersRepository.create({
@@ -73,7 +98,7 @@ export class CustomersService {
 
   async update(userId: string, id: string, payload: UpdateCustomerDto) {
     const customer = await this.customersRepository.findOne({
-      where: { id, userId },
+      where: { id, userId, displayStatus: DISPLAY_VISIBLE },
     });
     if (!customer) {
       throw new NotFoundException('客户不存在');
@@ -102,7 +127,7 @@ export class CustomersService {
 
     if (payload.location) {
       await this.schedulesRepository.update(
-        { userId, customerId: id },
+        { userId, customerId: id, displayStatus: DISPLAY_VISIBLE },
         { location: payload.location },
       );
     }
@@ -112,13 +137,20 @@ export class CustomersService {
 
   async remove(userId: string, id: string) {
     const customer = await this.customersRepository.findOne({
-      where: { id, userId },
+      where: { id, userId, displayStatus: DISPLAY_VISIBLE },
     });
     if (!customer) {
       throw new NotFoundException('客户不存在');
     }
 
-    await this.customersRepository.remove(customer);
+    await this.customersRepository.update(
+      { id, userId, displayStatus: DISPLAY_VISIBLE },
+      { displayStatus: DISPLAY_HIDDEN },
+    );
+    await this.schedulesRepository.update(
+      { userId, customerId: id, displayStatus: DISPLAY_VISIBLE },
+      { displayStatus: DISPLAY_HIDDEN },
+    );
     return { success: true };
   }
 }

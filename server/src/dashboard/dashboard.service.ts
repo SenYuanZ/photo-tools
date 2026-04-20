@@ -5,6 +5,7 @@ import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
 
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+const DISPLAY_VISIBLE = 'Y';
 
 @Injectable()
 export class DashboardService {
@@ -26,19 +27,33 @@ export class DashboardService {
 
     const [customerCount, todayCount, tomorrowCount, futureCount, monthCount] =
       await Promise.all([
-        this.customersRepository.count({ where: { userId } }),
-        this.schedulesRepository.count({ where: { userId, date: todayText } }),
+        this.customersRepository.count({
+          where: { userId, displayStatus: DISPLAY_VISIBLE },
+        }),
         this.schedulesRepository.count({
-          where: { userId, date: tomorrowText },
+          where: { userId, date: todayText, displayStatus: DISPLAY_VISIBLE },
+        }),
+        this.schedulesRepository.count({
+          where: {
+            userId,
+            date: tomorrowText,
+            displayStatus: DISPLAY_VISIBLE,
+          },
         }),
         this.schedulesRepository
           .createQueryBuilder('schedule')
           .where('schedule.user_id = :userId', { userId })
+          .andWhere('schedule.display_status = :visible', {
+            visible: DISPLAY_VISIBLE,
+          })
           .andWhere('schedule.date > :tomorrow', { tomorrow: tomorrowText })
           .getCount(),
         this.schedulesRepository
           .createQueryBuilder('schedule')
           .where('schedule.user_id = :userId', { userId })
+          .andWhere('schedule.display_status = :visible', {
+            visible: DISPLAY_VISIBLE,
+          })
           .andWhere("DATE_FORMAT(schedule.date, '%Y-%m') = :month", { month })
           .getCount(),
       ]);

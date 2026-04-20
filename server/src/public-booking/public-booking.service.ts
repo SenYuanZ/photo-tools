@@ -23,6 +23,8 @@ import {
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
 
 const STEP_MINUTES = 30;
+const DISPLAY_VISIBLE = 'Y';
+const DISPLAY_HIDDEN = 'N';
 
 const toMinutes = (value: string): number => {
   const [hours, minutes] = value.split(':').map(Number);
@@ -93,7 +95,9 @@ export class PublicBookingService {
     }
 
     const users = await this.usersRepository.find({
-      where: role ? { role } : undefined,
+      where: role
+        ? { role, displayStatus: DISPLAY_VISIBLE }
+        : { displayStatus: DISPLAY_VISIBLE },
       select: {
         id: true,
         account: true,
@@ -137,7 +141,7 @@ export class PublicBookingService {
     serviceTypeCode?: string,
   ) {
     const provider = await this.usersRepository.findOne({
-      where: { id: providerId },
+      where: { id: providerId, displayStatus: DISPLAY_VISIBLE },
       select: {
         id: true,
         role: true,
@@ -159,6 +163,7 @@ export class PublicBookingService {
       where: {
         userId: providerId,
         date,
+        displayStatus: DISPLAY_VISIBLE,
         ...(serviceTypeCode ? { serviceTypeCode } : {}),
       },
       order: { startTime: 'ASC' },
@@ -207,7 +212,7 @@ export class PublicBookingService {
         const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
 
         const provider = await this.usersRepository.findOne({
-          where: { id: item.providerId },
+          where: { id: item.providerId, displayStatus: DISPLAY_VISIBLE },
           select: {
             id: true,
             nickname: true,
@@ -251,6 +256,7 @@ export class PublicBookingService {
         where: {
           userId: item.provider.id,
           date: payload.date,
+          displayStatus: DISPLAY_VISIBLE,
         },
         order: {
           startTime: 'ASC',
@@ -366,7 +372,7 @@ export class PublicBookingService {
       },
     });
 
-    if (existingCustomer) {
+    if (existingCustomer?.displayStatus === DISPLAY_VISIBLE) {
       if (
         existingCustomer.isLongTerm === false &&
         existingCustomer.type !== normalizedTypeCode
@@ -375,6 +381,26 @@ export class PublicBookingService {
         await this.customersRepository.save(existingCustomer);
       }
       return existingCustomer;
+    }
+
+    if (existingCustomer?.displayStatus === DISPLAY_HIDDEN) {
+      Object.assign(existingCustomer, {
+        name: payload.modelName,
+        isLongTerm: false,
+        type: normalizedTypeCode,
+        style: '',
+        hobby: '',
+        specialNeed: payload.requirement,
+        depositStatus: DepositStatus.UNPAID,
+        tailPaymentDate: null,
+        outfit: '',
+        location: payload.location,
+        companions: '',
+        tags: ['模特自助预约'],
+        displayStatus: DISPLAY_VISIBLE,
+      });
+
+      return this.customersRepository.save(existingCustomer);
     }
 
     const entity = this.customersRepository.create({

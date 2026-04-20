@@ -28,6 +28,8 @@ import { QuerySchedulesDto } from './dto/query-schedules.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 
 const toDateString = (date: Date) => date.toISOString().slice(0, 10);
+const DISPLAY_VISIBLE = 'Y';
+const DISPLAY_HIDDEN = 'N';
 
 @Injectable()
 export class SchedulesService {
@@ -50,6 +52,9 @@ export class SchedulesService {
     const builder = this.schedulesRepository
       .createQueryBuilder('schedule')
       .where('schedule.user_id = :userId', { userId })
+      .andWhere('schedule.display_status = :visible', {
+        visible: DISPLAY_VISIBLE,
+      })
       .orderBy('schedule.date', 'ASC')
       .addOrderBy('schedule.start_time', 'ASC');
 
@@ -85,7 +90,7 @@ export class SchedulesService {
 
   async findOne(userId: string, id: string) {
     const schedule = await this.schedulesRepository.findOne({
-      where: { id, userId },
+      where: { id, userId, displayStatus: DISPLAY_VISIBLE },
       relations: ['customer', 'bookingGroup'],
     });
     if (!schedule) {
@@ -111,7 +116,7 @@ export class SchedulesService {
     let bookingGroupId = payload.bookingGroupId ?? null;
     if (bookingGroupId) {
       const bookingGroup = await this.bookingGroupsRepository.findOne({
-        where: { id: bookingGroupId },
+        where: { id: bookingGroupId, displayStatus: DISPLAY_VISIBLE },
       });
       if (!bookingGroup) {
         throw new NotFoundException('协同订单不存在');
@@ -148,7 +153,7 @@ export class SchedulesService {
     let customerId = payload.customerId;
     if (customerId) {
       const customer = await this.customersRepository.findOne({
-        where: { id: customerId, userId },
+        where: { id: customerId, userId, displayStatus: DISPLAY_VISIBLE },
       });
       if (!customer) {
         throw new NotFoundException('客户不存在');
@@ -216,8 +221,28 @@ export class SchedulesService {
       },
     });
 
-    if (exists) {
+    if (exists?.displayStatus === DISPLAY_VISIBLE) {
       return exists;
+    }
+
+    if (exists?.displayStatus === DISPLAY_HIDDEN) {
+      Object.assign(exists, {
+        name: temporaryCustomer.name,
+        isLongTerm: false,
+        type: typeCode,
+        style: '',
+        hobby: '',
+        specialNeed: payload.note ?? '',
+        depositStatus: payload.depositStatus,
+        tailPaymentDate: null,
+        outfit: '',
+        location: payload.location,
+        companions: '',
+        tags: ['临时客户'],
+        displayStatus: DISPLAY_VISIBLE,
+      });
+
+      return this.customersRepository.save(exists);
     }
 
     const entity = this.customersRepository.create({
@@ -243,7 +268,7 @@ export class SchedulesService {
 
   async update(userId: string, id: string, payload: UpdateScheduleDto) {
     const schedule = await this.schedulesRepository.findOne({
-      where: { id, userId },
+      where: { id, userId, displayStatus: DISPLAY_VISIBLE },
     });
     if (!schedule) {
       throw new NotFoundException('排单不存在');
@@ -266,7 +291,11 @@ export class SchedulesService {
 
     if (payload.customerId && payload.customerId !== schedule.customerId) {
       const customer = await this.customersRepository.findOne({
-        where: { id: payload.customerId, userId },
+        where: {
+          id: payload.customerId,
+          userId,
+          displayStatus: DISPLAY_VISIBLE,
+        },
       });
       if (!customer) {
         throw new NotFoundException('客户不存在');
@@ -282,7 +311,10 @@ export class SchedulesService {
 
     if (payload.bookingGroupId) {
       const bookingGroup = await this.bookingGroupsRepository.findOne({
-        where: { id: payload.bookingGroupId },
+        where: {
+          id: payload.bookingGroupId,
+          displayStatus: DISPLAY_VISIBLE,
+        },
       });
       if (!bookingGroup) {
         throw new NotFoundException('协同订单不存在');
@@ -321,12 +353,15 @@ export class SchedulesService {
 
   async remove(userId: string, id: string) {
     const schedule = await this.schedulesRepository.findOne({
-      where: { id, userId },
+      where: { id, userId, displayStatus: DISPLAY_VISIBLE },
     });
     if (!schedule) {
       throw new NotFoundException('排单不存在');
     }
-    await this.schedulesRepository.remove(schedule);
+    await this.schedulesRepository.update(
+      { id, userId, displayStatus: DISPLAY_VISIBLE },
+      { displayStatus: DISPLAY_HIDDEN },
+    );
     return { success: true };
   }
 
@@ -336,6 +371,12 @@ export class SchedulesService {
       .createQueryBuilder('schedule')
       .leftJoinAndSelect('schedule.customer', 'customer')
       .where('schedule.user_id = :userId', { userId })
+      .andWhere('schedule.display_status = :visible', {
+        visible: DISPLAY_VISIBLE,
+      })
+      .andWhere('customer.display_status = :visible', {
+        visible: DISPLAY_VISIBLE,
+      })
       .andWhere("DATE_FORMAT(schedule.date, '%Y-%m') = :month", { month })
       .orderBy('schedule.date', 'DESC')
       .addOrderBy('schedule.start_time', 'DESC');
@@ -365,7 +406,7 @@ export class SchedulesService {
     excludeId?: string,
   ) {
     const schedules = await this.schedulesRepository.find({
-      where: { userId, date },
+      where: { userId, date, displayStatus: DISPLAY_VISIBLE },
       order: { startTime: 'ASC' },
     });
 

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomerTypeOption } from '../database/entities/customer-type.entity';
 
+const DISPLAY_VISIBLE = 'Y';
+
 @Injectable()
 export class CustomerTypesService {
   constructor(
@@ -12,7 +14,7 @@ export class CustomerTypesService {
 
   async findAllActive() {
     return this.customerTypesRepository.find({
-      where: { isActive: true },
+      where: { isActive: true, displayStatus: DISPLAY_VISIBLE },
       order: {
         sortOrder: 'ASC',
         createdAt: 'ASC',
@@ -26,6 +28,7 @@ export class CustomerTypesService {
       where: {
         code: value,
         isActive: true,
+        displayStatus: DISPLAY_VISIBLE,
       },
     });
 

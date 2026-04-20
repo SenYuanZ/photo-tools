@@ -138,6 +138,10 @@
     @apply text-rose-500;
   }
 
+  .nav-item.active-calendar {
+    @apply text-blue-500;
+  }
+
   .nav-item.active-my {
     @apply text-amber-600;
   }
