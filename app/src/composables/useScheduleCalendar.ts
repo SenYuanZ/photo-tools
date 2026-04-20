@@ -20,6 +20,7 @@ type UseScheduleCalendarReturn = {
   selectedSchedules: ComputedRef<Schedule[]>
   receivedSchedules: ComputedRef<Schedule[]>
   completedSchedules: ComputedRef<Schedule[]>
+  monthTotalCount: ComputedRef<number>
   setSelectedDate: (date: string) => void
   goPrevMonth: () => void
   goNextMonth: () => void
@@ -72,6 +73,13 @@ export const useScheduleCalendar = (schedules: () => Schedule[]): UseScheduleCal
   const completedSchedules = computed(() => {
     const now = dayjs()
     return selectedSchedules.value.filter((item) => isCompletedByTime(item.date, item.endTime, now))
+  })
+
+  const monthTotalCount = computed(() => {
+    return schedules().filter((item) => {
+      const itemDate = dayjs(item.date)
+      return itemDate.isSame(monthCursor.value, 'month')
+    }).length
   })
 
   const calendarCells = computed(() => {
@@ -136,6 +144,7 @@ export const useScheduleCalendar = (schedules: () => Schedule[]): UseScheduleCal
     selectedSchedules,
     receivedSchedules,
     completedSchedules,
+    monthTotalCount,
     setSelectedDate,
     goPrevMonth,
     goNextMonth,

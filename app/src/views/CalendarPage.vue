@@ -18,6 +18,7 @@ const {
   calendarCells,
   receivedSchedules,
   completedSchedules,
+  monthTotalCount,
   setSelectedDate,
   goPrevMonth,
   goNextMonth,
@@ -28,6 +29,7 @@ const selectedDateLabel = computed(() => formatCnDate(selectedDate.value))
 
 const receivedCountLabel = computed(() => `${receivedSchedules.value.length} 单`)
 const completedCountLabel = computed(() => `${completedSchedules.value.length} 单`)
+const monthTotalLabel = computed(() => `本月共 ${monthTotalCount.value} 单`)
 
 const toDetail = (id: string) => {
   router.push({ name: 'schedule-detail', params: { id } })
@@ -81,6 +83,7 @@ const isInProgress = (date: string, startTime: string, endTime: string) => {
 
       <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
         <p><i class="fa-regular fa-calendar-check mr-1 text-rose-500" />{{ selectedDateLabel }}</p>
+        <p class="font-extrabold text-rose-500"><i class="fa-solid fa-film mr-1" />{{ monthTotalLabel }}</p>
         <button type="button" class="chip" @click="goCurrentMonth">回到今天</button>
       </div>
     </article>
