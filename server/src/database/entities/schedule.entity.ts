@@ -11,6 +11,7 @@ import {
 import {
   DepositStatus,
   ReminderType,
+  ScheduleStatus,
   ServiceTypeCode,
 } from '../../common/enums/app.enums';
 import { BookingGroup } from './booking-group.entity';
@@ -99,6 +100,13 @@ export class Schedule {
 
   @Column({ type: 'json' })
   reminders: ReminderType[];
+
+  @Column({
+    type: 'enum',
+    enum: ScheduleStatus,
+    default: ScheduleStatus.NORMAL,
+  })
+  status: ScheduleStatus;
 
   @Column({ name: 'reference_images', type: 'json', nullable: true })
   referenceImages: string[] | null;

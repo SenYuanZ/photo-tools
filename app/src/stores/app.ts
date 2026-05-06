@@ -8,6 +8,7 @@ import type {
   ReminderType,
   Schedule,
   SchedulePayload,
+  ScheduleStatus,
   ThemeName,
   UserRole,
 } from '../types/models'
@@ -50,6 +51,7 @@ const normalizeSchedule = (item: Schedule): Schedule => ({
   bookingGroupId: item.bookingGroupId ?? null,
   serviceMeta: item.serviceMeta ?? null,
   referenceImages: item.referenceImages || [],
+  status: ((item as Schedule & { status?: ScheduleStatus }).status ?? 'normal') as ScheduleStatus,
 })
 
 const normalizeCustomer = (item: Customer): Customer => {
@@ -80,12 +82,16 @@ export const useAppStore = defineStore('app', () => {
 
   const stats = computed(() => {
     const todayDate = dayjs().format('YYYY-MM-DD')
+    const activeSchedules = schedules.value.filter((item) => item.status === 'normal')
     return {
       customerCount: customers.value.length,
-      todayCount: schedules.value.filter((item) => item.date === todayDate).length,
-      monthCount: schedules.value.filter((item) => dayjs(item.date).isSame(dayjs(), 'month')).length,
+      todayCount: activeSchedules.filter((item) => item.date === todayDate).length,
+      monthCount: activeSchedules.filter((item) => dayjs(item.date).isSame(dayjs(), 'month')).length,
     }
   })
+
+  const activeSchedules = computed(() => schedules.value.filter((item) => item.status === 'normal'))
+  const storedSchedules = computed(() => schedules.value.filter((item) => item.status === 'stored'))
 
   const restoreSession = async () => {
     if (hydrated.value) {
@@ -418,6 +424,8 @@ export const useAppStore = defineStore('app', () => {
     serviceTypes,
     profile,
     schedules,
+    activeSchedules,
+    storedSchedules,
     stats,
     defaultReminders,
     backupEnabled,

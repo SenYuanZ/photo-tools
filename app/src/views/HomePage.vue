@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Button, DatePicker, Popup } from 'vant'
 import ScheduleCard from '../components/ScheduleCard.vue'
 import { formatCnDate } from '../utils/time'
 import { useAppStore } from '../stores/app'
@@ -9,10 +10,14 @@ import { useAppStore } from '../stores/app'
 const router = useRouter()
 const store = useAppStore()
 
-type HomeTab = 'today' | 'tomorrow' | 'future'
+type HomeTab = 'today' | 'tomorrow' | 'future' | 'stored'
 
 const activeTab = ref<HomeTab>('today')
 const nowTick = ref(dayjs())
+const showStoredDatePicker = ref(false)
+const restoreScheduleId = ref('')
+const restoreDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
+const storedFeedback = ref('')
 
 let tickTimer = 0
 
@@ -27,7 +32,11 @@ onBeforeUnmount(() => {
 })
 
 const scheduleSorted = computed(() =>
-  [...store.schedules].sort((left, right) => (left.date + left.startTime).localeCompare(right.date + right.startTime)),
+  [...store.activeSchedules].sort((left, right) => (left.date + left.startTime).localeCompare(right.date + right.startTime)),
+)
+
+const storedScheduleSorted = computed(() =>
+  [...store.storedSchedules].sort((left, right) => (left.date + left.startTime).localeCompare(right.date + right.startTime)),
 )
 
 const today = dayjs().format('YYYY-MM-DD')
@@ -57,6 +66,9 @@ const tabIndicatorClass = computed(() => {
   if (activeTab.value === 'future') {
     return 'translate-x-[200%] bg-amber-100'
   }
+  if (activeTab.value === 'stored') {
+    return 'translate-x-[300%] bg-indigo-100'
+  }
   return 'translate-x-0 bg-rose-100'
 })
 
@@ -77,6 +89,13 @@ const activeMeta = computed(() => {
       empty: '未来暂无排单。',
     }
   }
+  if (activeTab.value === 'stored') {
+    return {
+      title: '暂存订单',
+      icon: 'fa-solid fa-box-archive text-indigo-500',
+      empty: '当前没有暂存订单。',
+    }
+  }
   return {
     title: '今日排单',
     icon: 'fa-solid fa-star text-rose-500',
@@ -90,6 +109,9 @@ const activeSchedules = computed(() => {
   }
   if (activeTab.value === 'future') {
     return futureSchedules.value
+  }
+  if (activeTab.value === 'stored') {
+    return storedScheduleSorted.value
   }
   return todaySchedules.value
 })
@@ -117,6 +139,9 @@ const currentCount = computed(() => {
   if (activeTab.value === 'future') {
     return futureSchedules.value.length
   }
+  if (activeTab.value === 'stored') {
+    return storedScheduleSorted.value.length
+  }
   return todaySchedules.value.length
 })
 
@@ -132,8 +157,46 @@ const cardToneClass = computed(() => {
   if (activeTab.value === 'future') {
     return 'text-amber-600'
   }
+  if (activeTab.value === 'stored') {
+    return 'text-indigo-600'
+  }
   return 'text-rose-500'
 })
+
+const openRestoreDatePicker = (id: string) => {
+  restoreScheduleId.value = id
+  restoreDateValues.value = dayjs().format('YYYY-MM-DD').split('-')
+  showStoredDatePicker.value = true
+}
+
+const normalizeDate = (values: string[]) => {
+  const [year, month, day] = values
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+const restoreStoredSchedule = async (selectedValues: string[]) => {
+  const scheduleId = restoreScheduleId.value
+  if (!scheduleId) {
+    showStoredDatePicker.value = false
+    return
+  }
+
+  const date = normalizeDate(selectedValues)
+  const result = await store.updateSchedule(scheduleId, {
+    status: 'normal',
+    date,
+  })
+
+  if (!result.ok) {
+    storedFeedback.value = '恢复失败：该时段有冲突，请换个时间。'
+    return
+  }
+
+  storedFeedback.value = `已恢复排单至 ${formatCnDate(date)}`
+  showStoredDatePicker.value = false
+  restoreScheduleId.value = ''
+}
+
 </script>
 
 <template>
@@ -156,34 +219,43 @@ const cardToneClass = computed(() => {
     </header>
 
     <article class="card mb-4 p-1.5">
-      <div class="relative grid grid-cols-3 gap-1 overflow-hidden rounded-xl bg-slate-50/80 p-1">
+      <div class="relative grid grid-cols-4 gap-1 overflow-hidden rounded-xl bg-slate-50/80 p-1">
         <div class="tab-indicator" :class="tabIndicatorClass" />
         <button
           type="button"
-          class="relative z-10 rounded-xl px-2 py-2 text-xs font-bold transition"
+          class="relative z-10 inline-flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-bold leading-none transition whitespace-nowrap"
           :class="activeTab === 'today' ? 'text-rose-500' : 'text-slate-500'"
           @click="activeTab = 'today'"
         >
-          <i class="fa-solid fa-star mr-1" />
+          <i class="fa-solid fa-star" />
           今日（{{ todaySchedules.length }}）
         </button>
         <button
           type="button"
-          class="relative z-10 rounded-xl px-2 py-2 text-xs font-bold transition"
+          class="relative z-10 inline-flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-bold leading-none transition whitespace-nowrap"
           :class="activeTab === 'tomorrow' ? 'text-blue-500' : 'text-slate-500'"
           @click="activeTab = 'tomorrow'"
         >
-          <i class="fa-solid fa-cloud-sun mr-1" />
+          <i class="fa-solid fa-cloud-sun" />
           明日（{{ tomorrowSchedules.length }}）
         </button>
         <button
           type="button"
-          class="relative z-10 rounded-xl px-2 py-2 text-xs font-bold transition"
+          class="relative z-10 inline-flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-bold leading-none transition whitespace-nowrap"
           :class="activeTab === 'future' ? 'text-amber-600' : 'text-slate-500'"
           @click="activeTab = 'future'"
         >
-          <i class="fa-solid fa-hourglass-half mr-1" />
+          <i class="fa-solid fa-hourglass-half" />
           未来（{{ futureSchedules.length }}）
+        </button>
+        <button
+          type="button"
+          class="relative z-10 inline-flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-bold leading-none transition whitespace-nowrap"
+          :class="activeTab === 'stored' ? 'text-indigo-600' : 'text-slate-500'"
+          @click="activeTab = 'stored'"
+        >
+          <i class="fa-solid fa-box-archive" />
+          暂存（{{ storedScheduleSorted.length }}）
         </button>
       </div>
     </article>
@@ -227,6 +299,24 @@ const cardToneClass = computed(() => {
         </article>
       </div>
 
+      <div v-else-if="activeTab === 'stored' && activeSchedules.length" class="space-y-2">
+        <article v-for="item in activeSchedules" :key="item.id" class="rounded-xl border border-indigo-100 bg-white/85 p-2.5">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <p class="font-bold text-slate-700">{{ store.getCustomerById(item.customerId)?.name || '未知客户' }}</p>
+            <span class="chip border-slate-200 text-slate-600">原档期 {{ dayjs(item.date).format('MM/DD') }} {{ item.startTime }}</span>
+          </div>
+          <p class="mb-2 text-xs text-slate-500"><i class="fa-solid fa-location-dot mr-1 text-blue-400" />{{ item.location }}</p>
+          <div class="grid grid-cols-2 gap-2">
+            <Button size="small" round plain type="primary" @click="openRestoreDatePicker(item.id)">
+              <i class="fa-solid fa-calendar-check mr-1" />恢复并选日期
+            </Button>
+            <Button size="small" round plain type="default" @click="toDetail(item.id)">
+              <i class="fa-solid fa-circle-info mr-1" />查看详情
+            </Button>
+          </div>
+        </article>
+      </div>
+
       <div v-else-if="activeSchedules.length">
         <ScheduleCard
           v-for="(item, index) in activeSchedules"
@@ -243,6 +333,16 @@ const cardToneClass = computed(() => {
 
       <div v-else class="card p-3 text-sm text-slate-500">{{ activeMeta.empty }}</div>
     </article>
+    <p v-if="storedFeedback" class="mb-3 text-xs text-blue-600">{{ storedFeedback }}</p>
+
+    <Popup v-model:show="showStoredDatePicker" position="bottom" round>
+      <DatePicker
+        v-model="restoreDateValues"
+        title="恢复排单日期"
+        @cancel="showStoredDatePicker = false"
+        @confirm="({ selectedValues }: any) => restoreStoredSchedule(selectedValues)"
+      />
+    </Popup>
   </section>
 </template>
 
@@ -281,7 +381,7 @@ const cardToneClass = computed(() => {
   position: absolute;
   left: 4px;
   top: 4px;
-  width: calc((100% - 8px) / 3);
+  width: calc((100% - 8px) / 4);
   height: calc(100% - 8px);
   border-radius: 10px;
   transition: transform 260ms ease, background-color 260ms ease;

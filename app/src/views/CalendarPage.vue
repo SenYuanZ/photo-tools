@@ -23,7 +23,7 @@ const {
   goPrevMonth,
   goNextMonth,
   goCurrentMonth,
-} = useScheduleCalendar(() => store.schedules)
+} = useScheduleCalendar(() => store.activeSchedules)
 
 const selectedDateLabel = computed(() => formatCnDate(selectedDate.value))
 

@@ -25,6 +25,7 @@ const customer = computed(() => (schedule.value ? store.getCustomerById(schedule
 const isEditing = ref(false)
 const feedback = ref('')
 const showDatePicker = ref(false)
+const showRestoreDatePicker = ref(false)
 const showStartTimePicker = ref(false)
 const showEndTimePicker = ref(false)
 const uploadingReferences = ref(false)
@@ -40,10 +41,12 @@ const failedReferenceUploads = computed(() =>
 )
 
 const selectedDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
+const selectedRestoreDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
 const selectedStartTimeValues = ref(['09', '00'])
 const selectedEndTimeValues = ref(['10', '00'])
 
 const timeColumns = [timeHourOptions, timeMinuteOptions]
+const isStored = computed(() => schedule.value?.status === 'stored')
 
 const editForm = reactive({
   date: '',
@@ -196,6 +199,49 @@ const savePaymentStatus = async () => {
   }
 }
 
+const storeSchedule = async () => {
+  if (!schedule.value) {
+    return
+  }
+
+  const result = await store.updateSchedule(schedule.value.id, {
+    status: 'stored',
+  })
+
+  if (!result.ok) {
+    feedback.value = '存单失败，请稍后重试。'
+    return
+  }
+
+  feedback.value = '已存单，可在首页暂存订单中恢复。'
+}
+
+const openRestoreDate = () => {
+  selectedRestoreDateValues.value = dayjs().format('YYYY-MM-DD').split('-')
+  showRestoreDatePicker.value = true
+}
+
+const restoreSchedule = async (selectedValues: string[]) => {
+  if (!schedule.value) {
+    showRestoreDatePicker.value = false
+    return
+  }
+
+  const date = normalizeDate(selectedValues)
+  const result = await store.updateSchedule(schedule.value.id, {
+    status: 'normal',
+    date,
+  })
+
+  if (!result.ok) {
+    feedback.value = '恢复失败：该时段有冲突，请更换日期。'
+    return
+  }
+
+  feedback.value = '已恢复为正常排单。'
+  showRestoreDatePicker.value = false
+}
+
 const remove = async () => {
   if (!schedule.value) {
     return
@@ -297,6 +343,9 @@ const retryReferenceUpload = async (item: UploadItem) => {
     <article class="card mb-3 p-3 soft-pink">
       <p class="mb-2 text-sm font-extrabold">
         <i class="fa-regular fa-calendar mr-1 text-rose-500" />排单基础信息
+      </p>
+      <p v-if="isStored" class="mb-2 text-xs font-bold text-amber-600">
+        <i class="fa-solid fa-box-archive mr-1" />当前订单处于暂存状态，不参与日程安排。
       </p>
       <div class="space-y-1 text-sm">
         <template v-if="isEditing">
@@ -481,6 +530,12 @@ const retryReferenceUpload = async (item: UploadItem) => {
       <button class="btn-secondary" type="button" @click="remove">
         <i class="fa-solid fa-trash-can mr-1" />删除排单
       </button>
+      <button v-if="!isStored" class="btn-secondary" type="button" @click="storeSchedule">
+        <i class="fa-solid fa-box-archive mr-1" />存单
+      </button>
+      <button v-else class="btn-primary" type="button" @click="openRestoreDate">
+        <i class="fa-solid fa-calendar-check mr-1" />恢复排单
+      </button>
     </div>
 
     <Popup v-model:show="showDatePicker" position="bottom" round>
@@ -489,6 +544,15 @@ const retryReferenceUpload = async (item: UploadItem) => {
         title="选择拍摄日期"
         @cancel="showDatePicker = false"
         @confirm="({ selectedValues }: any) => { editForm.date = normalizeDate(selectedValues); showDatePicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showRestoreDatePicker" position="bottom" round>
+      <DatePicker
+        v-model="selectedRestoreDateValues"
+        title="恢复排单日期"
+        @cancel="showRestoreDatePicker = false"
+        @confirm="({ selectedValues }: any) => restoreSchedule(selectedValues)"
       />
     </Popup>
 

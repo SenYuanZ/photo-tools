@@ -14,6 +14,11 @@ export enum DepositStatus {
   FULL = 'full',
 }
 
+export enum ScheduleStatus {
+  NORMAL = 'normal',
+  STORED = 'stored',
+}
+
 export enum ReminderType {
   ONE_DAY = '1d',
   ONE_HOUR = '1h',

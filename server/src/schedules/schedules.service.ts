@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   DepositStatus,
   ReminderType,
+  ScheduleStatus,
   ServiceTypeCode,
   UserRole,
 } from '../common/enums/app.enums';
@@ -196,6 +197,7 @@ export class SchedulesService {
       depositStatus: payload.depositStatus,
       amount: payload.amount,
       reminders,
+      status: ScheduleStatus.NORMAL,
       referenceImages: normalizeUploadUrls(payload.referenceImages),
     });
     const saved = await this.schedulesRepository.save(schedule);
@@ -325,18 +327,21 @@ export class SchedulesService {
       schedule.bookingGroupId = bookingGroup.id;
     }
 
-    const conflict = await this.findConflict(
-      userId,
-      nextDate,
-      nextStart,
-      nextEnd,
-      id,
-    );
-    if (conflict) {
-      throw new ConflictException({
-        message: '该时段已有排单',
-        conflict,
-      });
+    const nextStatus = payload.status ?? schedule.status;
+    if (nextStatus === ScheduleStatus.NORMAL) {
+      const conflict = await this.findConflict(
+        userId,
+        nextDate,
+        nextStart,
+        nextEnd,
+        id,
+      );
+      if (conflict) {
+        throw new ConflictException({
+          message: '该时段已有排单',
+          conflict,
+        });
+      }
     }
 
     Object.assign(schedule, payload);
@@ -377,6 +382,9 @@ export class SchedulesService {
       .andWhere('customer.display_status = :visible', {
         visible: DISPLAY_VISIBLE,
       })
+      .andWhere('schedule.status = :status', {
+        status: ScheduleStatus.NORMAL,
+      })
       .andWhere("DATE_FORMAT(schedule.date, '%Y-%m') = :month", { month })
       .orderBy('schedule.date', 'DESC')
       .addOrderBy('schedule.start_time', 'DESC');
@@ -406,7 +414,12 @@ export class SchedulesService {
     excludeId?: string,
   ) {
     const schedules = await this.schedulesRepository.find({
-      where: { userId, date, displayStatus: DISPLAY_VISIBLE },
+      where: {
+        userId,
+        date,
+        displayStatus: DISPLAY_VISIBLE,
+        status: ScheduleStatus.NORMAL,
+      },
       order: { startTime: 'ASC' },
     });
 

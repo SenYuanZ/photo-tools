@@ -1,6 +1,7 @@
 export type CustomerType = string
 export type UserRole = 'photographer' | 'makeup_artist'
 export type DepositStatus = 'unpaid' | 'paid' | 'full'
+export type ScheduleStatus = 'normal' | 'stored'
 export type ReminderType = '1d' | '1h'
 export type ThemeName = 'pink' | 'blue' | 'yellow'
 
@@ -36,6 +37,7 @@ export interface Schedule {
   depositStatus: DepositStatus
   amount: number
   reminders: ReminderType[]
+  status: ScheduleStatus
 }
 
 export interface LoginPayload {
@@ -78,4 +80,5 @@ export interface SchedulePayload {
   depositStatus: DepositStatus
   amount: number
   reminders: ReminderType[]
+  status?: ScheduleStatus
 }
