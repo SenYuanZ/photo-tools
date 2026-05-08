@@ -8,13 +8,14 @@ import {
   ReminderType,
   ServiceTypeCode,
   ThemeName,
-  UserRole,
 } from '../common/enums/app.enums';
 import { Customer } from './entities/customer.entity';
 import { CustomerTypeOption } from './entities/customer-type.entity';
 import { InviteCode } from './entities/invite-code.entity';
+import { RoleOption } from './entities/role.entity';
 import { Schedule } from './entities/schedule.entity';
 import { ServiceTypeOption } from './entities/service-type.entity';
+import { UserRoleAssignment } from './entities/user-role.entity';
 import { UserSetting } from './entities/user-setting.entity';
 import { User } from './entities/user.entity';
 
@@ -37,11 +38,16 @@ export class SeedService implements OnApplicationBootstrap {
     private readonly inviteCodesRepository: Repository<InviteCode>,
     @InjectRepository(ServiceTypeOption)
     private readonly serviceTypesRepository: Repository<ServiceTypeOption>,
+    @InjectRepository(RoleOption)
+    private readonly rolesRepository: Repository<RoleOption>,
+    @InjectRepository(UserRoleAssignment)
+    private readonly userRolesRepository: Repository<UserRoleAssignment>,
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
   ) {}
 
   async onApplicationBootstrap() {
+    await this.ensureRoles();
     await this.ensureCustomerTypes();
     await this.ensureServiceTypes();
     await this.ensureInviteCodes();
@@ -51,6 +57,7 @@ export class SeedService implements OnApplicationBootstrap {
       where: { account: 'lina_photo' },
     });
     if (existing) {
+      await this.ensureUserRoleAssignments(existing.id, 'photographer');
       return;
     }
 
@@ -66,9 +73,10 @@ export class SeedService implements OnApplicationBootstrap {
       account: 'lina_photo',
       nickname: '林娜摄影',
       password: await hash('123456', 10),
-      role: UserRole.PHOTOGRAPHER,
+      role: 'photographer',
     });
     await this.usersRepository.save(user);
+    await this.ensureUserRoleAssignments(user.id, 'photographer');
 
     const settings = this.settingsRepository.create({
       userId,
@@ -291,6 +299,7 @@ export class SeedService implements OnApplicationBootstrap {
     });
 
     if (exists) {
+      await this.ensureUserRoleAssignments(exists.id, 'makeup_artist');
       return;
     }
 
@@ -299,9 +308,10 @@ export class SeedService implements OnApplicationBootstrap {
       account: 'momo_makeup',
       nickname: '默默妆造',
       password: await hash('123456', 10),
-      role: UserRole.MAKEUP_ARTIST,
+      role: 'makeup_artist',
     });
     await this.usersRepository.save(user);
+    await this.ensureUserRoleAssignments(user.id, 'makeup_artist');
 
     const settings = this.settingsRepository.create({
       userId: user.id,
@@ -310,5 +320,64 @@ export class SeedService implements OnApplicationBootstrap {
       backupEnabled: true,
     });
     await this.settingsRepository.save(settings);
+  }
+
+  private async ensureRoles() {
+    const defaults = [
+      { code: 'photographer', name: '摄影', sortOrder: 10 },
+      { code: 'videographer', name: '摄像', sortOrder: 20 },
+      { code: 'makeup_artist', name: '妆娘', sortOrder: 30 },
+      { code: 'hair_stylist', name: '毛娘', sortOrder: 40 },
+      { code: 'retoucher', name: '后期', sortOrder: 50 },
+      { code: 'vfx_artist', name: '特效', sortOrder: 60 },
+      { code: 'model', name: '模特', sortOrder: 70 },
+      { code: 'editor', name: '剪辑', sortOrder: 80 },
+      { code: 'prop_master', name: '道具', sortOrder: 90 },
+      { code: 'ticket_agent', name: '票代', sortOrder: 100 },
+      { code: 'logistics', name: '后勤', sortOrder: 110 },
+    ];
+
+    for (const item of defaults) {
+      const exists = await this.rolesRepository.findOne({
+        where: { code: item.code },
+      });
+      if (exists) {
+        continue;
+      }
+
+      const entity = this.rolesRepository.create({
+        id: uuidv4(),
+        code: item.code,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        isActive: true,
+      });
+      await this.rolesRepository.save(entity);
+    }
+  }
+
+  private async ensureUserRoleAssignments(userId: string, primaryRoleCode: string) {
+    const exists = await this.userRolesRepository.findOne({
+      where: {
+        userId,
+        roleCode: primaryRoleCode,
+      },
+    });
+
+    if (!exists) {
+      const entity = this.userRolesRepository.create({
+        id: uuidv4(),
+        userId,
+        roleCode: primaryRoleCode,
+        isPrimary: true,
+      });
+      await this.userRolesRepository.save(entity);
+      return;
+    }
+
+    if (!exists.isPrimary) {
+      exists.isPrimary = true;
+      await this.userRolesRepository.save(exists);
+    }
   }
 }

@@ -7,9 +7,9 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserRole } from '../../common/enums/app.enums';
 import { Customer } from './customer.entity';
 import { Schedule } from './schedule.entity';
+import { UserRoleAssignment } from './user-role.entity';
 import { UserSetting } from './user-setting.entity';
 
 @Entity('users')
@@ -32,12 +32,8 @@ export class User {
   @Column({ type: 'varchar', length: 255, default: '' })
   bio: string;
 
-  @Column({
-    type: 'enum',
-    enum: UserRole,
-    default: UserRole.PHOTOGRAPHER,
-  })
-  role: UserRole;
+  @Column({ type: 'varchar', length: 32, default: 'photographer' })
+  role: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -56,6 +52,9 @@ export class User {
 
   @OneToMany(() => Schedule, (schedule) => schedule.user)
   schedules: Schedule[];
+
+  @OneToMany(() => UserRoleAssignment, (userRole) => userRole.user)
+  userRoles: UserRoleAssignment[];
 
   @Column({ name: 'portfolio_images', type: 'json', nullable: true })
   portfolioImages: string[] | null;

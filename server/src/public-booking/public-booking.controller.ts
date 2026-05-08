@@ -56,8 +56,11 @@ export class PublicBookingController {
   }
 
   @Get('providers')
-  listProviders(@Query('serviceTypeCode') serviceTypeCode?: string) {
-    return this.publicBookingService.listProviders(serviceTypeCode);
+  listProviders(
+    @Query('serviceTypeCode') serviceTypeCode?: string,
+    @Query('roleCode') roleCode?: string,
+  ) {
+    return this.publicBookingService.listProviders(serviceTypeCode, roleCode);
   }
 
   @Get('service-types')

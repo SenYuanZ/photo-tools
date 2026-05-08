@@ -8,7 +8,7 @@ import {
   type CustomerTypeItem,
   publicBookingApi,
   type PublicProvider,
-  type ServiceTypeItem,
+  rolesApi,
 } from '../api/app'
 import { timeOptions } from '../constants/options'
 import { isAfterTime } from '../utils/time'
@@ -58,22 +58,16 @@ const parseRecentProviderStorage = () => {
   try {
     const raw = localStorage.getItem(RECENT_PROVIDER_STORAGE_KEY)
     if (!raw) {
-      return {
-        photography: [],
-        makeup: [],
-      } as Record<string, string[]>
+      return {} as Record<string, string[]>
     }
 
     const parsed = JSON.parse(raw) as Record<string, unknown>
-    return {
-      photography: Array.isArray(parsed.photography) ? parsed.photography.filter((item) => typeof item === 'string') : [],
-      makeup: Array.isArray(parsed.makeup) ? parsed.makeup.filter((item) => typeof item === 'string') : [],
-    }
+    return Object.entries(parsed).reduce((acc, [key, value]) => {
+      acc[key] = Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []
+      return acc
+    }, {} as Record<string, string[]>)
   } catch {
-    return {
-      photography: [],
-      makeup: [],
-    } as Record<string, string[]>
+    return {} as Record<string, string[]>
   }
 }
 
@@ -86,9 +80,10 @@ const form = reactive({
   note: '',
 })
 
-const selectedServiceCodes = ref<string[]>(['photography'])
-const serviceTypes = ref<ServiceTypeItem[]>([])
+const selectedServiceCodes = ref<string[]>(['slot-1'])
+const selectedRoleCode = ref('all')
 const customerTypes = ref<CustomerTypeItem[]>([])
+const roleOptions = ref<Array<{ code: string; name: string }>>([{ code: 'all', name: '全部角色' }])
 
 const providersByService = reactive<Record<string, PublicProvider[]>>({})
 const loadingProvidersByService = reactive<Record<string, boolean>>({})
@@ -100,17 +95,10 @@ const providerAvailabilityByService = reactive<
 const providerAvailabilityRequestSeq = reactive<Record<string, number>>({})
 
 const serviceDrafts = reactive<Record<string, ServiceDraft>>({
-  photography: {
+  'slot-1': {
     providerId: '',
     startTime: '10:00',
     endTime: '11:00',
-    requirement: '',
-    referenceFileList: [],
-  },
-  makeup: {
-    providerId: '',
-    startTime: '08:30',
-    endTime: '09:30',
     requirement: '',
     referenceFileList: [],
   },
@@ -123,8 +111,9 @@ const showCustomerTypePicker = ref(false)
 const showProviderPicker = ref(false)
 const showStartTimePicker = ref(false)
 const showEndTimePicker = ref(false)
+const showRolePicker = ref(false)
 
-const pickerServiceCode = ref('photography')
+const pickerServiceCode = ref('slot-1')
 
 const uploading = ref(false)
 const submitting = ref(false)
@@ -137,14 +126,11 @@ const recentProviderIdsByService = reactive<Record<string, string[]>>(parseRecen
 
 let providerKeywordTimer = 0
 
-const serviceTypeLabelMap = computed(() =>
-  new Map(serviceTypes.value.map((item) => [item.code, item.name])),
-)
-
 const activeServices = computed(() =>
-  selectedServiceCodes.value
-    .map((code) => serviceTypes.value.find((item) => item.code === code))
-    .filter(Boolean) as ServiceTypeItem[],
+  selectedServiceCodes.value.map((code, index) => ({
+    code,
+    name: `服务者 ${index + 1}`,
+  })),
 )
 
 const providersOfPicker = computed(() => providersByService[pickerServiceCode.value] || [])
@@ -263,10 +249,7 @@ const selectedProviderIdOfPicker = computed(() => ensureDraft(pickerServiceCode.
 const persistRecentProviderStorage = () => {
   localStorage.setItem(
     RECENT_PROVIDER_STORAGE_KEY,
-    JSON.stringify({
-      photography: recentProviderIdsByService.photography || [],
-      makeup: recentProviderIdsByService.makeup || [],
-    }),
+    JSON.stringify(recentProviderIdsByService),
   )
 }
 
@@ -302,6 +285,7 @@ const customerTypeLabel = computed(() => {
   }
   return customerTypes.value.find((item) => item.code === form.customerTypeCode)?.name || form.customerTypeCode
 })
+const roleLabel = computed(() => roleOptions.value.find((item) => item.code === selectedRoleCode.value)?.name || '全部角色')
 
 const availabilityStateOfPicker = computed(() => ensureAvailabilityState(pickerServiceCode.value))
 
@@ -321,6 +305,42 @@ const selectedProvider = (serviceCode: string) => {
     return undefined
   }
   return (providersByService[serviceCode] || []).find((item) => item.id === providerId)
+}
+
+const providerRoleLabels = (provider: PublicProvider) => {
+  const roleCodes = provider.roles?.length ? provider.roles : [provider.role]
+  return roleCodes
+    .map((code) => roleOptions.value.find((item) => item.code === code)?.name)
+    .filter(Boolean) as string[]
+}
+
+const selectedProviderRoleSummary = (serviceCode: string) => {
+  const provider = selectedProvider(serviceCode)
+  if (!provider) {
+    return '未选择服务者'
+  }
+
+  const labels = providerRoleLabels(provider)
+  if (!labels.length) {
+    return '角色待完善'
+  }
+
+  return labels.join(' / ')
+}
+
+const selectedProviderRoleBadges = (serviceCode: string) => {
+  const provider = selectedProvider(serviceCode)
+  if (!provider) {
+    return [] as string[]
+  }
+  return providerRoleLabels(provider)
+}
+
+const roleBadgeClass = (index: number) => {
+  if (index === 0) {
+    return 'border-blue-200 bg-blue-50 text-blue-600'
+  }
+  return 'border-slate-200 bg-slate-50 text-slate-500'
 }
 
 const previewProviderPortfolio = (serviceCode: string, startPosition = 0) => {
@@ -501,7 +521,7 @@ const loadAvailability = async (serviceCode: string) => {
   availabilityState.error = ''
 
   try {
-    const result = await publicBookingApi.getAvailability(draft.providerId, form.date, serviceCode)
+    const result = await publicBookingApi.getAvailability(draft.providerId, form.date)
     if (availabilityRequestSeq[serviceCode] !== nextSeq) {
       return
     }
@@ -554,7 +574,7 @@ const loadProviderAvailabilitySummary = async (serviceCode: string, providerId: 
   summary.key = form.date
 
   try {
-    const result = await publicBookingApi.getAvailability(providerId, form.date, serviceCode)
+    const result = await publicBookingApi.getAvailability(providerId, form.date)
     if (providerAvailabilityRequestSeq[seqKey] !== nextSeq) {
       return
     }
@@ -621,28 +641,6 @@ const refreshAvailabilityByCurrentSelection = () => {
   })
 }
 
-const getExpectedRoleByService = (serviceCode: string) =>
-  serviceCode === 'makeup' ? 'makeup_artist' : 'photographer'
-
-const loadServiceTypes = async () => {
-  try {
-    const list = await publicBookingApi.listServiceTypes()
-    const filtered = list.filter((item) => item.code === 'photography' || item.code === 'makeup')
-    serviceTypes.value = filtered.length
-      ? filtered
-      : [
-          { id: 'fallback-photography', code: 'photography', name: '摄影服务', sortOrder: 10, isActive: true },
-          { id: 'fallback-makeup', code: 'makeup', name: '妆娘约妆', sortOrder: 20, isActive: true },
-        ]
-  } catch (requestError) {
-    error.value = resolvePublicErrorMessage(requestError, '服务类型加载失败，请稍后重试')
-    serviceTypes.value = [
-      { id: 'fallback-photography', code: 'photography', name: '摄影服务', sortOrder: 10, isActive: true },
-      { id: 'fallback-makeup', code: 'makeup', name: '妆娘约妆', sortOrder: 20, isActive: true },
-    ]
-  }
-}
-
 const loadCustomerTypes = async () => {
   try {
     const list = await publicBookingApi.listCustomerTypes()
@@ -671,12 +669,26 @@ const loadCustomerTypes = async () => {
   }
 }
 
+const loadRoles = async () => {
+  try {
+    const list = await rolesApi.list()
+    roleOptions.value = [
+      { code: 'all', name: '全部角色' },
+      ...list.map((item) => ({ code: item.code, name: item.name })),
+    ]
+  } catch {
+    roleOptions.value = [{ code: 'all', name: '全部角色' }]
+  }
+}
+
 const loadProvidersForService = async (serviceCode: string) => {
   loadingProvidersByService[serviceCode] = true
   try {
-    const providers = await publicBookingApi.listProviders(serviceCode)
-    const expectedRole = getExpectedRoleByService(serviceCode)
-    providersByService[serviceCode] = providers.filter((item) => item.role === expectedRole)
+    const providers = await publicBookingApi.listProviders(
+      undefined,
+      selectedRoleCode.value === 'all' ? undefined : selectedRoleCode.value,
+    )
+    providersByService[serviceCode] = providers
     const draft = ensureDraft(serviceCode)
     if (draft.providerId && !providersByService[serviceCode].find((item) => item.id === draft.providerId)) {
       draft.providerId = ''
@@ -699,7 +711,7 @@ watch(
   selectedServiceCodes,
   (codes) => {
     if (!codes.length) {
-      selectedServiceCodes.value = ['photography']
+      selectedServiceCodes.value = ['slot-1']
       return
     }
 
@@ -744,6 +756,13 @@ watch(
   },
 )
 
+watch(selectedRoleCode, () => {
+  selectedServiceCodes.value.forEach((code) => {
+    providersByService[code] = []
+    void loadProvidersForService(code)
+  })
+})
+
 watch(providerKeywordInput, (value) => {
   window.clearTimeout(providerKeywordTimer)
   providerKeywordTimer = window.setTimeout(() => {
@@ -756,29 +775,31 @@ onBeforeUnmount(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadServiceTypes(), loadCustomerTypes()])
+  await Promise.all([loadCustomerTypes(), loadRoles()])
   await Promise.all(selectedServiceCodes.value.map((code) => loadProvidersForService(code)))
 })
 
-const toggleService = (serviceCode: string) => {
-  error.value = ''
-  success.value = ''
-
-  if (selectedServiceCodes.value.includes(serviceCode)) {
-    if (selectedServiceCodes.value.length === 1) {
-      showToast('至少保留一个服务类型')
-      return
-    }
-    selectedServiceCodes.value = selectedServiceCodes.value.filter((item) => item !== serviceCode)
+const addServiceSlot = () => {
+  if (selectedServiceCodes.value.length >= 6) {
+    showToast('一次最多选择 6 位服务者')
     return
   }
+  const next = `slot-${Date.now()}`
+  selectedServiceCodes.value = [...selectedServiceCodes.value, next]
+}
 
-  if (selectedServiceCodes.value.length >= 2) {
-    showToast('一次最多选择两种服务')
+const removeServiceSlot = (serviceCode: string) => {
+  if (selectedServiceCodes.value.length <= 1) {
+    showToast('至少保留一位服务者')
     return
   }
-
-  selectedServiceCodes.value = [...selectedServiceCodes.value, serviceCode]
+  selectedServiceCodes.value = selectedServiceCodes.value.filter((item) => item !== serviceCode)
+  delete serviceDrafts[serviceCode]
+  delete providersByService[serviceCode]
+  delete loadingProvidersByService[serviceCode]
+  delete availabilityByService[serviceCode]
+  delete availabilityRequestSeq[serviceCode]
+  delete providerAvailabilityByService[serviceCode]
 }
 
 const openDate = () => {
@@ -913,11 +934,6 @@ const submit = async () => {
     return
   }
 
-  if (!selectedServiceCodes.value.length) {
-    error.value = '请至少选择一种服务类型。'
-    return
-  }
-
   const items = [] as Array<{
     serviceTypeCode: string
     providerId: string
@@ -927,10 +943,10 @@ const submit = async () => {
     referenceImages: string[]
   }>
 
-  for (const serviceCode of selectedServiceCodes.value) {
+  for (const [index, serviceCode] of selectedServiceCodes.value.entries()) {
     const draft = ensureDraft(serviceCode)
-    const serviceLabel = serviceTypeLabelMap.value.get(serviceCode) || serviceCode
-    const providerLabel = serviceCode === 'makeup' ? '妆娘' : '摄影师'
+    const serviceLabel = `服务者 ${index + 1}`
+    const providerLabel = '服务者'
 
     if (!draft.providerId) {
       error.value = `请选择${providerLabel}。`
@@ -948,18 +964,23 @@ const submit = async () => {
     }
 
     if (!isAfterTime(draft.startTime, draft.endTime)) {
-      error.value = `${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}的结束时间必须晚于开始时间。`
+      error.value = `${serviceLabel}的结束时间必须晚于开始时间。`
       return
     }
 
     const validEndSlots = getValidEndSlots(serviceCode, draft.startTime)
     if (!validEndSlots.length || !validEndSlots.includes(draft.endTime)) {
-      error.value = `${serviceTypeLabelMap.value.get(serviceCode) || serviceCode}当前时间不在可约档期，请重新选择。`
+      error.value = `${serviceLabel}当前时间不在可约档期，请重新选择。`
       return
     }
 
+    const currentProvider = selectedProvider(serviceCode)
+    const autoServiceTypeCode = currentProvider?.roles?.includes('makeup_artist') || currentProvider?.role === 'makeup_artist'
+      ? 'makeup'
+      : 'photography'
+
     items.push({
-      serviceTypeCode: serviceCode,
+      serviceTypeCode: autoServiceTypeCode,
       providerId: draft.providerId,
       startTime: draft.startTime,
       endTime: draft.endTime,
@@ -999,7 +1020,7 @@ const submit = async () => {
         <div class="flex items-center justify-between">
           <div>
             <p class="title-font text-2xl text-rose-500">模特统一约单入口</p>
-            <p class="text-xs text-slate-600">同一天可同时提交摄影+妆造，系统会自动关联协同订单</p>
+            <p class="text-xs text-slate-600">同一天可同时提交多个服务者，系统会自动关联协同订单</p>
           </div>
           <Button size="small" round plain type="primary" @click="router.push({ name: 'login' })">服务者登录</Button>
         </div>
@@ -1011,39 +1032,44 @@ const submit = async () => {
         <Field v-model="form.modelName" label="模特姓名" required placeholder="请输入你的姓名" clearable />
         <Field v-model="form.modelPhone" label="联系电话" required placeholder="请输入手机号" maxlength="11" clearable />
         <Field :model-value="customerTypeLabel" label="客户类型" required readonly is-link @click="showCustomerTypePicker = true" />
+        <Field :model-value="roleLabel" label="角色筛选" readonly is-link @click="showRolePicker = true" />
         <Field :model-value="form.date" label="服务日期" required readonly is-link @click="openDate" />
         <Field v-model="form.location" label="服务地点" placeholder="例如：创意园A栋 / 某某工作室" clearable />
         <Field v-model="form.note" label="协同备注" placeholder="可选：例如同一主题风格，妆容偏日系" clearable />
       </CellGroup>
 
-      <div class="mt-3 rounded-xl border border-[#f2d9e7] bg-white/90 p-2.5">
-        <p class="mb-2 text-xs font-bold text-slate-500">选择服务类型（可多选）</p>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <button
-            v-for="service in serviceTypes"
-            :key="service.code"
-            type="button"
-            class="service-chip"
-            :class="selectedServiceCodes.includes(service.code) ? 'service-chip--active' : ''"
-            @click="toggleService(service.code)"
-          >
-            <i class="fa-solid fa-circle-check mr-1" :class="selectedServiceCodes.includes(service.code) ? '' : 'text-slate-300'" />
-            {{ service.name }}
-          </button>
-        </div>
-      </div>
+      <p class="mt-2 text-xs text-slate-500">无需选择服务类型，直接选择具体服务者即可，可同时提交多位服务者。</p>
     </article>
 
-    <article v-for="service in activeServices" :key="service.code" class="card mb-3 p-3" :class="service.code === 'makeup' ? 'soft-yellow' : 'soft-pink'">
-      <p class="mb-2 text-sm font-extrabold">
-        <i :class="service.code === 'makeup' ? 'fa-solid fa-wand-sparkles text-amber-500' : 'fa-solid fa-camera text-rose-500'" class="mr-1" />
-        {{ service.name }}信息
-      </p>
+    <article v-for="service in activeServices" :key="service.code" class="card mb-3 p-3 soft-pink">
+      <div class="mb-2">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-sm font-extrabold"><i class="fa-solid fa-user-check mr-1 text-rose-500" />{{ service.name }}信息</p>
+          <button class="chip shrink-0" type="button" @click="removeServiceSlot(service.code)">
+            <i class="fa-solid fa-minus" />移除
+          </button>
+        </div>
+        <div class="mt-2">
+          <div class="flex flex-wrap gap-1">
+          <template v-if="selectedProviderRoleBadges(service.code).length">
+            <span
+              v-for="(label, index) in selectedProviderRoleBadges(service.code)"
+              :key="`${service.code}-summary-role-${label}`"
+              class="chip role-chip-small border"
+              :class="roleBadgeClass(index)"
+            >
+              <span v-if="index === 0" class="mr-0.5">★</span>{{ label }}
+            </span>
+          </template>
+          <span v-else class="chip border-slate-200 bg-slate-50 text-slate-500">{{ selectedProviderRoleSummary(service.code) }}</span>
+          </div>
+        </div>
+      </div>
 
       <CellGroup inset>
         <Field
           :model-value="selectedProviderLabel(service.code)"
-          :label="service.code === 'makeup' ? '选择妆娘' : '选择摄影师'"
+          label="选择服务者"
           required
           readonly
           is-link
@@ -1053,11 +1079,11 @@ const submit = async () => {
         <Field :model-value="serviceDrafts[service.code].endTime" label="结束时间" required readonly is-link @click="openEndTimePicker(service.code)" />
         <Field
           v-model="serviceDrafts[service.code].requirement"
-          :label="service.code === 'makeup' ? '妆造需求' : '拍摄需求'"
+          label="服务需求"
           type="textarea"
           rows="3"
           autosize
-          :placeholder="service.code === 'makeup' ? '例如：偏清透奶油肌、需要编发' : '例如：希望自然感抓拍、偏日系构图'"
+          placeholder="例如：希望自然感抓拍/清透妆造/道具准备等"
         />
       </CellGroup>
 
@@ -1076,13 +1102,20 @@ const submit = async () => {
             class="h-10 w-10 rounded-xl object-cover"
           />
           <div class="min-w-0 flex-1">
-            <p class="text-xs font-extrabold text-slate-700">
-              {{ selectedProvider(service.code)?.nickname }}
-              <span class="chip ml-1">{{ service.code === 'makeup' ? '妆娘' : '摄影师' }}</span>
-            </p>
-            <p class="truncate text-[11px] text-slate-500">
+            <p class="truncate text-xs font-extrabold text-slate-700">{{ selectedProvider(service.code)?.nickname }}</p>
+            <p class="mt-1 truncate text-[11px] text-slate-500">
               {{ selectedProvider(service.code)?.bio || '该服务者暂未填写个人简介。' }}
             </p>
+            <div class="mt-1.5 flex flex-wrap gap-1">
+              <span
+                v-for="(label, index) in providerRoleLabels(selectedProvider(service.code) as PublicProvider)"
+                :key="`${service.code}-selected-role-${label}`"
+                class="chip role-chip-small border"
+                :class="roleBadgeClass(index)"
+              >
+                <span v-if="index === 0" class="mr-0.5">★</span>{{ label }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -1194,6 +1227,10 @@ const submit = async () => {
       </div>
     </article>
 
+    <button class="btn-secondary mb-3" type="button" @click="addServiceSlot">
+      <i class="fa-solid fa-plus mr-1" />新增一位服务者
+    </button>
+
     <article v-if="error" class="card mb-3 p-3 text-xs text-amber-700 soft-yellow">
       <p class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1" />{{ error }}</p>
     </article>
@@ -1210,7 +1247,7 @@ const submit = async () => {
       <section class="max-h-[78vh] p-3">
         <div class="mb-2 flex items-center justify-between">
           <p class="text-sm font-extrabold text-slate-700">
-            选择{{ pickerServiceCode === 'makeup' ? '妆娘' : '摄影师' }}
+            选择服务者
           </p>
           <button class="chip" type="button" @click="showProviderPicker = false">关闭</button>
         </div>
@@ -1250,7 +1287,9 @@ const submit = async () => {
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-xs font-extrabold text-slate-700">
                     {{ provider.nickname }}
-                    <span class="chip ml-1">{{ provider.role === 'makeup_artist' ? '妆娘' : '摄影师' }}</span>
+                    <span v-for="label in providerRoleLabels(provider)" :key="`recent-role-${provider.id}-${label}`" class="chip ml-1">
+                      {{ label }}
+                    </span>
                   </p>
                   <p class="truncate text-[11px] text-slate-500">{{ provider.bio || provider.account }}</p>
                 </div>
@@ -1282,7 +1321,9 @@ const submit = async () => {
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-xs font-extrabold text-slate-700">
                     {{ provider.nickname }}
-                    <span class="chip ml-1">{{ provider.role === 'makeup_artist' ? '妆娘' : '摄影师' }}</span>
+                    <span v-for="label in providerRoleLabels(provider)" :key="`common-role-${provider.id}-${label}`" class="chip ml-1">
+                      {{ label }}
+                    </span>
                   </p>
                   <p class="truncate text-[11px] text-slate-500">{{ provider.bio || provider.account }}</p>
                 </div>
@@ -1316,6 +1357,14 @@ const submit = async () => {
         :columns="customerTypeColumns"
         @cancel="showCustomerTypePicker = false"
         @confirm="({ selectedOptions }: any) => { form.customerTypeCode = selectedOptions[0]?.value || form.customerTypeCode; showCustomerTypePicker = false }"
+      />
+    </Popup>
+
+    <Popup v-model:show="showRolePicker" position="bottom" round>
+      <Picker
+        :columns="roleOptions.map((item) => ({ text: item.name, value: item.code }))"
+        @cancel="showRolePicker = false"
+        @confirm="({ selectedOptions }: any) => { selectedRoleCode = selectedOptions[0]?.value || selectedRoleCode; showRolePicker = false }"
       />
     </Popup>
 
@@ -1358,5 +1407,11 @@ const submit = async () => {
   border-color: #ff9ec3;
   background: #fff1f7;
   color: #c63f79;
+}
+
+.role-chip-small {
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 6px;
 }
 </style>

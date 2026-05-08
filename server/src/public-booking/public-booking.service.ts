@@ -12,6 +12,7 @@ import { CustomerTypesService } from '../customer-types/customer-types.service';
 import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
+import { UserRoleAssignment } from '../database/entities/user-role.entity';
 import { User } from '../database/entities/user.entity';
 import { ServiceTypesService } from '../service-types/service-types.service';
 import { SchedulesService } from '../schedules/schedules.service';
@@ -77,6 +78,8 @@ export class PublicBookingService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(UserRoleAssignment)
+    private readonly userRolesRepository: Repository<UserRoleAssignment>,
     @InjectRepository(Customer)
     private readonly customersRepository: Repository<Customer>,
     @InjectRepository(Schedule)
@@ -88,29 +91,43 @@ export class PublicBookingService {
     private readonly serviceTypesService: ServiceTypesService,
   ) {}
 
-  async listProviders(serviceTypeCode?: string) {
+  async listProviders(serviceTypeCode?: string, roleCode?: string) {
     let role: UserRole | undefined;
     if (serviceTypeCode) {
       role = this.resolveRoleByServiceType(serviceTypeCode);
     }
 
-    const users = await this.usersRepository.find({
-      where: role
-        ? { role, displayStatus: DISPLAY_VISIBLE }
-        : { displayStatus: DISPLAY_VISIBLE },
-      select: {
-        id: true,
-        account: true,
-        nickname: true,
-        role: true,
-        avatarUrl: true,
-        bio: true,
-        portfolioImages: true,
-        portfolioPublic: true,
-      },
-      order: {
-        createdAt: 'ASC',
-      },
+    const targetRoleCode = roleCode?.trim() || role;
+
+    const builder = this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.display_status = :visible', { visible: DISPLAY_VISIBLE })
+      .orderBy('user.created_at', 'ASC');
+
+    if (targetRoleCode) {
+      builder
+        .innerJoin(
+          UserRoleAssignment,
+          'userRole',
+          'userRole.user_id = user.id AND userRole.role_code = :roleCode',
+          { roleCode: targetRoleCode },
+        )
+        .distinct(true);
+    }
+
+    const users = await builder.getMany();
+    const userIds = users.map((item) => item.id);
+    const assignments = userIds.length
+      ? await this.userRolesRepository.find({
+          where: userIds.map((userId) => ({ userId })),
+          order: { isPrimary: 'DESC', createdAt: 'ASC' },
+        })
+      : [];
+    const roleMap = new Map<string, string[]>();
+    assignments.forEach((item) => {
+      const list = roleMap.get(item.userId) ?? [];
+      list.push(item.roleCode);
+      roleMap.set(item.userId, list);
     });
 
     return users.map((user) => ({
@@ -118,6 +135,7 @@ export class PublicBookingService {
       nickname: user.nickname,
       account: user.account,
       role: user.role,
+      roles: roleMap.get(user.id) ?? [user.role],
       avatarUrl: normalizeUploadUrl(user.avatarUrl),
       bio: user.bio || '',
       portfolioPublic: Boolean(user.portfolioPublic),
@@ -206,10 +224,9 @@ export class PublicBookingService {
   async createBooking(payload: CreatePublicBookingDto) {
     const normalizedItems = await Promise.all(
       payload.items.map(async (item) => {
-        const serviceTypeCode = await this.serviceTypesService.ensureUsableCode(
-          item.serviceTypeCode,
-        );
-        const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
+        const serviceTypeCode = item.serviceTypeCode
+          ? await this.serviceTypesService.ensureUsableCode(item.serviceTypeCode)
+          : undefined;
 
         const provider = await this.usersRepository.findOne({
           where: { id: item.providerId, displayStatus: DISPLAY_VISIBLE },
@@ -224,8 +241,11 @@ export class PublicBookingService {
           throw new NotFoundException('服务者不存在，请重新选择');
         }
 
-        if (provider.role !== expectedRole) {
-          throw new BadRequestException('服务者与服务类型不匹配');
+        if (serviceTypeCode) {
+          const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
+          if (provider.role !== expectedRole) {
+            throw new BadRequestException('服务者与服务类型不匹配');
+          }
         }
 
         if (!item.referenceImages) {
@@ -234,22 +254,11 @@ export class PublicBookingService {
 
         return {
           ...item,
-          serviceTypeCode,
+          serviceTypeCode: serviceTypeCode ?? this.resolveServiceTypeByProviderRole(provider.role),
           provider,
         };
       }),
     );
-
-    const duplicatedServiceTypeCode = normalizedItems.find(
-      (item, index) =>
-        normalizedItems.findIndex(
-          (current) => current.serviceTypeCode === item.serviceTypeCode,
-        ) !== index,
-    );
-
-    if (duplicatedServiceTypeCode) {
-      throw new BadRequestException('同一次提交不允许重复选择相同服务类型');
-    }
 
     for (const item of normalizedItems) {
       const schedules = await this.schedulesRepository.find({
@@ -351,6 +360,14 @@ export class PublicBookingService {
     }
 
     throw new BadRequestException('暂不支持该服务类型');
+  }
+
+  private resolveServiceTypeByProviderRole(role: string) {
+    if (role === UserRole.MAKEUP_ARTIST) {
+      return 'makeup';
+    }
+
+    return 'photography';
   }
 
   private async findOrCreateCustomer(payload: {

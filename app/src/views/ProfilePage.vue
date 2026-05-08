@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Cell, CellGroup, Field, Switch, Uploader, showImagePreview } from 'vant'
 import type { UploaderFileListItem } from 'vant'
@@ -15,10 +15,15 @@ const store = useAppStore()
 const router = useRouter()
 
 const saving = ref(false)
+const savingRoles = ref(false)
 const uploadingAvatar = ref(false)
 const uploadingPortfolio = ref(false)
 const feedback = ref('')
 const feedbackType = ref<'success' | 'error'>('success')
+
+const availableRoles = ref<Array<{ code: string; name: string }>>([])
+const selectedRoles = ref<Array<{ code: string; name: string; isPrimary: boolean }>>([])
+const addRoleCode = ref('')
 
 const form = reactive({
   nickname: '',
@@ -193,6 +198,96 @@ const saveProfile = async () => {
     saving.value = false
   }
 }
+
+const selectedRoleCodes = computed(() => selectedRoles.value.map((item) => item.code))
+
+const loadRoles = async () => {
+  const data = await profileApi.getRoles()
+  availableRoles.value = data.availableRoles
+  selectedRoles.value = data.selectedRoles
+  addRoleCode.value = ''
+}
+
+const removableRoles = computed(() =>
+  selectedRoles.value.filter((item) => !item.isPrimary),
+)
+
+const addableRoles = computed(() =>
+  availableRoles.value.filter((item) => !selectedRoleCodes.value.includes(item.code)),
+)
+
+const setPrimaryRole = (code: string) => {
+  selectedRoles.value = selectedRoles.value.map((item) => ({
+    ...item,
+    isPrimary: item.code === code,
+  }))
+}
+
+const addRole = () => {
+  if (!addRoleCode.value) {
+    return
+  }
+  const role = availableRoles.value.find((item) => item.code === addRoleCode.value)
+  if (!role) {
+    return
+  }
+  selectedRoles.value.push({
+    code: role.code,
+    name: role.name,
+    isPrimary: false,
+  })
+  addRoleCode.value = ''
+}
+
+const removeRole = (code: string) => {
+  if (selectedRoles.value.length <= 1) {
+    setFeedback('error', '至少保留一个角色')
+    return
+  }
+  const target = selectedRoles.value.find((item) => item.code === code)
+  if (target?.isPrimary) {
+    setFeedback('error', '请先设置其他主角色后再删除')
+    return
+  }
+  selectedRoles.value = selectedRoles.value.filter((item) => item.code !== code)
+}
+
+const saveRoles = async () => {
+  if (!selectedRoles.value.length) {
+    setFeedback('error', '至少保留一个角色')
+    return
+  }
+  const primaryRoleCode = selectedRoles.value.find((item) => item.isPrimary)?.code || selectedRoles.value[0].code
+  savingRoles.value = true
+  try {
+    const updated = await profileApi.updateRoles({
+      roleCodes: selectedRoles.value.map((item) => item.code),
+      primaryRoleCode,
+    })
+    selectedRoles.value = updated.selectedRoles
+    if (store.profile) {
+      store.profile = {
+        ...store.profile,
+        role: updated.primaryRoleCode,
+        roles: updated.selectedRoles.map((item) => item.code),
+      }
+    }
+    store.userRole = updated.primaryRoleCode
+    setFeedback('success', '角色设置已更新')
+  } catch (error) {
+    setFeedback('error', (error as Error).message || '角色更新失败')
+  } finally {
+    savingRoles.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    await loadRoles()
+  } catch (error) {
+    setFeedback('error', (error as Error).message || '角色信息加载失败')
+  }
+})
 </script>
 
 <template>
@@ -230,6 +325,49 @@ const saveProfile = async () => {
           upload-text="上传头像"
         />
       </div>
+    </article>
+
+    <article class="card mb-3 p-3 soft-pink">
+      <div class="mb-2 flex items-center justify-between">
+        <p class="text-sm font-extrabold"><i class="fa-solid fa-user-tag mr-1 text-rose-500" />角色标签</p>
+        <Button size="small" round plain type="primary" :loading="savingRoles" @click="saveRoles">保存角色</Button>
+      </div>
+
+      <div class="mb-2 flex flex-wrap gap-2">
+        <button
+          v-for="role in selectedRoles"
+          :key="role.code"
+          type="button"
+          class="chip"
+          :class="role.isPrimary ? 'border-blue-200 text-blue-600 bg-blue-50' : 'border-slate-200 text-slate-600 bg-white'"
+          @click="setPrimaryRole(role.code)"
+        >
+          {{ role.name }}
+          <span v-if="role.isPrimary" class="ml-1 text-[10px]">主</span>
+        </button>
+      </div>
+
+      <div class="mb-2 flex items-center gap-2">
+        <select v-model="addRoleCode" class="input h-9 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+          <option value="">选择要添加的角色</option>
+          <option v-for="item in addableRoles" :key="item.code" :value="item.code">{{ item.name }}</option>
+        </select>
+        <Button size="small" round plain type="primary" @click="addRole">添加</Button>
+      </div>
+
+      <div v-if="removableRoles.length" class="flex flex-wrap gap-2 text-xs">
+        <button
+          v-for="item in removableRoles"
+          :key="item.code"
+          type="button"
+          class="chip border-rose-100 text-rose-500"
+          @click="removeRole(item.code)"
+        >
+          删除 {{ item.name }}
+        </button>
+      </div>
+
+      <p class="mt-2 text-xs text-slate-500">点击角色可设为主角色；系统至少保留一个角色。</p>
     </article>
 
     <article class="card mb-3 p-3 soft-pink">

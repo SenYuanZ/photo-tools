@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, CellGroup, Field, Picker, Popup } from 'vant'
-import { authApi } from '../api/app'
+import { authApi, rolesApi } from '../api/app'
 import AuthCameraBanner from '../components/AuthCameraBanner.vue'
 import { useAppStore } from '../stores/app'
 
@@ -25,13 +25,12 @@ const feedback = ref('')
 const feedbackType = ref<'success' | 'error'>('success')
 const showRolePicker = ref(false)
 
-const roleColumns = [
-  { text: '摄影师', value: 'photographer' },
-  { text: '妆娘', value: 'makeup_artist' },
-]
+const roleColumns = ref<Array<{ text: string; value: string }>>([
+  { text: '摄影', value: 'photographer' },
+])
 
 const roleLabel = computed(() =>
-  roleColumns.find((item) => item.value === form.role)?.text ?? '请选择账号身份',
+  roleColumns.value.find((item) => item.value === form.role)?.text ?? '请选择账号身份',
 )
 
 const makeCaptcha = () =>
@@ -85,7 +84,7 @@ const submit = async () => {
       nickname: form.nickname.trim(),
       password: form.password,
       inviteCode: form.inviteCode.trim().toUpperCase(),
-      role: form.role as 'photographer' | 'makeup_artist',
+      role: form.role,
     })
 
     setFeedback('success', '注册成功，正在自动登录...')
@@ -101,6 +100,23 @@ const submit = async () => {
     loading.value = false
   }
 }
+
+const loadRoles = async () => {
+  try {
+    const list = await rolesApi.list()
+    if (!list.length) {
+      return
+    }
+    roleColumns.value = list.map((item) => ({ text: item.name, value: item.code }))
+    const photographer = list.find((item) => item.code === 'photographer')
+    form.role = photographer?.code || list[0].code
+  } catch {
+    roleColumns.value = [{ text: '摄影', value: 'photographer' }]
+    form.role = 'photographer'
+  }
+}
+
+void loadRoles()
 </script>
 
 <template>

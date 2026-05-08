@@ -15,6 +15,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateProfileRolesDto } from './dto/update-profile-roles.dto';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
@@ -46,6 +47,19 @@ export class ProfileController {
     @Body() payload: UpdateProfileDto,
   ) {
     return this.profileService.update(userId, payload);
+  }
+
+  @Get('roles')
+  getRoles(@CurrentUser('sub') userId: string) {
+    return this.profileService.getRoles(userId);
+  }
+
+  @Patch('roles')
+  updateRoles(
+    @CurrentUser('sub') userId: string,
+    @Body() payload: UpdateProfileRolesDto,
+  ) {
+    return this.profileService.updateRoles(userId, payload);
   }
 
   @Post('portfolio-images')

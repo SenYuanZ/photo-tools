@@ -1,9 +1,17 @@
 export type CustomerType = string
-export type UserRole = 'photographer' | 'makeup_artist'
+export type UserRole = string
 export type DepositStatus = 'unpaid' | 'paid' | 'full'
 export type ScheduleStatus = 'normal' | 'stored'
 export type ReminderType = '1d' | '1h'
 export type ThemeName = 'pink' | 'blue' | 'yellow'
+
+export interface RoleItem {
+  id: string
+  code: string
+  name: string
+  sortOrder: number
+  isActive: boolean
+}
 
 export interface Customer {
   id: string

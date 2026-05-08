@@ -9,8 +9,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcryptjs';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ReminderType, ThemeName, UserRole } from '../common/enums/app.enums';
+import { ReminderType, ThemeName } from '../common/enums/app.enums';
 import { InviteCode } from '../database/entities/invite-code.entity';
+import { RoleOption } from '../database/entities/role.entity';
+import { UserRoleAssignment } from '../database/entities/user-role.entity';
 import { UserSetting } from '../database/entities/user-setting.entity';
 import type { JwtPayload } from '../common/interfaces/jwt-payload.interface';
 import { User } from '../database/entities/user.entity';
@@ -24,6 +26,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(UserRoleAssignment)
+    private readonly userRolesRepository: Repository<UserRoleAssignment>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
   ) {}
@@ -41,6 +45,13 @@ export class AuthService {
       throw new UnauthorizedException('账号或密码错误');
     }
 
+    const roleAssignments = await this.userRolesRepository.find({
+      where: { userId: user.id },
+      order: { isPrimary: 'DESC', createdAt: 'ASC' },
+    });
+    const roles = roleAssignments.map((item) => item.roleCode);
+    const normalizedRoles = roles.length ? roles : [user.role];
+
     const tokenPayload: JwtPayload = {
       sub: user.id,
       account: user.account,
@@ -53,6 +64,7 @@ export class AuthService {
         account: user.account,
         nickname: user.nickname,
         role: user.role,
+        roles: normalizedRoles,
       },
     };
   }
@@ -68,6 +80,18 @@ export class AuthService {
     }
 
     const result = await this.dataSource.transaction(async (manager) => {
+      const primaryRoleCode = payload.role ?? 'photographer';
+      const roleExists = await manager.findOne(RoleOption, {
+        where: {
+          code: primaryRoleCode,
+          isActive: true,
+          displayStatus: DISPLAY_VISIBLE,
+        },
+      });
+      if (!roleExists) {
+        throw new BadRequestException('角色不存在或已停用');
+      }
+
       const inviteCode = await manager
         .createQueryBuilder(InviteCode, 'inviteCode')
         .setLock('pessimistic_write')
@@ -101,9 +125,17 @@ export class AuthService {
         account,
         nickname,
         password: await hash(payload.password, 10),
-        role: payload.role ?? UserRole.PHOTOGRAPHER,
+        role: primaryRoleCode,
       });
       await manager.save(user);
+
+      const assignment = manager.create(UserRoleAssignment, {
+        id: uuidv4(),
+        userId: user.id,
+        roleCode: primaryRoleCode,
+        isPrimary: true,
+      });
+      await manager.save(assignment);
 
       const settings = manager.create(UserSetting, {
         userId: user.id,
@@ -119,6 +151,13 @@ export class AuthService {
       return user;
     });
 
+    const roleAssignments = await this.userRolesRepository.find({
+      where: { userId: result.id },
+      order: { isPrimary: 'DESC', createdAt: 'ASC' },
+    });
+    const roles = roleAssignments.map((item) => item.roleCode);
+    const normalizedRoles = roles.length ? roles : [result.role];
+
     const tokenPayload: JwtPayload = {
       sub: result.id,
       account: result.account,
@@ -131,6 +170,7 @@ export class AuthService {
         account: result.account,
         nickname: result.nickname,
         role: result.role,
+        roles: normalizedRoles,
       },
     };
   }

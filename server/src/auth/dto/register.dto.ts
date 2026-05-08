@@ -1,6 +1,5 @@
 import { Transform } from 'class-transformer';
 import {
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -8,7 +7,6 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../../common/enums/app.enums';
 
 export class RegisterDto {
   @Transform(({ value }) => String(value).trim())
@@ -39,6 +37,7 @@ export class RegisterDto {
   inviteCode: string;
 
   @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
+  @IsString()
+  @Matches(/^[a-z0-9_-]{2,32}$/i)
+  role?: string;
 }

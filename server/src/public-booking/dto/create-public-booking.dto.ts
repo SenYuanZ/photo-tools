@@ -14,9 +14,10 @@ import {
 } from 'class-validator';
 
 class PublicBookingItemDto {
+  @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9_-]{2,32}$/i)
-  serviceTypeCode: string;
+  serviceTypeCode?: string;
 
   @IsUUID()
   providerId: string;
@@ -70,7 +71,7 @@ export class CreatePublicBookingDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(2)
+  @ArrayMaxSize(6)
   @ValidateNested({ each: true })
   @Type(() => PublicBookingItemDto)
   items: PublicBookingItemDto[];

@@ -9,8 +9,10 @@ import { BookingGroup } from './database/entities/booking-group.entity';
 import { Customer } from './database/entities/customer.entity';
 import { CustomerTypeOption } from './database/entities/customer-type.entity';
 import { InviteCode } from './database/entities/invite-code.entity';
+import { RoleOption } from './database/entities/role.entity';
 import { Schedule } from './database/entities/schedule.entity';
 import { ServiceTypeOption } from './database/entities/service-type.entity';
+import { UserRoleAssignment } from './database/entities/user-role.entity';
 import { UserSetting } from './database/entities/user-setting.entity';
 import { User } from './database/entities/user.entity';
 import { SeedService } from './database/seed.service';
@@ -22,6 +24,7 @@ import { InviteCodesModule } from './invite-codes/invite-codes.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { ServiceTypesModule } from './service-types/service-types.module';
 import { SettingsModule } from './settings/settings.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -47,6 +50,8 @@ import { SettingsModule } from './settings/settings.module';
           InviteCode,
           CustomerTypeOption,
           ServiceTypeOption,
+          RoleOption,
+          UserRoleAssignment,
         ],
         synchronize: true,
         logging: false,
@@ -66,6 +71,8 @@ import { SettingsModule } from './settings/settings.module';
       InviteCode,
       CustomerTypeOption,
       ServiceTypeOption,
+      RoleOption,
+      UserRoleAssignment,
     ]),
     AuthModule,
     DashboardModule,
@@ -77,6 +84,7 @@ import { SettingsModule } from './settings/settings.module';
     CustomersModule,
     SchedulesModule,
     SettingsModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

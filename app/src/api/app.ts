@@ -2,6 +2,7 @@ import type {
   Customer,
   CustomerPayload,
   LoginPayload,
+  RoleItem,
   Schedule,
   SchedulePayload,
   UserRole,
@@ -23,6 +24,7 @@ export interface LoginResponse {
     account: string
     nickname: string
     role: UserRole
+    roles: string[]
   }
 }
 
@@ -47,6 +49,7 @@ export interface ProfileData {
   account: string
   nickname: string
   role: UserRole
+  roles: string[]
   avatarUrl: string
   bio: string
   portfolioImages: string[]
@@ -66,6 +69,7 @@ export interface PublicProvider {
   nickname: string
   account: string
   role: UserRole
+  roles: string[]
   avatarUrl: string
   bio: string
   portfolioPublic: boolean
@@ -322,6 +326,23 @@ export const profileApi = {
       body: payload,
     })
   },
+  getRoles() {
+    return request<{
+      availableRoles: Array<{ code: string; name: string }>
+      selectedRoles: Array<{ code: string; name: string; isPrimary: boolean }>
+      primaryRoleCode: string
+    }>('/profile/roles')
+  },
+  updateRoles(payload: { roleCodes: string[]; primaryRoleCode?: string }) {
+    return request<{
+      availableRoles: Array<{ code: string; name: string }>
+      selectedRoles: Array<{ code: string; name: string; isPrimary: boolean }>
+      primaryRoleCode: string
+    }>('/profile/roles', {
+      method: 'PATCH',
+      body: payload,
+    })
+  },
   uploadPortfolioImage(file: File, onProgress?: (percent: number) => void) {
     validateImageSize(file)
 
@@ -406,9 +427,12 @@ export const inviteCodeApi = {
 }
 
 export const publicBookingApi = {
-  listProviders(serviceTypeCode?: string) {
-    const query = serviceTypeCode ? `?serviceTypeCode=${encodeURIComponent(serviceTypeCode)}` : ''
-    return request<PublicProvider[]>(`/public/providers${query}`, {
+  listProviders(serviceTypeCode?: string, roleCode?: string) {
+    const query = new URLSearchParams({
+      ...(serviceTypeCode ? { serviceTypeCode } : {}),
+      ...(roleCode ? { roleCode } : {}),
+    }).toString()
+    return request<PublicProvider[]>(`/public/providers${query ? `?${query}` : ''}`, {
       skipAuth: true,
     })
   },
@@ -494,5 +518,11 @@ export const publicBookingApi = {
 
       xhr.send(formData)
     })
+  },
+}
+
+export const rolesApi = {
+  list() {
+    return request<RoleItem[]>('/roles')
   },
 }

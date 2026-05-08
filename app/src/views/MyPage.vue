@@ -7,8 +7,22 @@ import { useAppStore } from '../stores/app'
 const store = useAppStore()
 const router = useRouter()
 
+const roleNameMap: Record<string, string> = {
+  photographer: '摄影',
+  videographer: '摄像',
+  makeup_artist: '妆娘',
+  hair_stylist: '毛娘',
+  retoucher: '后期',
+  vfx_artist: '特效',
+  model: '模特',
+  editor: '剪辑',
+  prop_master: '道具',
+  ticket_agent: '票代',
+  logistics: '后勤',
+}
+
 const isMakeupRole = computed(() => store.userRole === 'makeup_artist')
-const roleLabel = computed(() => (isMakeupRole.value ? '妆娘' : '摄影师'))
+const roleLabel = computed(() => roleNameMap[store.userRole] || '服务者')
 const entryTitle = computed(() => (isMakeupRole.value ? '约妆录入' : '排单录入'))
 const entryDesc = computed(() => (isMakeupRole.value ? '关联客户并安排妆造档期' : '关联客户并校验冲突'))
 const displayName = computed(() => store.profile?.nickname || store.account || roleLabel.value)

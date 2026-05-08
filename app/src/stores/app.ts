@@ -155,6 +155,7 @@ export const useAppStore = defineStore('app', () => {
     serviceTypes.value = serviceTypeData
     profile.value = {
       ...profileData,
+      roles: profileData.roles?.length ? profileData.roles : [profileData.role || userRole.value],
       avatarUrl: profileData.avatarUrl || '',
       bio: profileData.bio || '',
       portfolioImages: profileData.portfolioImages || [],
@@ -174,7 +175,7 @@ export const useAppStore = defineStore('app', () => {
     const result = await authApi.login(payload)
     setToken(result.token)
     account.value = result.user.nickname || result.user.account
-    userRole.value = result.user.role || (localStorage.getItem(ROLE_KEY) as UserRole) || 'photographer'
+    userRole.value = result.user.roles?.[0] || result.user.role || (localStorage.getItem(ROLE_KEY) as UserRole) || 'photographer'
     localStorage.setItem(ROLE_KEY, userRole.value)
     localStorage.setItem(ACCOUNT_KEY, account.value)
     isLoggedIn.value = true
@@ -221,6 +222,7 @@ export const useAppStore = defineStore('app', () => {
     const updated = await profileApi.update(payload)
     profile.value = {
       ...updated,
+      roles: updated.roles?.length ? updated.roles : [updated.role || userRole.value],
       avatarUrl: updated.avatarUrl || '',
       bio: updated.bio || '',
       portfolioImages: updated.portfolioImages || [],

@@ -4,6 +4,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InviteCode } from '../database/entities/invite-code.entity';
+import { RoleOption } from '../database/entities/role.entity';
+import { UserRoleAssignment } from '../database/entities/user-role.entity';
 import { UserSetting } from '../database/entities/user-setting.entity';
 import { User } from '../database/entities/user.entity';
 import { AuthController } from './auth.controller';
@@ -12,7 +14,13 @@ import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserSetting, InviteCode]),
+    TypeOrmModule.forFeature([
+      User,
+      UserSetting,
+      InviteCode,
+      RoleOption,
+      UserRoleAssignment,
+    ]),
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

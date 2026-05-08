@@ -3,7 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CustomerTypesModule } from '../customer-types/customer-types.module';
 import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
+import { RoleOption } from '../database/entities/role.entity';
 import { Schedule } from '../database/entities/schedule.entity';
+import { UserRoleAssignment } from '../database/entities/user-role.entity';
 import { User } from '../database/entities/user.entity';
 import { ServiceTypesModule } from '../service-types/service-types.module';
 import { SchedulesModule } from '../schedules/schedules.module';
@@ -12,7 +14,14 @@ import { PublicBookingService } from './public-booking.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Customer, Schedule, BookingGroup]),
+    TypeOrmModule.forFeature([
+      User,
+      UserRoleAssignment,
+      RoleOption,
+      Customer,
+      Schedule,
+      BookingGroup,
+    ]),
     CustomerTypesModule,
     ServiceTypesModule,
     SchedulesModule,
