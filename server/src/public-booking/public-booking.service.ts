@@ -172,7 +172,12 @@ export class PublicBookingService {
 
     if (serviceTypeCode) {
       const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
-      if (provider.role !== expectedRole) {
+      const matched = await this.providerSupportsRole(
+        provider.id,
+        provider.role,
+        expectedRole,
+      );
+      if (!matched) {
         throw new BadRequestException('服务者与服务类型不匹配');
       }
     }
@@ -243,7 +248,12 @@ export class PublicBookingService {
 
         if (serviceTypeCode) {
           const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
-          if (provider.role !== expectedRole) {
+          const matched = await this.providerSupportsRole(
+            provider.id,
+            provider.role,
+            expectedRole,
+          );
+          if (!matched) {
             throw new BadRequestException('服务者与服务类型不匹配');
           }
         }
@@ -368,6 +378,28 @@ export class PublicBookingService {
     }
 
     return 'photography';
+  }
+
+  private async providerSupportsRole(
+    userId: string,
+    primaryRole: string,
+    expectedRole: UserRole,
+  ) {
+    if (primaryRole === expectedRole) {
+      return true;
+    }
+
+    const assignment = await this.userRolesRepository.findOne({
+      where: {
+        userId,
+        roleCode: expectedRole,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return Boolean(assignment);
   }
 
   private async findOrCreateCustomer(payload: {
