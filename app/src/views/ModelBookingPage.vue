@@ -1004,6 +1004,12 @@ const submit = async () => {
     })
 
     success.value = `提交成功，已创建协同单 ${result.bookingGroupId}，共 ${result.bookings.length} 条排单。默认未支付，到账后请在排单详情确认收款状态。`
+    window.setTimeout(() => {
+      router.push({
+        name: 'public-order-detail',
+        params: { bookingGroupId: result.bookingGroupId },
+      })
+    }, 500)
     resetFormAfterSuccess()
   } catch (requestError) {
     error.value = resolvePublicErrorMessage(requestError, '提交失败，请稍后重试')

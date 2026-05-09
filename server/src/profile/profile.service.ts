@@ -141,7 +141,9 @@ export class ProfileService {
       this.userRolesRepository.find({ where: { userId } }),
     ]);
 
-    const assignmentMap = new Map(assignments.map((item) => [item.roleCode, item]));
+    const assignmentMap = new Map(
+      assignments.map((item) => [item.roleCode, item]),
+    );
     const selectedRoles = roles
       .filter((role) => assignmentMap.has(role.code))
       .map((role) => ({
@@ -157,7 +159,9 @@ export class ProfileService {
       })),
       selectedRoles,
       primaryRoleCode:
-        selectedRoles.find((item) => item.isPrimary)?.code || selectedRoles[0]?.code || user.role,
+        selectedRoles.find((item) => item.isPrimary)?.code ||
+        selectedRoles[0]?.code ||
+        user.role,
     };
   }
 
@@ -167,7 +171,9 @@ export class ProfileService {
       throw new NotFoundException('用户不存在');
     }
 
-    const uniqueRoleCodes = [...new Set(payload.roleCodes.map((item) => item.trim()))];
+    const uniqueRoleCodes = [
+      ...new Set(payload.roleCodes.map((item) => item.trim())),
+    ];
     if (!uniqueRoleCodes.length) {
       throw new BadRequestException('至少保留一个角色');
     }
@@ -179,12 +185,15 @@ export class ProfileService {
       },
     });
     const availableCodeSet = new Set(availableRoles.map((item) => item.code));
-    const invalidRole = uniqueRoleCodes.find((item) => !availableCodeSet.has(item));
+    const invalidRole = uniqueRoleCodes.find(
+      (item) => !availableCodeSet.has(item),
+    );
     if (invalidRole) {
       throw new BadRequestException(`角色 ${invalidRole} 不存在或已停用`);
     }
 
-    const primaryRoleCode = payload.primaryRoleCode?.trim() || uniqueRoleCodes[0];
+    const primaryRoleCode =
+      payload.primaryRoleCode?.trim() || uniqueRoleCodes[0];
     if (!uniqueRoleCodes.includes(primaryRoleCode)) {
       throw new BadRequestException('主角色必须包含在角色列表中');
     }

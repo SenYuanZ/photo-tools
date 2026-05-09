@@ -25,6 +25,18 @@ const routes = [
     meta: { tab: 'login', hideNav: true },
   },
   {
+    path: '/order-query',
+    name: 'order-query',
+    component: () => import('../views/OrderQueryPage.vue'),
+    meta: { tab: 'login', hideNav: true },
+  },
+  {
+    path: '/order/:bookingGroupId',
+    name: 'public-order-detail',
+    component: () => import('../views/OrderDetailPage.vue'),
+    meta: { tab: 'login', hideNav: true },
+  },
+  {
     path: '/home',
     name: 'home',
     component: () => import('../views/HomePage.vue'),

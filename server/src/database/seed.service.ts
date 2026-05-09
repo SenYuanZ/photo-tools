@@ -356,7 +356,10 @@ export class SeedService implements OnApplicationBootstrap {
     }
   }
 
-  private async ensureUserRoleAssignments(userId: string, primaryRoleCode: string) {
+  private async ensureUserRoleAssignments(
+    userId: string,
+    primaryRoleCode: string,
+  ) {
     const exists = await this.userRolesRepository.findOne({
       where: {
         userId,

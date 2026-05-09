@@ -138,6 +138,34 @@ export interface PublicAvailability {
   }>
 }
 
+export interface PublicOrderBookingItem {
+  bookingId: string
+  serviceTypeCode: string
+  providerId: string
+  providerName: string
+  customerId: string
+  customerName: string
+  customerPhone: string
+  startTime: string
+  endTime: string
+  location: string
+  note: string
+  depositStatus: 'unpaid' | 'paid' | 'full'
+  amount: number
+  referenceImages: string[]
+}
+
+export interface PublicOrderDetail {
+  bookingGroupId: string
+  date: string
+  modelName: string
+  modelPhone: string
+  location: string
+  note: string
+  createdAt: string
+  bookings: PublicOrderBookingItem[]
+}
+
 export const authApi = {
   login(payload: LoginPayload) {
     return request<LoginResponse>('/auth/login', {
@@ -472,6 +500,21 @@ export const publicBookingApi = {
     }>('/public/bookings', {
       method: 'POST',
       body: payload,
+      skipAuth: true,
+    })
+  },
+  queryOrders(params: { bookingGroupId?: string; modelPhone?: string; modelName?: string }) {
+    const query = new URLSearchParams({
+      ...(params.bookingGroupId ? { bookingGroupId: params.bookingGroupId } : {}),
+      ...(params.modelPhone ? { modelPhone: params.modelPhone } : {}),
+      ...(params.modelName ? { modelName: params.modelName } : {}),
+    }).toString()
+
+    return request<{
+      mode: 'bookingGroupId' | 'customer'
+      total: number
+      orders: PublicOrderDetail[]
+    }>(`/public/orders${query ? `?${query}` : ''}`, {
       skipAuth: true,
     })
   },

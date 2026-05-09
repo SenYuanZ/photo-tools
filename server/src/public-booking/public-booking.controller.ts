@@ -18,6 +18,7 @@ import { memoryStorage } from 'multer';
 import sharp from 'sharp';
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
 import { QueryPublicAvailabilityDto } from './dto/query-public-availability.dto';
+import { QueryPublicOrdersDto } from './dto/query-public-orders.dto';
 import { PublicBookingService } from './public-booking.service';
 
 const uploadDir = join(process.cwd(), 'uploads', 'references');
@@ -90,6 +91,11 @@ export class PublicBookingController {
   @Post('bookings')
   createBooking(@Body() payload: CreatePublicBookingDto) {
     return this.publicBookingService.createBooking(payload);
+  }
+
+  @Get('orders')
+  queryOrders(@Query() query: QueryPublicOrdersDto) {
+    return this.publicBookingService.queryOrders(query);
   }
 
   @Post('reference-images')

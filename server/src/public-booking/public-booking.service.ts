@@ -22,6 +22,7 @@ import {
   normalizeUploadUrls,
 } from '../common/utils/upload-url.util';
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
+import { QueryPublicOrdersDto } from './dto/query-public-orders.dto';
 
 const STEP_MINUTES = 30;
 const DISPLAY_VISIBLE = 'Y';
@@ -230,7 +231,9 @@ export class PublicBookingService {
     const normalizedItems = await Promise.all(
       payload.items.map(async (item) => {
         const serviceTypeCode = item.serviceTypeCode
-          ? await this.serviceTypesService.ensureUsableCode(item.serviceTypeCode)
+          ? await this.serviceTypesService.ensureUsableCode(
+              item.serviceTypeCode,
+            )
           : undefined;
 
         const provider = await this.usersRepository.findOne({
@@ -264,7 +267,9 @@ export class PublicBookingService {
 
         return {
           ...item,
-          serviceTypeCode: serviceTypeCode ?? this.resolveServiceTypeByProviderRole(provider.role),
+          serviceTypeCode:
+            serviceTypeCode ??
+            this.resolveServiceTypeByProviderRole(provider.role),
           provider,
         };
       }),
@@ -360,6 +365,190 @@ export class PublicBookingService {
     };
   }
 
+  async queryOrders(query: QueryPublicOrdersDto) {
+    if (query.bookingGroupId) {
+      const detail = await this.getOrderDetailByGroupId(query.bookingGroupId);
+      return {
+        mode: 'bookingGroupId',
+        total: 1,
+        orders: [detail],
+      };
+    }
+
+    if (!query.modelPhone && !query.modelName) {
+      throw new BadRequestException('请输入订单编号，或输入手机号/客户昵称');
+    }
+
+    const schedulesBuilder = this.schedulesRepository
+      .createQueryBuilder('schedule')
+      .leftJoinAndSelect('schedule.customer', 'customer')
+      .leftJoinAndSelect('schedule.user', 'user')
+      .where('schedule.display_status = :visible', { visible: DISPLAY_VISIBLE })
+      .andWhere('customer.display_status = :visible', {
+        visible: DISPLAY_VISIBLE,
+      })
+      .orderBy('schedule.date', 'DESC')
+      .addOrderBy('schedule.start_time', 'DESC');
+
+    if (query.modelPhone) {
+      schedulesBuilder.andWhere('customer.phone = :modelPhone', {
+        modelPhone: query.modelPhone,
+      });
+    }
+
+    if (query.modelName) {
+      schedulesBuilder.andWhere('customer.name LIKE :modelName', {
+        modelName: `%${query.modelName}%`,
+      });
+    }
+
+    const matchedSchedules = await schedulesBuilder.getMany();
+
+    const groupIdSet = new Set(
+      matchedSchedules
+        .map((item) => item.bookingGroupId)
+        .filter((item): item is string => Boolean(item)),
+    );
+
+    const groups = groupIdSet.size
+      ? await this.bookingGroupsRepository.find({
+          where: Array.from(groupIdSet).map((id) => ({
+            id,
+            displayStatus: DISPLAY_VISIBLE,
+          })),
+          relations: {
+            schedules: {
+              user: true,
+              customer: true,
+            },
+          },
+          order: {
+            createdAt: 'DESC',
+          },
+        })
+      : [];
+
+    const groupedOrders = groups.map((group) => this.formatOrderDetail(group));
+    const ungroupedOrders = matchedSchedules
+      .filter((item) => !item.bookingGroupId)
+      .map((item) => this.formatSingleScheduleOrder(item));
+
+    const orders = [...groupedOrders, ...ungroupedOrders].sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() -
+        new Date(left.createdAt).getTime(),
+    );
+
+    return {
+      mode: 'customer',
+      total: orders.length,
+      orders,
+    };
+  }
+
+  private async getOrderDetailByGroupId(bookingGroupId: string) {
+    const group = await this.bookingGroupsRepository.findOne({
+      where: {
+        id: bookingGroupId,
+        displayStatus: DISPLAY_VISIBLE,
+      },
+      relations: {
+        schedules: {
+          user: true,
+          customer: true,
+        },
+      },
+      order: {
+        schedules: {
+          startTime: 'ASC',
+        },
+      },
+    });
+
+    if (!group) {
+      const schedule = await this.schedulesRepository.findOne({
+        where: {
+          id: bookingGroupId,
+          displayStatus: DISPLAY_VISIBLE,
+        },
+        relations: {
+          user: true,
+          customer: true,
+        },
+      });
+
+      if (!schedule) {
+        throw new NotFoundException('未找到该订单，请核对订单编号');
+      }
+
+      return this.formatSingleScheduleOrder(schedule);
+    }
+
+    return this.formatOrderDetail(group);
+  }
+
+  private formatSingleScheduleOrder(schedule: Schedule) {
+    return {
+      bookingGroupId: schedule.id,
+      date: schedule.date,
+      modelName: schedule.customer?.name || '',
+      modelPhone: schedule.customer?.phone || '',
+      location: schedule.location,
+      note: schedule.note,
+      createdAt: schedule.createdAt,
+      bookings: [
+        {
+          bookingId: schedule.id,
+          serviceTypeCode: schedule.serviceTypeCode,
+          providerId: schedule.userId,
+          providerName: schedule.user?.nickname || '',
+          customerId: schedule.customerId,
+          customerName: schedule.customer?.name || '',
+          customerPhone: schedule.customer?.phone || '',
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          location: schedule.location,
+          note: schedule.note,
+          depositStatus: schedule.depositStatus,
+          amount: schedule.amount,
+          referenceImages: normalizeUploadUrls(schedule.referenceImages),
+        },
+      ],
+    };
+  }
+
+  private formatOrderDetail(group: BookingGroup) {
+    const schedules = (group.schedules || [])
+      .filter((item) => item.displayStatus === DISPLAY_VISIBLE)
+      .sort((left, right) => left.startTime.localeCompare(right.startTime));
+
+    return {
+      bookingGroupId: group.id,
+      date: group.date,
+      modelName: group.modelName,
+      modelPhone: group.modelPhone,
+      location: group.location,
+      note: group.note,
+      createdAt: group.createdAt,
+      bookings: schedules.map((item) => ({
+        bookingId: item.id,
+        serviceTypeCode: item.serviceTypeCode,
+        providerId: item.userId,
+        providerName: item.user?.nickname || '',
+        customerId: item.customerId,
+        customerName: item.customer?.name || '',
+        customerPhone: item.customer?.phone || '',
+        startTime: item.startTime,
+        endTime: item.endTime,
+        location: item.location,
+        note: item.note,
+        depositStatus: item.depositStatus,
+        amount: item.amount,
+        referenceImages: normalizeUploadUrls(item.referenceImages),
+      })),
+    };
+  }
+
   private resolveRoleByServiceType(serviceTypeCode: string) {
     if (serviceTypeCode === 'photography') {
       return UserRole.PHOTOGRAPHER;
@@ -373,7 +562,7 @@ export class PublicBookingService {
   }
 
   private resolveServiceTypeByProviderRole(role: string) {
-    if (role === UserRole.MAKEUP_ARTIST) {
+    if (role === 'makeup_artist') {
       return 'makeup';
     }
 
@@ -385,7 +574,7 @@ export class PublicBookingService {
     primaryRole: string,
     expectedRole: UserRole,
   ) {
-    if (primaryRole === expectedRole) {
+    if (primaryRole === String(expectedRole)) {
       return true;
     }
 

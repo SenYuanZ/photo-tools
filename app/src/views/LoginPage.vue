@@ -115,6 +115,10 @@ const submit = async () => {
         <Button block round plain type="primary" @click="router.push({ name: 'register' })">注册账号</Button>
         <Button block round plain type="primary" @click="router.push({ name: 'model-booking' })">模特约拍入口</Button>
       </div>
+
+      <Button block round plain type="primary" class="mt-2" @click="router.push({ name: 'order-query' })">
+        查询订单详情
+      </Button>
     </article>
 
     <article class="card auth-tip mt-3 p-3 soft-yellow">
