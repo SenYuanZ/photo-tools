@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useAppStore } from '../stores/app'
+import defaultAvatar from '../assets/DefaultAvatar.png'
+
 
 const store = useAppStore()
 const router = useRouter()
@@ -29,7 +31,7 @@ const displayName = computed(() => store.profile?.nickname || store.account || r
 const avatarUrl = computed(
   () =>
     store.profile?.avatarUrl ||
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80',
+    defaultAvatar,
 )
 
 const jump = (name: string) => router.push({ name })

@@ -8,10 +8,11 @@ import {
   type CustomerTypeItem,
   publicBookingApi,
   type PublicProvider,
-  rolesApi,
+  type ServiceTypeItem,
 } from '../api/app'
 import { timeOptions } from '../constants/options'
 import { isAfterTime } from '../utils/time'
+import defaultAvatar from '../assets/DefaultAvatar.png'
 
 type UploadItem = UploaderFileListItem & {
   uploadedUrl?: string
@@ -1035,10 +1036,10 @@ const submit = async () => {
 
     <article class="card mb-3 p-3">
       <CellGroup inset>
-        <Field v-model="form.modelName" label="模特姓名" required placeholder="请输入你的姓名" clearable />
+        <Field v-model="form.modelName" label="客户昵称" required placeholder="请输入你的昵称" clearable />
         <Field v-model="form.modelPhone" label="联系电话" required placeholder="请输入手机号" maxlength="11" clearable />
         <Field :model-value="customerTypeLabel" label="客户类型" required readonly is-link @click="showCustomerTypePicker = true" />
-        <Field :model-value="roleLabel" label="角色筛选" readonly is-link @click="showRolePicker = true" />
+        <Field :model-value="roleLabel" label="服务类型" readonly is-link @click="showRolePicker = true" />
         <Field :model-value="form.date" label="服务日期" required readonly is-link @click="openDate" />
         <Field v-model="form.location" label="服务地点" placeholder="例如：创意园A栋 / 某某工作室" clearable />
         <Field v-model="form.note" label="协同备注" placeholder="可选：例如同一主题风格，妆容偏日系" clearable />
@@ -1103,7 +1104,7 @@ const submit = async () => {
       <div v-if="selectedProvider(service.code)" class="mt-2 rounded-xl border border-blue-100 bg-white/90 p-2.5">
         <div class="flex items-center gap-2">
           <img
-            :src="selectedProvider(service.code)?.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80'"
+            :src="selectedProvider(service.code)?.avatarUrl || defaultAvatar"
             alt="服务者头像"
             class="h-10 w-10 rounded-xl object-cover"
           />
@@ -1286,7 +1287,7 @@ const submit = async () => {
             >
               <div class="flex items-center gap-2">
                 <img
-                  :src="provider.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80'"
+                  :src="provider.avatarUrl || defaultAvatar"
                   alt="服务者头像"
                   class="h-9 w-9 rounded-lg object-cover"
                 />
@@ -1320,7 +1321,7 @@ const submit = async () => {
             >
               <div class="flex items-center gap-2">
                 <img
-                  :src="provider.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=320&q=80'"
+                  :src="provider.avatarUrl || defaultAvatar"
                   alt="服务者头像"
                   class="h-9 w-9 rounded-lg object-cover"
                 />
