@@ -8,7 +8,7 @@ import {
   type CustomerTypeItem,
   publicBookingApi,
   type PublicProvider,
-  type ServiceTypeItem,
+  rolesApi,
 } from '../api/app'
 import { timeOptions } from '../constants/options'
 import { isAfterTime } from '../utils/time'
@@ -77,6 +77,7 @@ const form = reactive({
   modelPhone: '',
   date: dayjs().format('YYYY-MM-DD'),
   customerTypeCode: '',
+  companions: '',
   location: '',
   note: '',
 })
@@ -906,6 +907,7 @@ const resetFormAfterSuccess = () => {
   form.modelName = ''
   form.modelPhone = ''
   form.date = dayjs().format('YYYY-MM-DD')
+  form.companions = ''
   form.location = ''
   form.note = ''
 
@@ -999,6 +1001,7 @@ const submit = async () => {
       modelPhone: form.modelPhone,
       date: form.date,
       customerTypeCode: form.customerTypeCode,
+      companions: form.companions,
       location: form.location,
       note: form.note,
       items,
@@ -1039,6 +1042,7 @@ const submit = async () => {
         <Field v-model="form.modelName" label="客户昵称" required placeholder="请输入你的昵称" clearable />
         <Field v-model="form.modelPhone" label="联系电话" required placeholder="请输入手机号" maxlength="11" clearable />
         <Field :model-value="customerTypeLabel" label="客户类型" required readonly is-link @click="showCustomerTypePicker = true" />
+        <Field v-model="form.companions" label="陪同人员" placeholder="可选：如闺蜜 1 人" clearable />
         <Field :model-value="roleLabel" label="服务类型" readonly is-link @click="showRolePicker = true" />
         <Field :model-value="form.date" label="服务日期" required readonly is-link @click="openDate" />
         <Field v-model="form.location" label="服务地点" placeholder="例如：创意园A栋 / 某某工作室" clearable />

@@ -356,6 +356,33 @@ export class SchedulesService {
     };
   }
 
+  async complete(userId: string, id: string) {
+    const schedule = await this.schedulesRepository.findOne({
+      where: { id, userId, displayStatus: DISPLAY_VISIBLE },
+    });
+    if (!schedule) {
+      throw new NotFoundException('排单不存在');
+    }
+
+    if (schedule.status === ScheduleStatus.STORED) {
+      throw new BadRequestException('暂存订单不能直接完单，请先恢复排单');
+    }
+
+    if (schedule.status === ScheduleStatus.COMPLETED) {
+      return {
+        ...schedule,
+        referenceImages: normalizeUploadUrls(schedule.referenceImages),
+      };
+    }
+
+    schedule.status = ScheduleStatus.COMPLETED;
+    const saved = await this.schedulesRepository.save(schedule);
+    return {
+      ...saved,
+      referenceImages: normalizeUploadUrls(saved.referenceImages),
+    };
+  }
+
   async remove(userId: string, id: string) {
     const schedule = await this.schedulesRepository.findOne({
       where: { id, userId, displayStatus: DISPLAY_VISIBLE },

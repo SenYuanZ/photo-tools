@@ -81,6 +81,7 @@ export interface PublicBookingPayload {
   modelPhone: string
   date: string
   customerTypeCode: string
+  companions?: string
   location: string
   note?: string
   items: Array<{
@@ -250,6 +251,11 @@ export const scheduleApi = {
     return request<Schedule>(`/schedules/${id}`, {
       method: 'PATCH',
       body: payload,
+    })
+  },
+  complete(id: string) {
+    return request<Schedule>(`/schedules/${id}/complete`, {
+      method: 'POST',
     })
   },
   remove(id: string) {

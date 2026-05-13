@@ -8,6 +8,7 @@
   "scripts": {
     "build": "nest build",
     "db:init": "node ./scripts/init-db.mjs",
+    "db:cleanup:pending-confirm": "node ./scripts/cleanup-pending-confirm.mjs",
     "start:dev:init": "npm run db:init && nest start --watch",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

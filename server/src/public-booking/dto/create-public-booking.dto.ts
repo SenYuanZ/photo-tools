@@ -58,6 +58,11 @@ export class CreatePublicBookingDto {
   @Matches(/^[a-z0-9_-]{2,32}$/i)
   customerTypeCode: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  companions?: string;
+
   @Transform(({ value }) => String(value).trim())
   @IsString()
   @IsNotEmpty()

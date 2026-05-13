@@ -17,6 +17,8 @@ export enum DepositStatus {
 export enum ScheduleStatus {
   NORMAL = 'normal',
   STORED = 'stored',
+  PENDING_CONFIRM = 'pending_confirm',
+  COMPLETED = 'completed',
 }
 
 export enum ReminderType {

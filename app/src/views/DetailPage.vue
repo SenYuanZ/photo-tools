@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { Button, CellGroup, DatePicker, Field, Popup, TimePicker, Uploader, showImagePreview } from 'vant'
+import { Button, CellGroup, DatePicker, Field, Popup, TimePicker, Uploader, showConfirmDialog, showImagePreview } from 'vant'
 import type { UploaderFileListItem } from 'vant'
 import { scheduleApi } from '../api/app'
 import PageHeader from '../components/PageHeader.vue'
@@ -47,6 +47,7 @@ const selectedEndTimeValues = ref(['10', '00'])
 
 const timeColumns = [timeHourOptions, timeMinuteOptions]
 const isStored = computed(() => schedule.value?.status === 'stored')
+const isCompleted = computed(() => schedule.value?.status === 'completed')
 
 const editForm = reactive({
   date: '',
@@ -216,6 +217,33 @@ const storeSchedule = async () => {
   feedback.value = '已存单，可在首页暂存订单中恢复。'
 }
 
+const completeSchedule = async () => {
+  if (!schedule.value) {
+    return
+  }
+
+  try {
+    await showConfirmDialog({
+      title: '完成订单确认',
+      message: '确认后将完成该订单，是否继续？',
+      confirmButtonText: '确认完成',
+      cancelButtonText: '取消',
+    })
+
+    const updated = await store.completeSchedule(schedule.value.id)
+    feedback.value =
+      updated.status === 'completed'
+        ? '订单已完成，可在日历的当天完成中查看。'
+        : '订单状态已更新。'
+  } catch (error) {
+    const message = (error as Error).message || ''
+    if (message === 'cancel') {
+      return
+    }
+    feedback.value = message || '完单失败，请稍后重试。'
+  }
+}
+
 const openRestoreDate = () => {
   selectedRestoreDateValues.value = dayjs().format('YYYY-MM-DD').split('-')
   showRestoreDatePicker.value = true
@@ -346,6 +374,9 @@ const retryReferenceUpload = async (item: UploadItem) => {
       </p>
       <p v-if="isStored" class="mb-2 text-xs font-bold text-amber-600">
         <i class="fa-solid fa-box-archive mr-1" />当前订单处于暂存状态，不参与日程安排。
+      </p>
+      <p v-else-if="isCompleted" class="mb-2 text-xs font-bold text-emerald-600">
+        <i class="fa-solid fa-circle-check mr-1" />当前订单已完成，可在日历的当天完成中查看。
       </p>
       <div class="space-y-1 text-sm">
         <template v-if="isEditing">
@@ -529,6 +560,9 @@ const retryReferenceUpload = async (item: UploadItem) => {
       </button>
       <button class="btn-secondary" type="button" @click="remove">
         <i class="fa-solid fa-trash-can mr-1" />删除排单
+      </button>
+      <button v-if="!isEditing && !isStored && !isCompleted" class="btn-secondary" type="button" @click="completeSchedule">
+        <i class="fa-solid fa-flag-checkered mr-1" />完成订单
       </button>
       <button v-if="!isStored" class="btn-secondary" type="button" @click="storeSchedule">
         <i class="fa-solid fa-box-archive mr-1" />存单

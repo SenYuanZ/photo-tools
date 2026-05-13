@@ -331,6 +331,7 @@ export class PublicBookingService {
         location: payload.location,
         requirement: item.requirement,
         customerTypeCode: payload.customerTypeCode,
+        companions: payload.companions ?? '',
       });
 
       const schedule = await this.schedulesService.create(item.provider.id, {
@@ -598,6 +599,7 @@ export class PublicBookingService {
     location: string;
     requirement: string;
     customerTypeCode: string;
+    companions: string;
   }) {
     const normalizedTypeCode = await this.customerTypesService.ensureUsableCode(
       payload.customerTypeCode,
@@ -633,7 +635,7 @@ export class PublicBookingService {
         tailPaymentDate: null,
         outfit: '',
         location: payload.location,
-        companions: '',
+        companions: payload.companions,
         tags: ['模特自助预约'],
         displayStatus: DISPLAY_VISIBLE,
       });
@@ -655,7 +657,7 @@ export class PublicBookingService {
       tailPaymentDate: null,
       outfit: '',
       location: payload.location,
-      companions: '',
+      companions: payload.companions,
       tags: ['模特自助预约'],
     });
 

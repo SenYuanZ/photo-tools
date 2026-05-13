@@ -397,6 +397,16 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  const completeSchedule = async (id: string) => {
+    const item = await scheduleApi.complete(id)
+    const normalized = normalizeSchedule(item)
+    const index = schedules.value.findIndex((current) => current.id === id)
+    if (index >= 0) {
+      schedules.value[index] = normalized
+    }
+    return normalized
+  }
+
   const deleteSchedule = async (id: string) => {
     await scheduleApi.remove(id)
     schedules.value = schedules.value.filter((item) => item.id !== id)
@@ -443,6 +453,7 @@ export const useAppStore = defineStore('app', () => {
     deleteCustomer,
     addSchedule,
     updateSchedule,
+    completeSchedule,
     deleteSchedule,
     refreshHistory,
     getCustomerById,

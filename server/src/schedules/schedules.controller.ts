@@ -126,6 +126,11 @@ export class SchedulesController {
     return this.schedulesService.update(userId, id, payload);
   }
 
+  @Post('schedules/:id/complete')
+  complete(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.schedulesService.complete(userId, id);
+  }
+
   @Delete('schedules/:id')
   remove(@CurrentUser('sub') userId: string, @Param('id') id: string) {
     return this.schedulesService.remove(userId, id);

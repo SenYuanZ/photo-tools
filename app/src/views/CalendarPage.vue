@@ -18,17 +18,19 @@ const {
   calendarCells,
   receivedSchedules,
   completedSchedules,
+  pendingConfirmSchedules,
   monthTotalCount,
   setSelectedDate,
   goPrevMonth,
   goNextMonth,
   goCurrentMonth,
-} = useScheduleCalendar(() => store.activeSchedules)
+} = useScheduleCalendar(() => store.schedules.filter((item) => item.status !== 'stored'))
 
 const selectedDateLabel = computed(() => formatCnDate(selectedDate.value))
 
 const receivedCountLabel = computed(() => `${receivedSchedules.value.length} 单`)
 const completedCountLabel = computed(() => `${completedSchedules.value.length} 单`)
+const pendingConfirmCountLabel = computed(() => `${pendingConfirmSchedules.value.length} 单`)
 const monthTotalLabel = computed(() => `本月共 ${monthTotalCount.value} 单`)
 
 const toDetail = (id: string) => {
@@ -78,6 +80,7 @@ const isInProgress = (date: string, startTime: string, endTime: string) => {
           <span class="calendar-day">{{ item.day }}</span>
           <span v-if="item.receivedCount" class="calendar-badge calendar-badge--received">接{{ item.receivedCount }}</span>
           <span v-if="item.completedCount" class="calendar-badge calendar-badge--completed">完{{ item.completedCount }}</span>
+          <span v-if="item.pendingConfirmCount" class="calendar-badge calendar-badge--pending">待{{ item.pendingConfirmCount }}</span>
         </button>
       </div>
 
@@ -88,7 +91,7 @@ const isInProgress = (date: string, startTime: string, endTime: string) => {
       </div>
     </article>
 
-    <article class="mb-4 grid gap-3 sm:grid-cols-2">
+    <article class="mb-4 grid gap-3 sm:grid-cols-3">
       <section class="card p-3 soft-blue">
         <header class="mb-2 flex items-center justify-between">
           <p class="font-extrabold text-blue-600"><i class="fa-solid fa-inbox mr-1" />当天接单</p>
@@ -122,6 +125,24 @@ const isInProgress = (date: string, startTime: string, endTime: string) => {
           />
         </div>
         <p v-else class="rounded-xl bg-white/70 px-3 py-2 text-sm text-slate-500">当天暂无已完成单。</p>
+      </section>
+
+      <section class="card p-3 soft-pink">
+        <header class="mb-2 flex items-center justify-between">
+          <p class="font-extrabold text-rose-600"><i class="fa-solid fa-hourglass-half mr-1" />待确认订单</p>
+          <span class="chip border-rose-200 text-rose-600">{{ pendingConfirmCountLabel }}</span>
+        </header>
+        <p class="mb-2 text-xs text-rose-500">已过结束时间、尚未手动完成的订单会显示在这里。</p>
+        <div v-if="pendingConfirmSchedules.length">
+          <ScheduleCard
+            v-for="item in pendingConfirmSchedules"
+            :key="item.id"
+            :schedule="item"
+            :customer="store.getCustomerById(item.customerId)"
+            @click="toDetail(item.id)"
+          />
+        </div>
+        <p v-else class="rounded-xl bg-white/70 px-3 py-2 text-sm text-slate-500">当天暂无待确认订单。</p>
       </section>
     </article>
   </section>
@@ -194,5 +215,10 @@ const isInProgress = (date: string, startTime: string, endTime: string) => {
 .calendar-badge--completed {
   color: #0f766e;
   background: #defaf2;
+}
+
+.calendar-badge--pending {
+  color: #be185d;
+  background: #ffe4ef;
 }
 </style>
