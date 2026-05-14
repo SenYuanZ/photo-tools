@@ -114,6 +114,9 @@ export class Schedule {
   @Column({ name: 'service_meta', type: 'json', nullable: true })
   serviceMeta: Record<string, unknown> | null;
 
+  @Column({ name: 'service_role_codes', type: 'json', nullable: true })
+  serviceRoleCodes: string[] | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

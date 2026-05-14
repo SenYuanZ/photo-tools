@@ -6,6 +6,7 @@ import { Button, CellGroup, DatePicker, Field, Popup, TimePicker, Uploader, show
 import type { UploaderFileListItem } from 'vant'
 import { scheduleApi } from '../api/app'
 import PageHeader from '../components/PageHeader.vue'
+import ServiceTags from '../components/ServiceTags.vue'
 import {
   depositStatusText,
   timeHourOptions,
@@ -48,6 +49,15 @@ const selectedEndTimeValues = ref(['10', '00'])
 const timeColumns = [timeHourOptions, timeMinuteOptions]
 const isStored = computed(() => schedule.value?.status === 'stored')
 const isCompleted = computed(() => schedule.value?.status === 'completed')
+const detailRoleCodes = computed(() => {
+  if (!schedule.value) {
+    return []
+  }
+  if (schedule.value.serviceRoleCodes?.length) {
+    return schedule.value.serviceRoleCodes
+  }
+  return schedule.value.serviceTypeCode === 'makeup' ? ['makeup_artist'] : ['photographer']
+})
 
 const editForm = reactive({
   date: '',
@@ -428,8 +438,12 @@ const retryReferenceUpload = async (item: UploadItem) => {
           <button class="chip ml-1" type="button" @click="copyPhone">复制</button>
           <a class="chip ml-1" :href="`tel:${customer.phone}`">拨号</a>
         </p>
-        <p>服务类型：{{ store.getServiceTypeName(schedule.serviceTypeCode) }}</p>
-        <p>客户类型：{{ store.getCustomerTypeName(customer.type) }}</p>
+          <p>服务类型：{{ store.getServiceTypeName(schedule.serviceTypeCode) }}</p>
+          <div class="flex items-start gap-1">
+            <span class="text-sm">服务角色：</span>
+            <ServiceTags :role-codes="detailRoleCodes" />
+          </div>
+          <p>客户类型：{{ store.getCustomerTypeName(customer.type) }}</p>
         <p>
           备注标签：
           <span v-for="tag in customer.tags" :key="tag" class="chip ml-1">{{ tag }}</span>

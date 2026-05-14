@@ -38,6 +38,11 @@ class PublicBookingItemDto {
   @IsArray()
   @IsString({ each: true })
   referenceImages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  serviceRoleCodes?: string[];
 }
 
 export class CreatePublicBookingDto {

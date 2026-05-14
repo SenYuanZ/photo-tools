@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import ServiceTags from './ServiceTags.vue'
 import { depositStatusText } from '../constants/options'
 import { useAppStore } from '../stores/app'
 import type { Customer, Schedule } from '../types/models'
@@ -37,6 +38,13 @@ const cardToneClass = computed(() => {
   }
   return 'soft-pink'
 })
+
+const displayRoleCodes = computed(() => {
+  if (props.schedule.serviceRoleCodes?.length) {
+    return props.schedule.serviceRoleCodes
+  }
+  return props.schedule.serviceTypeCode === 'makeup' ? ['makeup_artist'] : ['photographer']
+})
 </script>
 
 <template>
@@ -54,13 +62,13 @@ const cardToneClass = computed(() => {
         <span v-if="inProgress" class="status-live">
           <span class="status-dot" />服务中
         </span>
-        <span class="chip border border-blue-100 bg-blue-50 text-blue-500">
-          {{ store.getServiceTypeName(schedule.serviceTypeCode) }}
-        </span>
         <span class="text-sm font-extrabold" :class="inProgress ? 'text-amber-600' : 'text-rose-500'"
           >{{ schedule.startTime }} - {{ schedule.endTime }}</span
         >
       </div>
+    </div>
+    <div class="mb-2">
+      <ServiceTags :role-codes="displayRoleCodes" />
     </div>
     <div class="space-y-1 text-xs text-slate-600">
       <p><i class="fa-solid fa-location-dot mr-1 text-blue-400" />{{ schedule.location }}</p>

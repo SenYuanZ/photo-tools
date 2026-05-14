@@ -5,6 +5,7 @@ import type {
   Customer,
   CustomerPayload,
   LoginPayload,
+  RoleItem,
   ReminderType,
   Schedule,
   SchedulePayload,
@@ -17,6 +18,7 @@ import {
   customerApi,
   customerTypeApi,
   profileApi,
+  rolesApi,
   scheduleApi,
   serviceTypeApi,
   settingsApi,
@@ -48,6 +50,7 @@ const mergeCustomer = (list: Customer[], item: Customer) => {
 const normalizeSchedule = (item: Schedule): Schedule => ({
   ...item,
   serviceTypeCode: item.serviceTypeCode || 'photography',
+  serviceRoleCodes: item.serviceRoleCodes || [],
   bookingGroupId: item.bookingGroupId ?? null,
   serviceMeta: item.serviceMeta ?? null,
   referenceImages: item.referenceImages || [],
@@ -69,6 +72,7 @@ export const useAppStore = defineStore('app', () => {
   const theme = ref<ThemeName>('pink')
   const customers = ref<Customer[]>([])
   const customerTypes = ref<CustomerTypeItem[]>([])
+  const roles = ref<RoleItem[]>([])
   const serviceTypes = ref<ServiceTypeItem[]>([])
   const profile = ref<ProfileData | null>(null)
   const schedules = ref<Schedule[]>([])
@@ -78,6 +82,7 @@ export const useAppStore = defineStore('app', () => {
 
   const customerMap = computed(() => new Map(customers.value.map((item) => [item.id, item])))
   const customerTypeMap = computed(() => new Map(customerTypes.value.map((item) => [item.code, item.name])))
+  const roleMap = computed(() => new Map(roles.value.map((item) => [item.code, item.name])))
   const serviceTypeMap = computed(() => new Map(serviceTypes.value.map((item) => [item.code, item.name])))
 
   const stats = computed(() => {
@@ -115,11 +120,12 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const loadInitialData = async () => {
-    const [customersData, schedulesData, settingsData, profileData] = await Promise.all([
+    const [customersData, schedulesData, settingsData, profileData, rolesData] = await Promise.all([
       customerApi.list(),
       scheduleApi.list(),
       settingsApi.get(),
       profileApi.get(),
+      rolesApi.list(),
     ])
 
     let customerTypeData: CustomerTypeItem[] = []
@@ -152,6 +158,7 @@ export const useAppStore = defineStore('app', () => {
 
     customers.value = customersData.map(normalizeCustomer)
     customerTypes.value = customerTypeData
+    roles.value = rolesData
     serviceTypes.value = serviceTypeData
     profile.value = {
       ...profileData,
@@ -189,6 +196,7 @@ export const useAppStore = defineStore('app', () => {
     userRole.value = 'photographer'
     customers.value = []
     customerTypes.value = []
+    roles.value = []
     serviceTypes.value = []
     profile.value = null
     schedules.value = []
@@ -424,6 +432,7 @@ export const useAppStore = defineStore('app', () => {
     return customerTypeMap.value.get(code) || code
   }
   const getServiceTypeName = (code: string) => serviceTypeMap.value.get(code) || code
+  const getRoleName = (code: string) => roleMap.value.get(code) || code
   const getScheduleById = (id: string) => schedules.value.find((item) => item.id === id)
 
   return {
@@ -433,6 +442,7 @@ export const useAppStore = defineStore('app', () => {
     theme,
     customers,
     customerTypes,
+    roles,
     serviceTypes,
     profile,
     schedules,
@@ -459,6 +469,7 @@ export const useAppStore = defineStore('app', () => {
     getCustomerById,
     getCustomerTypeName,
     getServiceTypeName,
+    getRoleName,
     getScheduleById,
     getConflict,
   }

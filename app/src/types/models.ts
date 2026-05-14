@@ -34,6 +34,7 @@ export interface Schedule {
   id: string
   customerId: string
   serviceTypeCode: string
+  serviceRoleCodes: string[]
   bookingGroupId: string | null
   serviceMeta: Record<string, unknown> | null
   date: string
@@ -72,6 +73,7 @@ export interface CustomerPayload {
 export interface SchedulePayload {
   customerId?: string
   serviceTypeCode?: string
+  serviceRoleCodes?: string[]
   bookingGroupId?: string
   serviceMeta?: Record<string, unknown>
   temporaryCustomer?: {

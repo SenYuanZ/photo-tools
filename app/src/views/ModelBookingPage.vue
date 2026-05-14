@@ -27,6 +27,7 @@ type ServiceDraft = {
   startTime: string
   endTime: string
   requirement: string
+  selectedRoleCode: string
   referenceFileList: UploadItem[]
 }
 
@@ -102,6 +103,7 @@ const serviceDrafts = reactive<Record<string, ServiceDraft>>({
     startTime: '10:00',
     endTime: '11:00',
     requirement: '',
+    selectedRoleCode: '',
     referenceFileList: [],
   },
 })
@@ -269,6 +271,11 @@ const clearRecentProviders = (serviceCode: string) => {
 const chooseProvider = (serviceCode: string, providerId: string) => {
   const draft = ensureDraft(serviceCode)
   draft.providerId = providerId
+  const provider = (providersByService[serviceCode] || []).find((item) => item.id === providerId)
+  const roleCodes = provider ? providerRoleCodes(provider) : []
+  if (!roleCodes.includes(draft.selectedRoleCode)) {
+    draft.selectedRoleCode = roleCodes[0] || ''
+  }
   markRecentProvider(serviceCode, providerId)
   ensureAvailabilityState(serviceCode).lastKey = ''
   showProviderPicker.value = false
@@ -316,33 +323,22 @@ const providerRoleLabels = (provider: PublicProvider) => {
     .filter(Boolean) as string[]
 }
 
-const selectedProviderRoleSummary = (serviceCode: string) => {
-  const provider = selectedProvider(serviceCode)
-  if (!provider) {
-    return '未选择服务者'
-  }
+const providerRoleCodes = (provider: PublicProvider) =>
+  (provider.roles?.length ? provider.roles : [provider.role]).filter(Boolean)
 
-  const labels = providerRoleLabels(provider)
-  if (!labels.length) {
-    return '角色待完善'
-  }
+const roleCodeToServiceType = (roleCode: string) => (roleCode === 'makeup_artist' ? 'makeup' : 'photography')
 
-  return labels.join(' / ')
+const selectedDraftRoleLabel = (serviceCode: string) => {
+  const draft = ensureDraft(serviceCode)
+  if (!draft.selectedRoleCode) {
+    return ''
+  }
+  return roleOptions.value.find((item) => item.code === draft.selectedRoleCode)?.name || draft.selectedRoleCode
 }
 
-const selectedProviderRoleBadges = (serviceCode: string) => {
-  const provider = selectedProvider(serviceCode)
-  if (!provider) {
-    return [] as string[]
-  }
-  return providerRoleLabels(provider)
-}
-
-const roleBadgeClass = (index: number) => {
-  if (index === 0) {
-    return 'border-blue-200 bg-blue-50 text-blue-600'
-  }
-  return 'border-slate-200 bg-slate-50 text-slate-500'
+const setDraftRoleCode = (serviceCode: string, roleCode: string) => {
+  const draft = ensureDraft(serviceCode)
+  draft.selectedRoleCode = roleCode
 }
 
 const previewProviderPortfolio = (serviceCode: string, startPosition = 0) => {
@@ -434,6 +430,7 @@ const ensureDraft = (serviceCode: string) => {
     startTime: '10:00',
     endTime: '11:00',
     requirement: '',
+    selectedRoleCode: '',
     referenceFileList: [],
   }
   return serviceDrafts[serviceCode]
@@ -944,6 +941,7 @@ const submit = async () => {
     endTime: string
     requirement: string
     referenceImages: string[]
+    serviceRoleCodes?: string[]
   }>
 
   for (const [index, serviceCode] of selectedServiceCodes.value.entries()) {
@@ -978,12 +976,12 @@ const submit = async () => {
     }
 
     const currentProvider = selectedProvider(serviceCode)
-    const autoServiceTypeCode = currentProvider?.roles?.includes('makeup_artist') || currentProvider?.role === 'makeup_artist'
-      ? 'makeup'
-      : 'photography'
+    const providerRoleCodesList = currentProvider ? providerRoleCodes(currentProvider) : []
+    const selectedRoleCode = draft.selectedRoleCode || providerRoleCodesList[0] || 'photographer'
+    const serviceTypeCode = roleCodeToServiceType(selectedRoleCode)
 
     items.push({
-      serviceTypeCode: autoServiceTypeCode,
+      serviceTypeCode,
       providerId: draft.providerId,
       startTime: draft.startTime,
       endTime: draft.endTime,
@@ -991,6 +989,7 @@ const submit = async () => {
       referenceImages: draft.referenceFileList
         .map((item) => item.uploadedUrl || item.url)
         .filter(Boolean) as string[],
+      serviceRoleCodes: [selectedRoleCode],
     })
   }
 
@@ -1049,7 +1048,7 @@ const submit = async () => {
         <Field v-model="form.note" label="协同备注" placeholder="可选：例如同一主题风格，妆容偏日系" clearable />
       </CellGroup>
 
-      <p class="mt-2 text-xs text-slate-500">无需选择服务类型，直接选择具体服务者即可，可同时提交多位服务者。</p>
+      <p class="mt-2 text-xs text-slate-500">先按角色筛选服务者，再在每位服务者下选择本次预约角色（摄影/妆娘）。</p>
     </article>
 
     <article v-for="service in activeServices" :key="service.code" class="card mb-3 p-3 soft-pink">
@@ -1059,21 +1058,6 @@ const submit = async () => {
           <button class="chip shrink-0" type="button" @click="removeServiceSlot(service.code)">
             <i class="fa-solid fa-minus" />移除
           </button>
-        </div>
-        <div class="mt-2">
-          <div class="flex flex-wrap gap-1">
-          <template v-if="selectedProviderRoleBadges(service.code).length">
-            <span
-              v-for="(label, index) in selectedProviderRoleBadges(service.code)"
-              :key="`${service.code}-summary-role-${label}`"
-              class="chip role-chip-small border"
-              :class="roleBadgeClass(index)"
-            >
-              <span v-if="index === 0" class="mr-0.5">★</span>{{ label }}
-            </span>
-          </template>
-          <span v-else class="chip border-slate-200 bg-slate-50 text-slate-500">{{ selectedProviderRoleSummary(service.code) }}</span>
-          </div>
         </div>
       </div>
 
@@ -1117,15 +1101,21 @@ const submit = async () => {
             <p class="mt-1 truncate text-[11px] text-slate-500">
               {{ selectedProvider(service.code)?.bio || '该服务者暂未填写个人简介。' }}
             </p>
-            <div class="mt-1.5 flex flex-wrap gap-1">
-              <span
-                v-for="(label, index) in providerRoleLabels(selectedProvider(service.code) as PublicProvider)"
-                :key="`${service.code}-selected-role-${label}`"
-                class="chip role-chip-small border"
-                :class="roleBadgeClass(index)"
-              >
-                <span v-if="index === 0" class="mr-0.5">★</span>{{ label }}
-              </span>
+            <div class="mt-2">
+              <p class="mb-1 text-[11px] font-bold text-slate-500">选择服务类型</p>
+              <div class="flex flex-wrap gap-1">
+                <button
+                  v-for="roleCode in providerRoleCodes(selectedProvider(service.code) as PublicProvider)"
+                  :key="`${service.code}-pick-role-${roleCode}`"
+                  type="button"
+                  class="chip border px-2.5 py-1 text-xs font-extrabold transition"
+                  :class="serviceDrafts[service.code].selectedRoleCode === roleCode ? 'border-rose-300 bg-rose-500 text-white' : 'border-slate-200 bg-slate-50 text-slate-500'"
+                  @click="setDraftRoleCode(service.code, roleCode)"
+                >
+                  {{ roleOptions.find((item) => item.code === roleCode)?.name || roleCode }}
+                </button>
+              </div>
+              <p v-if="selectedDraftRoleLabel(service.code)" class="mt-1 text-[11px] text-rose-500">已选：{{ selectedDraftRoleLabel(service.code) }}</p>
             </div>
           </div>
         </div>

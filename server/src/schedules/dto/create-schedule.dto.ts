@@ -84,4 +84,10 @@ export class CreateScheduleDto {
   @IsOptional()
   @IsObject()
   serviceMeta?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Matches(/^[a-z0-9_-]{2,32}$/i, { each: true })
+  serviceRoleCodes?: string[];
 }

@@ -345,6 +345,7 @@ export class PublicBookingService {
         depositStatus: DepositStatus.UNPAID,
         amount: 0,
         serviceTypeCode: item.serviceTypeCode,
+        serviceRoleCodes: item.serviceRoleCodes,
         bookingGroupId: bookingGroup.id,
         serviceMeta: {
           source: 'public-model-booking',

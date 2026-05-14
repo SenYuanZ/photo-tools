@@ -91,6 +91,7 @@ export interface PublicBookingPayload {
     endTime: string
     requirement: string
     referenceImages: string[]
+    serviceRoleCodes?: string[]
   }>
 }
 

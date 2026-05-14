@@ -4,6 +4,7 @@ import { CustomerTypesModule } from '../customer-types/customer-types.module';
 import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
+import { UserRoleAssignment } from '../database/entities/user-role.entity';
 import { UserSetting } from '../database/entities/user-setting.entity';
 import { User } from '../database/entities/user.entity';
 import { ServiceTypesModule } from '../service-types/service-types.module';
@@ -18,6 +19,7 @@ import { SchedulesService } from './schedules.service';
       UserSetting,
       BookingGroup,
       User,
+      UserRoleAssignment,
     ]),
     CustomerTypesModule,
     ServiceTypesModule,

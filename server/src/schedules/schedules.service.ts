@@ -22,6 +22,7 @@ import { BookingGroup } from '../database/entities/booking-group.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { Schedule } from '../database/entities/schedule.entity';
 import { UserSetting } from '../database/entities/user-setting.entity';
+import { UserRoleAssignment } from '../database/entities/user-role.entity';
 import { User } from '../database/entities/user.entity';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { QueryHistoryDto } from './dto/query-history.dto';
@@ -43,6 +44,8 @@ export class SchedulesService {
     private readonly settingsRepository: Repository<UserSetting>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(UserRoleAssignment)
+    private readonly userRolesRepository: Repository<UserRoleAssignment>,
     @InjectRepository(BookingGroup)
     private readonly bookingGroupsRepository: Repository<BookingGroup>,
     private readonly customerTypesService: CustomerTypesService,
@@ -192,6 +195,11 @@ export class SchedulesService {
       location: payload.location,
       note: payload.note ?? '',
       serviceTypeCode,
+      serviceRoleCodes: await this.resolveServiceRoleCodes(
+        userId,
+        payload.serviceRoleCodes,
+        serviceTypeCode,
+      ),
       bookingGroupId,
       serviceMeta: payload.serviceMeta ?? null,
       depositStatus: payload.depositStatus,
@@ -309,6 +317,14 @@ export class SchedulesService {
         await this.serviceTypesService.ensureUsableCode(
           payload.serviceTypeCode,
         );
+    }
+
+    if (payload.serviceRoleCodes !== undefined || payload.serviceTypeCode) {
+      schedule.serviceRoleCodes = await this.resolveServiceRoleCodes(
+        userId,
+        payload.serviceRoleCodes,
+        schedule.serviceTypeCode,
+      );
     }
 
     if (payload.bookingGroupId) {
@@ -471,6 +487,30 @@ export class SchedulesService {
     return this.serviceTypesService.ensureUsableCode(
       ServiceTypeCode.PHOTOGRAPHY,
     );
+  }
+
+  private async resolveServiceRoleCodes(
+    userId: string,
+    serviceRoleCodes: string[] | undefined,
+    serviceTypeCode: string,
+  ) {
+    const selected = serviceRoleCodes?.map((item) => item.trim()).filter(Boolean);
+    if (selected?.length) {
+      const uniqueSelected = [...new Set(selected)];
+      const assignments = await this.userRolesRepository.find({ where: { userId } });
+      const ownedRoleSet = new Set(assignments.map((item) => item.roleCode));
+      const invalidRoleCode = uniqueSelected.find((item) => !ownedRoleSet.has(item));
+      if (invalidRoleCode) {
+        throw new BadRequestException(`角色 ${invalidRoleCode} 不属于当前服务者`);
+      }
+      return uniqueSelected;
+    }
+
+    if (serviceTypeCode === ServiceTypeCode.MAKEUP) {
+      return [UserRole.MAKEUP_ARTIST];
+    }
+
+    return [UserRole.PHOTOGRAPHER];
   }
 
   private validatePayment(depositStatus: DepositStatus, amount: number) {
