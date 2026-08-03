@@ -55,6 +55,12 @@ const routes = [
     meta: { requiresAuth: true, tab: 'my' },
   },
   {
+    path: '/ai-qa',
+    name: 'ai-qa',
+    component: () => import('../views/AiQaPage.vue'),
+    meta: { requiresAuth: true, tab: 'ai-qa' },
+  },
+  {
     path: '/customer/new',
     name: 'customer-new',
     component: () => import('../views/AddCustomerPage.vue'),

@@ -1028,10 +1028,10 @@ const submit = async () => {
       <div class="model-hero px-4 py-4">
         <div class="flex items-center justify-between">
           <div>
-            <p class="title-font text-2xl text-rose-500">模特统一约单入口</p>
+            <p class="title-font text-2xl text-rose-500">统一约单入口</p>
             <p class="text-xs text-slate-600">同一天可同时提交多个服务者，系统会自动关联协同订单</p>
           </div>
-          <Button size="small" round plain type="primary" @click="router.push({ name: 'login' })">服务者登录</Button>
+           <Button size="small" round plain type="primary" @click="router.push({ name: 'login' })">服务者登录</Button>
         </div>
       </div>
     </article>

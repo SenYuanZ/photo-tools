@@ -146,6 +146,10 @@
     @apply text-amber-600;
   }
 
+  .nav-item.active-ai {
+    @apply text-violet-500;
+  }
+
   .card {
     @apply rounded-2xl border bg-white;
     border-color: var(--line);

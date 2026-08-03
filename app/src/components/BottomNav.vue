@@ -7,7 +7,7 @@ const router = useRouter()
 
 const activeTab = computed(() => (route.meta.tab as string) ?? 'home')
 
-const jump = (name: 'home' | 'calendar' | 'my') => {
+const jump = (name: 'home' | 'calendar' | 'my' | 'ai-qa') => {
   router.push({ name })
 }
 </script>
@@ -31,6 +31,15 @@ const jump = (name: 'home' | 'calendar' | 'my') => {
     >
       <i class="fa-regular fa-calendar-days" />
       <span>日历</span>
+    </button>
+    <button
+      class="nav-item"
+      :class="{ 'active-ai': activeTab === 'ai-qa' }"
+      type="button"
+      @click="jump('ai-qa')"
+    >
+      <i class="fa-solid fa-wand-magic-sparkles" />
+      <span>ai问答</span>
     </button>
     <button
       class="nav-item"

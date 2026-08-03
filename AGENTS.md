@@ -1,165 +1,81 @@
 # AGENTS.md
 
 Practical guidance for coding agents working in this repository.
-This repo contains two separate Node projects:
-- `app/`: Vue 3 + Vite + TypeScript frontend
-- `server/`: NestJS + TypeScript + TypeORM backend
+Only repo-specific facts that are not obvious from filenames.
 
-## 1) Instruction Sources (Cursor/Copilot)
+## Project Layout
 
-- Checked for `.cursorrules`: not found.
-- Checked for `.cursor/rules/`: not found.
-- Checked for `.github/copilot-instructions.md`: not found.
-- There is no additional Cursor/Copilot policy file currently committed.
-- If those files are added later, treat them as higher-priority repo rules and update this document.
+- Two independent Node projects in one repo: `app/` (Vue 3 + Vite + TypeScript frontend) and `server/` (NestJS + TypeScript + TypeORM backend).
+- Root is **not** a workspace – run `npm` commands inside each subproject.
+- `proto/` contains standalone HTML prototypes, not production code. Ignore it.
+- `.qoder/`, `.trae/`, `.opencode/` at root are third-party tool config dirs. Not needed for development.
 
-## 2) Repository Layout
+## Frontend (`app/`)
 
-- Root is a container, not a single package.
-- Run frontend commands in `app/`.
-- Run backend commands in `server/`.
-- Both subprojects use `npm` and have their own `package-lock.json`.
+### Commands
+- Dev: `npm run dev` – vite dev server on `0.0.0.0:5173`, opens browser.
+- Build: `npm run build` – runs `vue-tsc -b && vite build` (typecheck + build).
+- No frontend lint or test scripts exist.
 
-## 3) Setup and Common Commands
+### API Layer
+- Uses bare `fetch`, **not** axios. The `request<T>()` wrapper is in `src/api/http.ts`.
+- Image uploads use `XMLHttpRequest` (for progress tracking), not `fetch`. See `uploadReferenceImage` in `src/api/app.ts`.
+- Auth token is stored in `localStorage` under key `photo_order_token`.
+- API base is `VITE_API_BASE_URL` from `app/.env` (defaults to `/api`).
+- Vite dev server proxies `/api` and `/uploads` to `http://127.0.0.1:3000`. Override with `VITE_DEV_API_PROXY_TARGET`.
 
-### Install dependencies
+### Key Dependencies
+- UI: Vant 4 (mobile components), Font Awesome Free (icons), Tailwind CSS.
+- State: Pinia 3.
+- Date: dayjs.
 
-- Frontend: `cd app && npm install`
-- Backend: `cd server && npm install`
+### Style Conventions
+- `<script setup lang="ts">` with Composition API. Single quotes, no semicolons, trailing commas on multiline.
+- Component files: PascalCase. Store/util/type files: lower-case.
+- Route names: kebab-case strings.
+- `import type` for type-only imports. No path aliases – use relative imports.
+- Frontend TS has `erasableSyntaxOnly: true` – no enums, no parameter properties, no decorators.
+- Theming uses CSS custom properties (`--theme-accent`, etc.) driven by `<html data-theme>` attribute.
 
-### Frontend (`app/`)
+## Backend (`server/`)
 
-- Dev server: `npm run dev`
-- Build: `npm run build`
-- Preview built app: `npm run preview`
-- Type checking is part of build via `vue-tsc -b`.
-- There is currently no dedicated frontend lint script.
-- There is currently no frontend test script.
+### Commands
+- Dev with DB init: `npm run start:dev:init` (runs `db:init` then `nest start --watch`).
+- Dev without init: `npm run start:dev`.
+- Lint (auto-fix): `npm run lint`.
+- Lint check-only: `npx eslint "{src,apps,libs,test}/**/*.ts"` (the script includes `--fix` by default).
+- Format: `npm run format` (Prettier).
+- Single unit test: `npm run test -- --runTestsByPath src/app.controller.spec.ts`.
+- Single e2e test: `npm run test:e2e -- --runTestsByPath test/app.e2e-spec.ts`.
 
-### Backend (`server/`)
+### Database
+- MySQL via TypeORM with `synchronize: true` – schema auto-syncs on every start. No migrations.
+- Init script: `server/scripts/init-db.mjs`. Set `DB_RESET=true` to drop all tables first.
+- `.env.local` overrides `.env` (checked in `ConfigModule.forRoot`).
+- Seed data auto-applies on bootstrap via `SeedService` (implements `OnApplicationBootstrap`).
+- Default seed accounts: `lina_photo / 123456` (photographer, nickname 林娜摄影), `momo_makeup / 123456` (makeup artist, nickname 默默妆造).
+- Invite codes for registration: `PHOTO2026`, `STUDIO888`.
 
-- Dev server: `npm run start:dev`
-- Dev server with DB init first: `npm run start:dev:init`
-- Build: `npm run build`
-- Start production build: `npm run start:prod`
-- Lint (auto-fix enabled): `npm run lint`
-- Format: `npm run format`
-- Unit tests: `npm run test`
-- Unit tests watch: `npm run test:watch`
-- Unit coverage: `npm run test:cov`
-- E2E tests: `npm run test:e2e`
+### Architecture
+- NestJS module pattern: `module` + `controller` + `service` + `dto` per domain.
+- All routes are prefixed with `/api` (set in `main.ts` via `setGlobalPrefix('api')`).
+- Static files served from `uploads/` at `/uploads/`. Directory is gitignored.
+- Public (no-auth) endpoints under `/api/public/*`: provider listing, availability, booking, order query.
+- Protected routes use `@UseGuards(JwtAuthGuard)`; access user via `@CurrentUser('sub')`.
+- Global `ValidationPipe`: `whitelist: true`, `transform: true`, `enableImplicitConversion: true`.
+- CORS trusts private network origins by regex; extend with `CORS_ORIGINS` env var (comma-separated).
+- ESLint: `sourceType: 'commonjs'`, `@typescript-eslint/no-explicit-any: 'off'` (avoid `any` anyway).
+- Prettier config: single quotes, trailing commas. Semicolons use Prettier default (enabled).
+- ESLint enforces Prettier with `endOfLine: 'auto'` (avoids CRLF/LF issues on Windows).
+- TypeScript: `noImplicitAny: false`, `strictNullChecks: true`.
+- Image processing: `sharp` for thumbnails on upload.
 
-### Run a single test (important)
+### Testing
+- Unit: `src/**/*.spec.ts` (Jest, ts-jest). E2E: `test/**/*.e2e-spec.ts` (jest config at `test/jest-e2e.json`).
+- For behavior changes, update the nearest module test file.
 
-- Single unit test file:
-  - `cd server && npm run test -- --runTestsByPath src/app.controller.spec.ts`
-- Single unit test by name pattern:
-  - `cd server && npm run test -- -t "should return status ok"`
-- Single e2e file:
-  - `cd server && npm run test:e2e -- --runTestsByPath test/app.e2e-spec.ts`
-- Watch one test file:
-  - `cd server && npm run test -- --watch src/app.controller.spec.ts`
+## Checklist Before Finishing
 
-### Lint without auto-fix (backend)
-
-- Script uses `--fix` by default.
-- For check-only lint runs use:
-  - `cd server && npx eslint "{src,apps,libs,test}/**/*.ts"`
-
-## 4) Environment Notes
-
-- Frontend API base URL comes from `app/.env`:
-  - `VITE_API_BASE_URL=http://127.0.0.1:3000/api`
-- Backend env template is `server/.env.example`.
-- Backend DB bootstrap script: `server/scripts/init-db.mjs`.
-- `DB_RESET=true` during DB init will drop existing tables.
-
-## 5) Code Style - Global
-
-- Language: TypeScript across frontend and backend.
-- Indentation: 2 spaces.
-- Prefer small, composable functions and explicit names.
-- Keep module boundaries clear (`api`, `stores`, `views`, `dto`, `service`, `entity`).
-- Avoid unrelated refactors in the same change.
-- Preserve existing file-level style; frontend and backend differ slightly.
-
-## 6) Frontend Style (`app/src`)
-
-- Framework style:
-  - Vue SFCs with `<script setup lang="ts">`.
-  - Composition API (`ref`, `reactive`, `computed`, `watch`) over Options API.
-- Imports:
-  - Group external packages first, then local modules.
-  - Use `import type` for type-only imports.
-  - Current code uses relative imports (no path alias configured).
-- Formatting conventions in existing frontend code:
-  - Single quotes.
-  - No semicolons.
-  - Trailing commas on multiline literals/args.
-- Types:
-  - Keep domain models in `src/types/models.ts`.
-  - Use narrow unions for domain states (example: `'pink' | 'blue' | 'yellow'`).
-  - Prefer typed API wrappers (`request<T>()`) over `any`.
-- Naming:
-  - Components/views: PascalCase filenames (`LoginPage.vue`, `BottomNav.vue`).
-  - Store modules/utils/constants: lower-case file names (`stores/app.ts`, `utils/time.ts`).
-  - Variables/functions: camelCase.
-  - Route names: kebab-case strings (`schedule-detail`, `customer-new`).
-- State and data flow:
-  - Use Pinia store (`useAppStore`) as source of truth.
-  - Keep network calls in `src/api/*`, not directly in many views.
-  - Keep view logic focused on UI state, validation, and routing.
-- Error handling:
-  - Catch async API failures at store/view boundary.
-  - Convert backend error payloads into user-friendly messages.
-  - Re-throw when caller should handle (do not silently swallow).
-- Styling:
-  - Tailwind utility classes plus shared theme variables in `src/style.css`.
-  - Existing UI intentionally uses themed gradients and playful visual language; preserve this direction.
-
-## 7) Backend Style (`server/src`)
-
-- Architecture:
-  - Follow Nest module structure: `controller` + `service` + `dto` (+ `module`).
-  - Controllers should stay thin and delegate business rules to services.
-  - Validation belongs in DTOs with `class-validator` and `class-transformer`.
-- Imports:
-  - Nest/core libs first, third-party libs second, local modules last.
-  - Use `import type` where a symbol is type-only.
-- Formatting and lint:
-  - Prettier config: single quotes + trailing commas.
-  - Semicolons are used consistently in backend files.
-  - ESLint is type-aware (`recommendedTypeChecked`).
-  - `@typescript-eslint/no-explicit-any` is currently disabled, but avoid introducing `any` unless justified.
-- Types and DTOs:
-  - Prefer enums for domain values (`CustomerType`, `DepositStatus`, `ReminderType`, `ThemeName`).
-  - DTO names: `CreateXDto`, `UpdateXDto`, `QueryXDto`.
-  - `UpdateXDto` typically extends `PartialType(CreateXDto)`.
-- Entity conventions:
-  - Entity class names are singular PascalCase (`Customer`, `Schedule`).
-  - DB table/column mapping uses snake_case via explicit `name` options.
-  - Keep model property names camelCase in TypeScript.
-- Error handling:
-  - Throw specific Nest HTTP exceptions (`NotFoundException`, `ConflictException`, `BadRequestException`, `UnauthorizedException`).
-  - Use clear, user-facing error messages.
-  - Validate resource ownership (`userId`) before mutating records.
-- Auth/security patterns:
-  - Protected routes use `@UseGuards(JwtAuthGuard)`.
-  - Access current user via `@CurrentUser('sub')`.
-  - Passwords are hashed/compared with `bcryptjs`.
-
-## 8) Testing Conventions
-
-- Unit test location: `server/src/**/*.spec.ts`.
-- E2E test location: `server/test/**/*.e2e-spec.ts`.
-- Use Jest `describe`/`it` structure.
-- Keep tests deterministic and independent.
-- For behavior changes, update or add the nearest module test file.
-
-## 9) Agent Checklist Before Finishing
-
-- Run relevant build/type-check commands for touched project(s).
-- Run backend lint/tests when backend code changes.
-- For frontend-only changes, at minimum run `app` build.
-- Do not commit `.env` secrets.
-- Keep changes minimal and consistent with local conventions.
+- Run `app` build when frontend changes (`npm run build` in `app/`).
+- Run `server` lint + tests when backend changes (`npm run lint && npm run test` in `server/`).
+- Do not commit `.env` secrets or `uploads/` files.
