@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 const devApiTarget = process.env.VITE_DEV_API_PROXY_TARGET || 'http://127.0.0.1:3000'
+const devAiTarget = process.env.VITE_DEV_AI_PROXY_TARGET || 'http://localhost:3001'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -20,6 +21,12 @@ export default defineConfig({
         target: devApiTarget,
         changeOrigin: true,
         secure: false,
+      },
+      '/aiapi': {
+        target: devAiTarget,
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/aiapi/, ''),
       },
     },
   },
