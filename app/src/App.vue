@@ -21,7 +21,11 @@ watch(
 <template>
   <div class="app-shell">
     <main class="content-area">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive include="AiQaPage">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </main>
     <BottomNav v-if="showBottomNav" />
   </div>
