@@ -117,7 +117,7 @@ const openGeneratedImage = (event: MouseEvent) => {
 const savePreviewImage = () => {
   if (!previewImage.value) return
   const link = document.createElement('a')
-  link.href = previewImage.value
+  link.href = `${import.meta.env.VITE_API_BASE_URL || '/api'}/ai-image-proxy?url=${encodeURIComponent(previewImage.value)}`
   link.download = `agnes-image-${Date.now()}.png`
   document.body.appendChild(link)
   link.click()
@@ -128,7 +128,7 @@ const savePreviewImage = () => {
 const renderMarkdown = (text: string) => {
   const escaped = text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char] || char)
   return escaped
-    .replace(/!\[([^\]]*)\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g, '<img class="generated-image" src="$2" alt="$1" loading="lazy">')
+    .replace(/!\[([^\]]*)\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g, '<img class="generated-image" src="$2" alt="$1" loading="eager" decoding="async" fetchpriority="high" style="aspect-ratio:16/9">')
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -350,7 +350,8 @@ const resetKnowledge = async () => {
 .markdown-body :deep(h3), .markdown-body :deep(h4) { margin: 9px 0 4px; color: var(--theme-accent-strong); }
 .markdown-body :deep(ul) { margin: 5px 0; padding-left: 20px; }
 .markdown-body :deep(code) { border-radius: 5px; background: var(--theme-accent-bg); padding: 2px 5px; color: var(--theme-accent-strong); }
-.markdown-body :deep(.generated-image) { display: block; width: min(100%, 520px); margin-top: 8px; border-radius: 14px; box-shadow: 0 8px 18px var(--theme-shadow); cursor: zoom-in; }
+.markdown-body :deep(.generated-image) { display: block; width: min(100%, 520px); margin-top: 8px; border-radius: 14px; box-shadow: 0 8px 18px var(--theme-shadow); cursor: zoom-in; background: linear-gradient(110deg, #eee 8%, #f7f7f7 18%, #eee 33%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
 .typing-indicator { display: flex; gap: 4px; padding: 10px 2px; }
 .typing-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-accent); animation: typing 1.2s infinite; }
 .typing-indicator i:nth-child(2) { animation-delay: .18s; }.typing-indicator i:nth-child(3) { animation-delay: .36s; }
