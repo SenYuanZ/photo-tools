@@ -11,6 +11,8 @@ export interface KnowledgeDocument {
   source: string
   category?: string
   chunkCount: number
+  /** 文档来源：builtin（内置）/ custom（自定义 JSON）/ upload（管理界面上传） */
+  origin?: 'builtin' | 'custom' | 'upload'
 }
 
 export interface KnowledgeListResponse {
@@ -49,31 +51,6 @@ export const getKnowledgeChunks = (source: string) =>
 
 export const getKnowledgeDocument = (source: string) =>
   aiRequest<KnowledgeDocumentDetail>(`/knowledge/document?source=${encodeURIComponent(source)}`)
-
-export const saveKnowledgeDocument = (source: string, content: string, category?: string) =>
-  aiRequest(`/knowledge/document?source=${encodeURIComponent(source)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, ...(category ? { category } : {}) }),
-  })
-
-export const deleteKnowledgeDocument = (source: string) =>
-  aiRequest(`/knowledge/document/${encodeURIComponent(source)}`, { method: 'DELETE' })
-
-export const uploadKnowledgeDocument = (file: File) => {
-  const body = new FormData()
-  body.append('file', file)
-  return aiRequest('/knowledge/upload', { method: 'POST', body })
-}
-
-export const addKnowledgeText = (source: string, content: string, category?: string) =>
-  aiRequest('/knowledge/text', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ source, content, ...(category ? { category } : {}) }),
-  })
-
-export const reindexKnowledge = () => aiRequest('/knowledge/reindex', { method: 'POST' })
 
 export interface StreamChatHandlers {
   onToken: (token: string) => void | Promise<void>

@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { nextTick, reactive, ref } from 'vue'
-import { Dialog, showFailToast, showSuccessToast } from 'vant'
+import { showFailToast, showSuccessToast } from 'vant'
 
 defineOptions({ name: 'AiQaPage' })
 import {
-  addKnowledgeText,
   getKnowledgeChunks,
   getKnowledgeDocument,
   listKnowledgeDocuments,
-  reindexKnowledge,
-  saveKnowledgeDocument,
   streamChat,
-  uploadKnowledgeDocument,
   type KnowledgeDocument,
   type KnowledgeSource,
 } from '../api/ai'
@@ -33,13 +29,9 @@ const knowledgeLoading = ref(false)
 const knowledgeDocuments = ref<KnowledgeDocument[]>([])
 const totalChunks = ref(0)
 const expandedSource = ref('')
-const editingSource = ref('')
-const editingContent = ref('')
-const editingCategory = ref('')
-const textSource = ref('')
-const textContent = ref('')
+const viewingSource = ref('')
+const viewingContent = ref('')
 const chatContainer = ref<HTMLElement | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 const previewImage = ref('')
 let messageId = 0
 let sessionId = createSessionId()
@@ -171,64 +163,31 @@ const toggleSource = async (source: KnowledgeSource) => {
   }
 }
 
-const editDocument = async (document: KnowledgeDocument) => {
+const viewDocument = async (document: KnowledgeDocument) => {
+  if (viewingSource.value === document.source) {
+    viewingSource.value = ''
+    viewingContent.value = ''
+    return
+  }
   try {
     const data = await getKnowledgeDocument(document.source)
-    editingSource.value = data.source
-    editingContent.value = data.content
-    editingCategory.value = data.category || ''
+    viewingSource.value = data.source
+    viewingContent.value = data.content
   } catch (error) {
     showFailToast((error as Error).message || '原文加载失败')
   }
 }
 
-const saveDocument = async () => {
-  if (!editingSource.value || !editingContent.value.trim()) return
-  try {
-    await saveKnowledgeDocument(editingSource.value, editingContent.value, editingCategory.value.trim())
-    showSuccessToast('文档已保存')
-    editingSource.value = ''
-    await loadKnowledge()
-  } catch (error) {
-    showFailToast((error as Error).message || '保存失败')
-  }
-}
-
-const uploadFile = async (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  try {
-    await uploadKnowledgeDocument(file)
-    showSuccessToast('文档上传成功')
-    await loadKnowledge()
-  } catch (error) {
-    showFailToast((error as Error).message || '上传失败')
-  } finally {
-    if (fileInput.value) fileInput.value.value = ''
-  }
-}
-
-const addTextDocument = async () => {
-  if (!textSource.value.trim() || !textContent.value.trim()) return
-  try {
-    await addKnowledgeText(textSource.value.trim(), textContent.value, '用户录入')
-    showSuccessToast('文档已添加')
-    textSource.value = ''
-    textContent.value = ''
-    await loadKnowledge()
-  } catch (error) {
-    showFailToast((error as Error).message || '添加失败')
-  }
-}
-
-const resetKnowledge = async () => {
-  try {
-    await Dialog.confirm({ title: '重建知识库', message: '重建会清除已上传文档，恢复默认知识库。' })
-    await reindexKnowledge()
-    showSuccessToast('知识库已重建')
-    await loadKnowledge()
-  } catch {
-    // Cancelled confirmations are intentionally silent.
+const originBadge = (document: KnowledgeDocument): { label: string; cls: string } | null => {
+  switch (document.origin) {
+    case 'builtin':
+      return { label: '内置', cls: 'bg-blue-50 text-blue-600' }
+    case 'custom':
+      return { label: '自定义', cls: 'bg-emerald-50 text-emerald-600' }
+    case 'upload':
+      return { label: '上传', cls: 'bg-amber-50 text-amber-600' }
+    default:
+      return null
   }
 }
 </script>
@@ -286,31 +245,16 @@ const resetKnowledge = async () => {
     <div v-if="showKnowledge" class="knowledge-overlay" @click.self="showKnowledge = false">
       <section class="knowledge-panel card">
         <header class="knowledge-header">
-          <div><h2 class="text-lg font-extrabold">知识库管理</h2><p class="text-xs text-slate-500">共 {{ knowledgeDocuments.length }} 个文档 · {{ totalChunks }} 个分块</p></div>
+          <div><h2 class="text-lg font-extrabold">知识库</h2><p class="text-xs text-slate-500">共 {{ knowledgeDocuments.length }} 个文档 · {{ totalChunks }} 个分块 · 仅可查看</p></div>
           <button type="button" class="close-button" aria-label="关闭" @click="showKnowledge = false">×</button>
         </header>
 
-        <div class="knowledge-tools">
-          <input ref="fileInput" type="file" accept=".txt,.md,.json,.csv" hidden @change="uploadFile" />
-          <button type="button" class="btn-secondary" @click="fileInput?.click()"><i class="fa-solid fa-upload" />上传文档</button>
-          <button type="button" class="btn-secondary" @click="resetKnowledge"><i class="fa-solid fa-rotate" />重建知识库</button>
-        </div>
-
-        <div class="text-entry soft-blue">
-          <p class="mb-2 text-sm font-extrabold text-blue-700">添加文本资料</p>
-          <input v-model="textSource" class="input mb-2" placeholder="文档名称，如：外景拍摄技巧" />
-          <textarea v-model="textContent" class="textarea mb-2" rows="3" placeholder="输入要加入知识库的内容" />
-          <button type="button" class="btn-primary" :disabled="!textSource.trim() || !textContent.trim()" @click="addTextDocument">添加到知识库</button>
-        </div>
-
         <div v-if="knowledgeLoading" class="empty-knowledge">正在加载知识库...</div>
-        <div v-else-if="!knowledgeDocuments.length" class="empty-knowledge">知识库为空，先上传一份资料吧。</div>
+        <div v-else-if="!knowledgeDocuments.length" class="empty-knowledge">知识库暂无文档。</div>
         <article v-for="document in knowledgeDocuments" v-else :key="document.source" class="knowledge-item">
-          <div class="knowledge-item-top"><div class="min-w-0"><p class="truncate font-bold">{{ document.source }}</p><p class="text-xs text-slate-400">{{ document.category || '未分类' }} · {{ document.chunkCount }} 个分块</p></div><div class="knowledge-actions"><button type="button" @click="editDocument(document)">编辑</button></div></div>
-          <div v-if="editingSource === document.source" class="editor-card soft-yellow">
-            <input v-model="editingCategory" class="input mb-2" placeholder="分类（可选）" />
-            <textarea v-model="editingContent" class="textarea" rows="6" />
-            <div class="editor-actions"><button type="button" class="btn-secondary" @click="editingSource = ''">取消</button><button type="button" class="btn-primary" @click="saveDocument">保存修改</button></div>
+          <div class="knowledge-item-top"><div class="min-w-0"><p class="truncate font-bold">{{ document.source }}</p><p class="text-xs text-slate-400">{{ document.category || '未分类' }} · {{ document.chunkCount }} 个分块<span v-if="originBadge(document)" class="ml-1.5 rounded-full px-1.5 py-0.5 align-middle text-[10px] font-semibold" :class="originBadge(document)!.cls">{{ originBadge(document)!.label }}</span></p></div><div class="knowledge-actions"><button type="button" @click="viewDocument(document)">{{ viewingSource === document.source ? '收起' : '查看' }}</button></div></div>
+          <div v-if="viewingSource === document.source" class="editor-card soft-blue">
+            <pre class="knowledge-viewer">{{ viewingContent }}</pre>
           </div>
         </article>
       </section>
@@ -358,7 +302,7 @@ const resetKnowledge = async () => {
 .sources { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; font-size: 11px; color: #8b8195; }
 .source-tag { padding: 4px 8px; font-size: 10px; }.source-preview { width: 100%; max-height: 160px; overflow: auto; margin: 2px 0 0; border-radius: 9px; background: #fff; padding: 8px; font-size: 11px; white-space: pre-wrap; }
 .chat-input-area { flex-shrink: 0; padding: 8px 0 4px; }.chat-form { display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--theme-form-border); border-radius: 16px; background: #fff; padding: 7px 7px 7px 12px; box-shadow: 0 7px 15px var(--theme-shadow); }.chat-form:focus-within { border-color: var(--theme-accent); }.chat-form textarea { min-height: 36px; max-height: 120px; flex: 1; resize: none; border: 0; outline: 0; color: var(--ink); font: inherit; font-size: 13px; line-height: 1.5; padding: 7px 0; }.chat-form textarea::placeholder { color: #b0a7b8; }.chat-form button { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 0; border-radius: 11px; background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong)); color: #fff; cursor: pointer; }.chat-form button:disabled { background: #e8e6eb; color: #aaa5b0; cursor: not-allowed; }.chat-input-area > p { margin-top: 6px; text-align: center; color: #aaa1b0; font-size: 10px; }
-.knowledge-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; background: rgba(63, 59, 79, .3); padding: 12px; }.knowledge-panel { width: min(700px, 100%); max-height: 92vh; overflow-y: auto; padding: 16px; }.knowledge-header, .knowledge-item-top, .editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }.close-button { border: 0; background: transparent; color: #8d8495; cursor: pointer; font-size: 26px; line-height: 1; }.knowledge-tools { display: flex; gap: 8px; margin: 14px 0; }.btn-primary, .btn-secondary { min-height: 38px; border-radius: 11px; padding: 0 12px; font-size: 12px; font-weight: 800; }.btn-primary { border: 0; background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong)); color: #fff; }.btn-secondary { border: 1px solid var(--theme-accent-soft); background: var(--theme-accent-bg); color: var(--theme-accent-strong); }.btn-primary:disabled { opacity: .45; }.text-entry, .editor-card { margin-bottom: 12px; border-radius: 14px; padding: 12px; }.knowledge-item { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 11px; }.knowledge-actions { display: flex; gap: 5px; }.knowledge-actions button { padding: 5px 7px; }.empty-knowledge { padding: 22px 8px; text-align: center; color: #9991a0; font-size: 13px; }.editor-actions { margin-top: 10px; }.editor-actions > * { flex: 1; }
+.knowledge-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; background: rgba(63, 59, 79, .3); padding: 12px; }.knowledge-panel { width: min(700px, 100%); max-height: 92vh; overflow-y: auto; padding: 16px; }.knowledge-header, .knowledge-item-top, .editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }.close-button { border: 0; background: transparent; color: #8d8495; cursor: pointer; font-size: 26px; line-height: 1; }.knowledge-tools { display: flex; gap: 8px; margin: 14px 0; }.btn-primary, .btn-secondary { min-height: 38px; border-radius: 11px; padding: 0 12px; font-size: 12px; font-weight: 800; }.btn-primary { border: 0; background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong)); color: #fff; }.btn-secondary { border: 1px solid var(--theme-accent-soft); background: var(--theme-accent-bg); color: var(--theme-accent-strong); }.btn-primary:disabled { opacity: .45; }.text-entry, .editor-card { margin-bottom: 12px; border-radius: 14px; padding: 12px; }.knowledge-viewer { max-height: 320px; overflow: auto; margin: 0; white-space: pre-wrap; font: inherit; font-size: 12px; line-height: 1.6; color: var(--ink); }.knowledge-item { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 11px; }.knowledge-actions { display: flex; gap: 5px; }.knowledge-actions button { padding: 5px 7px; }.empty-knowledge { padding: 22px 8px; text-align: center; color: #9991a0; font-size: 13px; }.editor-actions { margin-top: 10px; }.editor-actions > * { flex: 1; }
 .image-preview-overlay { position: fixed; inset: 0; z-index: 110; display: grid; place-items: center; background: rgba(35, 29, 44, .82); padding: 20px; }.image-preview-panel { position: relative; display: flex; width: min(860px, 100%); max-height: calc(100dvh - 40px); flex-direction: column; align-items: center; gap: 12px; }.image-preview-panel img { max-width: 100%; max-height: calc(100dvh - 116px); border-radius: 16px; object-fit: contain; box-shadow: 0 18px 48px rgba(0, 0, 0, .35); }.image-preview-close { position: absolute; right: 0; top: -32px; color: #fff; }.image-save-button { min-height: 40px; border: 0; border-radius: 12px; background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong)); color: #fff; cursor: pointer; font-size: 13px; font-weight: 800; padding: 0 16px; }.image-save-button i { margin-right: 5px; }
 @keyframes typing { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
 @media (max-width: 430px) { .ai-page { height: calc(100dvh - 68px - env(safe-area-inset-bottom)); }.ai-header { align-items: flex-start; flex-direction: column; }.ai-actions { width: 100%; }.ai-action { flex: 1; }.message-bubble { max-width: 88%; }.knowledge-tools > * { flex: 1; padding: 0 6px; } }
