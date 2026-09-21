@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import BottomNav from './components/BottomNav.vue'
-import { useAppStore } from './stores/app'
+import BottomNav from '@/components/BottomNav.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 
-const store = useAppStore()
+const authStore = useAuthStore()
+const settingsStore = useSettingsStore()
 const route = useRoute()
 
-const showBottomNav = computed(() => store.isLoggedIn && !route.meta.hideNav)
+const showBottomNav = computed(() => authStore.isLoggedIn && !route.meta.hideNav)
 
 watch(
-  () => store.theme,
+  () => settingsStore.theme,
   (value) => {
     document.documentElement.setAttribute('data-theme', value)
   },

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import ServiceTags from './ServiceTags.vue'
-import { depositStatusText } from '../constants/options'
-import { useAppStore } from '../stores/app'
-import type { Customer, Schedule } from '../types/models'
+import ServiceTags from '@/components/ServiceTags.vue'
+import { depositStatusText } from '@/constants/options'
+import { useCatalogStore } from '@/stores/catalog'
+import type { Customer } from '@/api/customers/types'
+import type { Schedule } from '@/api/schedules/types'
 
 const props = defineProps<{
   schedule: Schedule
@@ -16,7 +17,7 @@ const emit = defineEmits<{
   click: []
 }>()
 
-const store = useAppStore()
+const catalogStore = useCatalogStore()
 
 const typeTagClass = computed(() => {
   const type = props.customer?.type
@@ -56,13 +57,15 @@ const displayRoleCodes = computed(() => {
     <div class="mb-2 flex items-center justify-between gap-2">
       <p class="font-extrabold">
         {{ customer?.name ?? '未知客户' }}
-        <span class="chip ml-1 border" :class="typeTagClass">{{ customer?.type ? store.getCustomerTypeName(customer.type) : '其他' }}</span>
+        <span class="chip ml-1 border" :class="typeTagClass">{{
+          customer?.type ? catalogStore.getCustomerTypeName(customer.type) : '其他'
+        }}</span>
       </p>
       <div class="flex items-center gap-1.5">
-        <span v-if="inProgress" class="status-live">
-          <span class="status-dot" />服务中
-        </span>
-        <span class="text-sm font-extrabold" :class="inProgress ? 'text-amber-600' : 'text-rose-500'"
+        <span v-if="inProgress" class="status-live"> <span class="status-dot" />服务中 </span>
+        <span
+          class="text-sm font-extrabold"
+          :class="inProgress ? 'text-amber-600' : 'text-rose-500'"
           >{{ schedule.startTime }} - {{ schedule.endTime }}</span
         >
       </div>
@@ -73,7 +76,9 @@ const displayRoleCodes = computed(() => {
     <div class="space-y-1 text-xs text-slate-600">
       <p><i class="fa-solid fa-location-dot mr-1 text-blue-400" />{{ schedule.location }}</p>
       <p>
-        <i class="fa-solid fa-coins mr-1 text-amber-400" />定金：{{ depositStatusText[schedule.depositStatus] }}
+        <i class="fa-solid fa-coins mr-1 text-amber-400" />定金：{{
+          depositStatusText[schedule.depositStatus]
+        }}
       </p>
     </div>
   </article>

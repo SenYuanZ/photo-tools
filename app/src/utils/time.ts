@@ -10,7 +10,8 @@ export const toMinutes = (time: string) => {
 
 export const formatCnDate = (date: string) => dayjs(date).format('YYYY年M月D日 dddd')
 
-export const isAfterTime = (startTime: string, endTime: string) => toMinutes(endTime) > toMinutes(startTime)
+export const isAfterTime = (startTime: string, endTime: string) =>
+  toMinutes(endTime) > toMinutes(startTime)
 
 export const isDateSameOrAfterTomorrow = (date: string) => {
   const tomorrow = dayjs().add(1, 'day').startOf('day')

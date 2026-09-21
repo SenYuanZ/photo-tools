@@ -271,7 +271,11 @@
     position: absolute;
     inset: -8px;
     border-radius: 22px;
-    background: radial-gradient(circle at 50% 45%, rgba(var(--theme-accent-rgb), 0.22) 0%, transparent 68%);
+    background: radial-gradient(
+      circle at 50% 45%,
+      rgba(var(--theme-accent-rgb), 0.22) 0%,
+      transparent 68%
+    );
     pointer-events: none;
     z-index: -2;
     opacity: 0;

@@ -15,6 +15,7 @@ dist-ssr
 app/node_modules/
 server/node_modules/
 server/uploads/
+photo-agent
 
 # Editor directories and files
 .vscode/*

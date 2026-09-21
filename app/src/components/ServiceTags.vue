@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useAppStore } from '../stores/app'
+import { useCatalogStore } from '@/stores/catalog'
 
 const props = defineProps<{
   roleCodes: string[]
 }>()
 
-const store = useAppStore()
+const catalogStore = useCatalogStore()
 const expanded = ref(false)
 const isNarrow = ref(false)
 
@@ -33,7 +33,9 @@ const visibleRoleCodes = computed(() => {
   }
   return normalizedRoleCodes.value.slice(0, maxVisible.value)
 })
-const collapsedCount = computed(() => normalizedRoleCodes.value.length - visibleRoleCodes.value.length)
+const collapsedCount = computed(
+  () => normalizedRoleCodes.value.length - visibleRoleCodes.value.length,
+)
 
 const roleClass = (code: string) => {
   if (code === 'makeup_artist') {
@@ -55,7 +57,7 @@ const roleIcon = (code: string) => {
   return 'fa-solid fa-tag'
 }
 
-const roleLabel = (code: string) => store.getRoleName(code)
+const roleLabel = (code: string) => catalogStore.getRoleName(code)
 </script>
 
 <template>

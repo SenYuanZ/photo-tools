@@ -22,7 +22,11 @@ type Spark = {
 }
 
 const badgeTextList = ['Hi', '咔嚓', '拍好啦']
-const hintTextList = ['点一点相机，会有快门特效', '快门灵感已加载，今天拍摄超顺利', '咔嚓一下，记录今天的可爱订单']
+const hintTextList = [
+  '点一点相机，会有快门特效',
+  '快门灵感已加载，今天拍摄超顺利',
+  '咔嚓一下，记录今天的可爱订单',
+]
 
 const badgeText = ref('Hi')
 const hintText = ref(hintTextList[0])
@@ -136,7 +140,9 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   cursor: pointer;
   outline: none;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .camera-avatar:active {

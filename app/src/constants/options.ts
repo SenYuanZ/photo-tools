@@ -1,4 +1,4 @@
-import type { DepositStatus } from '../types/models'
+import type { DepositStatus } from '@/types/common'
 
 export const depositStatusText: Record<DepositStatus, string> = {
   unpaid: '未支付',
