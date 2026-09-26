@@ -23,6 +23,7 @@ import {
 } from '../common/utils/upload-url.util';
 import { CreatePublicBookingDto } from './dto/create-public-booking.dto';
 import { QueryPublicOrdersDto } from './dto/query-public-orders.dto';
+import { normalizePublicBookingAiBrief } from './public-booking.utils';
 
 const STEP_MINUTES = 30;
 const DISPLAY_VISIBLE = 'Y';
@@ -228,6 +229,7 @@ export class PublicBookingService {
   }
 
   async createBooking(payload: CreatePublicBookingDto) {
+    const aiBrief = normalizePublicBookingAiBrief(payload.aiBrief);
     const normalizedItems = await Promise.all(
       payload.items.map(async (item) => {
         const serviceTypeCode = item.serviceTypeCode
@@ -349,6 +351,7 @@ export class PublicBookingService {
         bookingGroupId: bookingGroup.id,
         serviceMeta: {
           source: 'public-model-booking',
+          ...(aiBrief ? { aiBrief } : {}),
         },
       });
 

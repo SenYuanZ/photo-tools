@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -12,6 +13,86 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+
+const PUBLIC_BOOKING_THEME_TYPES = [
+  'cosplay',
+  'jk',
+  'lolita',
+  'hanfu',
+  'daily',
+  'other',
+] as const;
+
+const trimOptionalText = ({ value }: { value: unknown }) => {
+  if (value === undefined || value === null) return undefined;
+  return typeof value === 'string' ? value.trim() : value;
+};
+
+const normalizeThemeType = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  return value.trim();
+};
+
+export class PublicBookingAiBriefDto {
+  @IsOptional()
+  @Transform(normalizeThemeType)
+  @IsIn(PUBLIC_BOOKING_THEME_TYPES)
+  themeType?: (typeof PUBLIC_BOOKING_THEME_TYPES)[number];
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  workName?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  characterName?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  characterSetting?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  outfit?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  makeupHair?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  props?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  visualGoal?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  posePreference?: string;
+
+  @IsOptional()
+  @Transform(trimOptionalText)
+  @IsString()
+  @MaxLength(255)
+  avoid?: string;
+}
 
 class PublicBookingItemDto {
   @IsOptional()
@@ -78,6 +159,11 @@ export class CreatePublicBookingDto {
   @IsString()
   @MaxLength(255)
   note?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PublicBookingAiBriefDto)
+  aiBrief?: PublicBookingAiBriefDto;
 
   @IsArray()
   @ArrayMinSize(1)

@@ -25,6 +25,7 @@ const {
   error,
   success,
   activeServices,
+  aiBriefThemeOptions,
   customerTypeColumns,
   customerTypeLabel,
   roleLabel,
@@ -116,6 +117,108 @@ const {
       <p class="mt-2 text-xs text-slate-500">
         先按角色筛选服务者，再在每位服务者下选择本次预约角色（摄影/妆娘）。
       </p>
+    </article>
+
+    <article class="card mb-3 p-3 soft-blue">
+      <div class="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <p class="text-sm font-extrabold">
+            <i class="fa-solid fa-wand-magic-sparkles mr-1 text-blue-500" />让 AI 读懂这次拍摄
+          </p>
+          <p class="mt-1 text-xs leading-5 text-slate-500">
+            请尽量填写角色、作品、服装和妆容，AI 会据此生成更贴合的拍法和动作建议。
+          </p>
+        </div>
+      </div>
+
+      <div class="mb-2 flex flex-wrap gap-2">
+        <button
+          v-for="option in aiBriefThemeOptions"
+          :key="option.value"
+          type="button"
+          class="chip border px-3 py-1.5 text-xs font-bold"
+          :class="
+            form.aiBrief.themeType === option.value
+              ? 'border-blue-400 bg-blue-500 text-white'
+              : 'border-slate-200 bg-white text-slate-500'
+          "
+          :aria-pressed="form.aiBrief.themeType === option.value"
+          @click="
+            form.aiBrief.themeType = form.aiBrief.themeType === option.value ? '' : option.value
+          "
+        >
+          {{ option.label }}
+        </button>
+      </div>
+
+      <CellGroup inset>
+        <Field
+          v-model="form.aiBrief.workName"
+          label="作品 / IP"
+          placeholder="例如：原神、崩坏：星穹铁道、原创角色"
+          clearable
+        />
+        <Field
+          v-model="form.aiBrief.characterName"
+          label="角色名称"
+          placeholder="例如：胡桃、芙宁娜；非 Cosplay 可留空"
+          clearable
+        />
+        <Field
+          v-model="form.aiBrief.characterSetting"
+          label="角色气质 / 设定"
+          type="textarea"
+          rows="2"
+          autosize
+          placeholder="例如：活泼、俏皮、灵动，带一点古灵精怪"
+        />
+        <Field
+          v-model="form.aiBrief.outfit"
+          label="服装与造型"
+          type="textarea"
+          rows="2"
+          autosize
+          placeholder="例如：黑红色短裙、双马尾、角色标志性配饰"
+        />
+        <Field
+          v-model="form.aiBrief.makeupHair"
+          label="妆容与发型"
+          type="textarea"
+          rows="2"
+          autosize
+          placeholder="例如：红棕眼妆、自然腮红、双马尾"
+        />
+        <Field
+          v-model="form.aiBrief.props"
+          label="道具 / 必留元素"
+          placeholder="例如：护摩之杖、书本、蝴蝶结"
+          clearable
+        />
+        <Field
+          v-model="form.aiBrief.visualGoal"
+          label="画面目标"
+          type="textarea"
+          rows="2"
+          autosize
+          placeholder="例如：还原角色立绘，画面灵动、有故事感"
+        />
+        <Field
+          v-model="form.aiBrief.posePreference"
+          label="动作偏好"
+          type="textarea"
+          rows="2"
+          autosize
+          placeholder="例如：俏皮、跳跃、手持道具互动，避免僵硬站姿"
+        />
+        <Field
+          v-model="form.aiBrief.avoid"
+          label="禁忌 / 不希望出现"
+          type="textarea"
+          rows="2"
+          autosize
+          placeholder="例如：避免过度性感、避免大幅度劈叉动作"
+        />
+      </CellGroup>
     </article>
 
     <BookingServiceCard v-for="service in activeServices" :key="service.code" :service="service" />

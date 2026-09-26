@@ -19,6 +19,24 @@ import type {
 } from '@/views/modelBooking/types'
 import { resolvePublicErrorMessage } from '@/views/modelBooking/utils/errors'
 import { useRecentProviders } from '@/views/modelBooking/hooks/useRecentProviders'
+import type { PublicBookingAiBrief } from '@/api/public-booking/types'
+import {
+  MODEL_BOOKING_THEME_OPTIONS,
+  type ModelBookingAiBriefForm,
+} from '@/views/modelBooking/types'
+
+const createAiBriefForm = (): ModelBookingAiBriefForm => ({
+  themeType: '',
+  workName: '',
+  characterName: '',
+  characterSetting: '',
+  outfit: '',
+  makeupHair: '',
+  props: '',
+  visualGoal: '',
+  posePreference: '',
+  avoid: '',
+})
 
 export function useModelBooking() {
   const router = useRouter()
@@ -31,6 +49,7 @@ export function useModelBooking() {
     companions: '',
     location: '',
     note: '',
+    aiBrief: createAiBriefForm(),
   })
 
   const selectedServiceCodes = ref<string[]>(['slot-1'])
@@ -858,12 +877,26 @@ export function useModelBooking() {
     form.companions = ''
     form.location = ''
     form.note = ''
+    Object.assign(form.aiBrief, createAiBriefForm())
 
     selectedServiceCodes.value.forEach((code) => {
       const draft = ensureDraft(code)
       draft.requirement = ''
       draft.referenceFileList = []
     })
+  }
+
+  const buildAiBrief = (): PublicBookingAiBrief | undefined => {
+    const normalized = Object.entries(form.aiBrief).reduce<Record<string, string>>(
+      (result, [key, value]) => {
+        const trimmed = value.trim()
+        if (trimmed) result[key] = trimmed
+        return result
+      },
+      {},
+    )
+
+    return Object.keys(normalized).length ? (normalized as PublicBookingAiBrief) : undefined
   }
 
   const submit = async () => {
@@ -954,6 +987,7 @@ export function useModelBooking() {
         companions: form.companions,
         location: form.location,
         note: form.note,
+        aiBrief: buildAiBrief(),
         items,
       })
 
@@ -995,6 +1029,7 @@ export function useModelBooking() {
     success,
     providerKeywordInput,
     activeServices,
+    aiBriefThemeOptions: MODEL_BOOKING_THEME_OPTIONS,
     getProviderAvailabilityText,
     getProviderAvailabilityClass,
     recentProvidersOfPicker,

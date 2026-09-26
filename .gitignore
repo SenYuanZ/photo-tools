@@ -16,6 +16,7 @@ app/node_modules/
 server/node_modules/
 server/uploads/
 photo-agent
+.agent
 
 # Editor directories and files
 .vscode/*

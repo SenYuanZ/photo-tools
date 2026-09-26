@@ -25,6 +25,7 @@ import { SchedulesModule } from './schedules/schedules.module';
 import { ServiceTypesModule } from './service-types/service-types.module';
 import { SettingsModule } from './settings/settings.module';
 import { RolesModule } from './roles/roles.module';
+import { AiSceneModule } from './ai-scene/ai-scene.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { RolesModule } from './roles/roles.module';
     SchedulesModule,
     SettingsModule,
     RolesModule,
+    AiSceneModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeedService],

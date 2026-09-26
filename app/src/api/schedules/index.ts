@@ -6,6 +6,7 @@ import type {
   ScheduleListQuery,
   ScheduleRequest,
 } from '@/api/schedules/types'
+import type { SceneType, ShootPlanResult } from '@/api/ai/types'
 
 export const scheduleApi = {
   list(params?: ScheduleListQuery) {
@@ -21,6 +22,12 @@ export const scheduleApi = {
   },
   update(id: string, payload: Partial<ScheduleRequest>) {
     return request<Schedule>(`/schedules/${id}`, { method: 'PATCH', body: payload })
+  },
+  saveAiScene(
+    id: string,
+    payload: { scene: SceneType; result: ShootPlanResult; saveToNote?: boolean },
+  ) {
+    return request<Schedule>(`/ai/scene/${id}/save`, { method: 'POST', body: payload })
   },
   complete(id: string) {
     return request<Schedule>(`/schedules/${id}/complete`, { method: 'POST' })

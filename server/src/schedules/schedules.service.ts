@@ -494,19 +494,27 @@ export class SchedulesService {
     serviceRoleCodes: string[] | undefined,
     serviceTypeCode: string,
   ) {
-    const selected = serviceRoleCodes?.map((item) => item.trim()).filter(Boolean);
+    const selected = serviceRoleCodes
+      ?.map((item) => item.trim())
+      .filter(Boolean);
     if (selected?.length) {
       const uniqueSelected = [...new Set(selected)];
-      const assignments = await this.userRolesRepository.find({ where: { userId } });
+      const assignments = await this.userRolesRepository.find({
+        where: { userId },
+      });
       const ownedRoleSet = new Set(assignments.map((item) => item.roleCode));
-      const invalidRoleCode = uniqueSelected.find((item) => !ownedRoleSet.has(item));
+      const invalidRoleCode = uniqueSelected.find(
+        (item) => !ownedRoleSet.has(item),
+      );
       if (invalidRoleCode) {
-        throw new BadRequestException(`角色 ${invalidRoleCode} 不属于当前服务者`);
+        throw new BadRequestException(
+          `角色 ${invalidRoleCode} 不属于当前服务者`,
+        );
       }
       return uniqueSelected;
     }
 
-    if (serviceTypeCode === ServiceTypeCode.MAKEUP) {
+    if (serviceTypeCode === String(ServiceTypeCode.MAKEUP)) {
       return [UserRole.MAKEUP_ARTIST];
     }
 

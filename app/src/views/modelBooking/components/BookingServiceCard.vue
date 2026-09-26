@@ -73,11 +73,11 @@ const {
       />
       <Field
         v-model="serviceDrafts[service.code].requirement"
-        label="服务需求"
+        label="服务者补充要求"
         type="textarea"
         rows="3"
         autosize
-        placeholder="例如：希望自然感抓拍/清透妆造/道具准备等"
+        placeholder="例如：摄影师多抓拍互动，妆娘加强眼妆还原"
       />
     </CellGroup>
 

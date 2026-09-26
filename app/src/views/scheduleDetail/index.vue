@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Button, CellGroup, DatePicker, Field, Popup, TimePicker, Uploader } from 'vant'
 import PageHeader from '@/components/PageHeader.vue'
+import type { PublicBookingAiBrief } from '@/api/public-booking/types'
 import ServiceTags from '@/components/ServiceTags.vue'
 import { useScheduleDetailPage } from '@/views/scheduleDetail/hooks/useScheduleDetailPage'
 
@@ -48,7 +50,55 @@ const {
   retryReferenceUpload,
   depositStatusText,
   formatCnDate,
+  showAssistant,
+  isGenerating: aiIsGenerating,
+  rawText: aiRawText,
+  result: aiResult,
+  sources: aiSources,
+  warnings: aiWarnings,
+  error: aiError,
+  timeline: aiTimeline,
+  shooting: aiShooting,
+  poses: aiPoses,
+  lighting: aiLighting,
+  risks: aiRisks,
+  questions: aiQuestions,
+  openAssistant,
+  closeAssistant,
+  stop: stopAiGeneration,
+  copyResult: copyAiResult,
+  saveResult: saveAiResult,
+  retry: retryAiGeneration,
+  formatAdviceItem: formatAiAdviceItem,
 } = useScheduleDetailPage()
+
+const aiBriefThemeLabels: Record<string, string> = {
+  cosplay: 'Cosplay',
+  jk: 'JK',
+  lolita: '洛丽塔',
+  hanfu: '汉服',
+  daily: '日常写真',
+  other: '其他',
+}
+
+const aiBriefItems = computed(() => {
+  const rawBrief = schedule.value?.serviceMeta?.aiBrief
+  if (!rawBrief || typeof rawBrief !== 'object' || Array.isArray(rawBrief)) return []
+
+  const brief = rawBrief as PublicBookingAiBrief
+  return [
+    { label: '拍摄类型', value: brief.themeType ? aiBriefThemeLabels[brief.themeType] : '' },
+    { label: '作品 / IP', value: brief.workName || '' },
+    { label: '角色名称', value: brief.characterName || '' },
+    { label: '角色气质 / 设定', value: brief.characterSetting || '' },
+    { label: '服装与造型', value: brief.outfit || '' },
+    { label: '妆容与发型', value: brief.makeupHair || '' },
+    { label: '道具 / 必留元素', value: brief.props || '' },
+    { label: '画面目标', value: brief.visualGoal || '' },
+    { label: '动作偏好', value: brief.posePreference || '' },
+    { label: '禁忌 / 不希望出现', value: brief.avoid || '' },
+  ].filter((item) => item.value.trim())
+})
 </script>
 
 <template>
@@ -134,6 +184,17 @@ const {
       </template>
     </article>
 
+    <article v-if="aiBriefItems.length" class="card mb-3 p-3 soft-blue">
+      <p class="mb-2 text-sm font-extrabold">
+        <i class="fa-solid fa-wand-magic-sparkles mr-1 text-blue-500" />AI 角色与造型信息
+      </p>
+      <div class="space-y-1 text-xs leading-6 text-slate-600">
+        <p v-for="item in aiBriefItems" :key="item.label">
+          <span class="font-extrabold">{{ item.label }}：</span>{{ item.value }}
+        </p>
+      </div>
+    </article>
+
     <article class="card mb-3 p-3 soft-yellow">
       <p class="mb-2 text-sm font-extrabold">
         <i class="fa-solid fa-user mr-1 text-amber-500" />客户基础信息
@@ -185,6 +246,22 @@ const {
             class="mr-1"
           />
           提前 1 小时
+        </button>
+      </div>
+    </article>
+
+    <article class="card mb-4 p-3 soft-pink">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="mb-1 text-sm font-extrabold">
+            <i class="fa-solid fa-wand-magic-sparkles mr-1 text-rose-500" />AI 拍摄助手
+          </p>
+          <p class="text-xs leading-5 text-slate-600">
+            根据当前客户和排单信息生成可执行的现场拍摄方案。
+          </p>
+        </div>
+        <button class="chip shrink-0" type="button" @click="openAssistant">
+          <i class="fa-solid fa-arrow-up-right-from-square" />打开
         </button>
       </div>
     </article>
@@ -381,6 +458,146 @@ const {
           }
         "
       />
+    </Popup>
+
+    <Popup v-model:show="showAssistant" position="bottom" round :style="{ height: '88%' }">
+      <div class="flex h-full flex-col bg-white">
+        <div
+          class="flex items-center justify-between border-b px-4 py-3"
+          style="border-color: var(--line)"
+        >
+          <div>
+            <p class="text-base font-extrabold text-slate-800">AI 拍摄方案</p>
+            <p class="mt-0.5 text-xs text-slate-500">仅基于当前排单文字信息生成</p>
+          </div>
+          <button class="chip" type="button" :disabled="aiIsGenerating" @click="closeAssistant">
+            <i class="fa-solid fa-xmark" />关闭
+          </button>
+        </div>
+
+        <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          <div
+            v-if="aiIsGenerating"
+            class="mb-3 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600"
+          >
+            <span><i class="fa-solid fa-spinner fa-spin mr-1" />正在生成拍摄方案...</span>
+            <button class="chip" type="button" @click="stopAiGeneration">停止</button>
+          </div>
+
+          <p
+            v-if="aiError"
+            class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-600"
+          >
+            {{ aiError }}
+          </p>
+
+          <p
+            v-if="aiIsGenerating && aiRawText"
+            class="rounded-xl bg-slate-50 p-3 text-xs leading-6 text-slate-600"
+          >
+            已收到方案内容，正在整理为可执行的拍摄建议...
+          </p>
+
+          <template v-if="aiResult">
+            <section class="rounded-xl bg-rose-50 p-3">
+              <h3 class="text-base font-extrabold text-slate-800">
+                {{ aiResult.title || 'AI 拍摄方案' }}
+              </h3>
+              <p class="mt-1 text-xs leading-5 text-slate-600">
+                {{ aiResult.summary || '暂无摘要' }}
+              </p>
+            </section>
+
+            <section v-if="aiResult.format === 'markdown'" class="mt-3 rounded-xl bg-slate-50 p-3">
+              <pre class="whitespace-pre-wrap text-xs leading-6 text-slate-700">{{
+                aiResult.markdown
+              }}</pre>
+            </section>
+
+            <template v-else>
+              <section v-if="aiTimeline.length" class="mt-3">
+                <h3 class="mb-2 text-sm font-extrabold text-slate-800">时间安排</h3>
+                <div class="space-y-2">
+                  <div
+                    v-for="item in aiTimeline"
+                    :key="`${item.time}-${item.title}`"
+                    class="rounded-xl border border-rose-100 bg-white p-3"
+                  >
+                    <p class="text-xs font-extrabold text-rose-500">{{ item.time || '待定' }}</p>
+                    <p class="mt-1 text-sm font-bold text-slate-800">{{ item.title }}</p>
+                    <p class="mt-1 text-xs leading-5 text-slate-600">{{ item.detail }}</p>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                v-for="section in [
+                  { title: '怎么拍', items: aiShooting },
+                  { title: '通用动作参考', items: aiPoses },
+                  { title: '打光思路', items: aiLighting },
+                  { title: '风险提醒', items: aiRisks },
+                  { title: '待确认事项', items: aiQuestions },
+                ]"
+                :key="section.title"
+                v-show="section.items.length"
+                class="mt-3 rounded-xl bg-slate-50 p-3"
+              >
+                <h3 class="mb-1 text-sm font-extrabold text-slate-800">{{ section.title }}</h3>
+                <ul class="space-y-1 text-xs leading-5 text-slate-600">
+                  <li v-for="(item, index) in section.items" :key="`${section.title}-${index}`">
+                    {{ formatAiAdviceItem(item) }}
+                  </li>
+                </ul>
+              </section>
+            </template>
+
+            <p
+              v-for="warning in aiWarnings"
+              :key="warning"
+              class="mt-3 text-xs leading-5 text-amber-600"
+            >
+              <i class="fa-solid fa-triangle-exclamation mr-1" />{{ warning }}
+            </p>
+
+            <section
+              v-if="aiSources.length"
+              class="mt-3 border-t pt-3"
+              style="border-color: var(--line)"
+            >
+              <p class="mb-1 text-xs font-extrabold text-slate-700">参考资料</p>
+              <p
+                v-for="source in aiSources"
+                :key="`${source.source}-${source.chunkId}`"
+                class="text-xs leading-5 text-slate-500"
+              >
+                {{ source.source }}
+              </p>
+            </section>
+          </template>
+
+          <button
+            v-if="aiError && !aiIsGenerating"
+            class="btn-secondary mt-3"
+            type="button"
+            @click="retryAiGeneration"
+          >
+            <i class="fa-solid fa-rotate-right mr-1" />重新生成
+          </button>
+        </div>
+
+        <div
+          v-if="aiResult && !aiIsGenerating"
+          class="grid grid-cols-2 gap-2 border-t px-4 py-3"
+          style="border-color: var(--line)"
+        >
+          <button class="btn-secondary" type="button" @click="copyAiResult">
+            <i class="fa-regular fa-copy mr-1" />复制方案
+          </button>
+          <button class="btn-primary" type="button" @click="saveAiResult">
+            <i class="fa-solid fa-floppy-disk mr-1" />保存到备注
+          </button>
+        </div>
+      </div>
     </Popup>
   </section>
 

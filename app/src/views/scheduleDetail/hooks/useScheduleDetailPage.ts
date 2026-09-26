@@ -9,6 +9,7 @@ import { useCustomerStore } from '@/stores/customers'
 import { useScheduleStore } from '@/stores/schedules'
 import { useUploadQueue, type UploadItem } from '@/hooks/useUploadQueue'
 import { formatCnDate, isAfterTime } from '@/utils/time'
+import { useScheduleAiAssistant } from '@/views/scheduleDetail/hooks/useScheduleAiAssistant'
 
 export function useScheduleDetailPage() {
   const route = useRoute()
@@ -22,6 +23,10 @@ export function useScheduleDetailPage() {
   const customer = computed(() =>
     schedule.value ? customerStore.getCustomerById(schedule.value.customerId) : undefined,
   )
+
+  const aiAssistant = useScheduleAiAssistant(scheduleId, async () => {
+    await scheduleStore.load()
+  })
 
   const isEditing = ref(false)
   const feedback = ref('')
@@ -367,5 +372,6 @@ export function useScheduleDetailPage() {
     retryReferenceUpload,
     depositStatusText,
     formatCnDate,
+    ...aiAssistant,
   }
 }

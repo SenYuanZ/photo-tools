@@ -4,6 +4,21 @@ import type { DepositStatus, UserRole } from '@/types/common'
 
 export type { CustomerTypeItem, ServiceTypeItem }
 
+export type PublicBookingThemeType = 'cosplay' | 'jk' | 'lolita' | 'hanfu' | 'daily' | 'other'
+
+export interface PublicBookingAiBrief {
+  themeType?: PublicBookingThemeType
+  workName?: string
+  characterName?: string
+  characterSetting?: string
+  outfit?: string
+  makeupHair?: string
+  props?: string
+  visualGoal?: string
+  posePreference?: string
+  avoid?: string
+}
+
 export interface PublicProvider {
   id: string
   nickname: string
@@ -24,6 +39,7 @@ export interface PublicBookingRequest {
   companions?: string
   location: string
   note?: string
+  aiBrief?: PublicBookingAiBrief
   items: Array<{
     serviceTypeCode: string
     providerId: string
