@@ -24,4 +24,22 @@ describe('normalizePublicBookingAiBrief', () => {
       }),
     ).toBeUndefined();
   });
+
+  it('preserves the compact AI fields used by the public booking form', () => {
+    expect(
+      normalizePublicBookingAiBrief({
+        themeType: 'jk',
+        workName: ' JK校园感 ',
+        outfit: '白衬衫、百褶裙、自然妆',
+        visualGoal: '清爽、自然互动',
+        avoid: '避免僵硬站姿',
+      }),
+    ).toEqual({
+      themeType: 'jk',
+      workName: 'JK校园感',
+      outfit: '白衬衫、百褶裙、自然妆',
+      visualGoal: '清爽、自然互动',
+      avoid: '避免僵硬站姿',
+    });
+  });
 });

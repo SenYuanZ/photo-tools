@@ -269,6 +269,7 @@ export class PublicBookingService {
 
         return {
           ...item,
+          requirement: item.requirement?.trim() || '',
           serviceTypeCode:
             serviceTypeCode ??
             this.resolveServiceTypeByProviderRole(provider.role),

@@ -109,11 +109,11 @@ class PublicBookingItemDto {
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
   endTime: string;
 
-  @Transform(({ value }) => String(value).trim())
+  @Transform(trimOptionalText)
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(255)
-  requirement: string;
+  requirement?: string;
 
   @IsOptional()
   @IsArray()

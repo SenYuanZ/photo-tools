@@ -4,13 +4,8 @@ import type { PublicBookingThemeType } from '@/api/public-booking/types'
 export interface ModelBookingAiBriefForm {
   themeType: PublicBookingThemeType | ''
   workName: string
-  characterName: string
-  characterSetting: string
   outfit: string
-  makeupHair: string
-  props: string
   visualGoal: string
-  posePreference: string
   avoid: string
 }
 

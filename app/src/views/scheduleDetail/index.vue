@@ -63,6 +63,8 @@ const {
   lighting: aiLighting,
   risks: aiRisks,
   questions: aiQuestions,
+  isCached: aiIsCached,
+  generatedAtText: aiGeneratedAtText,
   openAssistant,
   closeAssistant,
   stop: stopAiGeneration,
@@ -88,17 +90,45 @@ const aiBriefItems = computed(() => {
   const brief = rawBrief as PublicBookingAiBrief
   return [
     { label: '拍摄类型', value: brief.themeType ? aiBriefThemeLabels[brief.themeType] : '' },
-    { label: '作品 / IP', value: brief.workName || '' },
+    { label: '作品 / 角色 / 风格', value: brief.workName || '' },
     { label: '角色名称', value: brief.characterName || '' },
     { label: '角色气质 / 设定', value: brief.characterSetting || '' },
-    { label: '服装与造型', value: brief.outfit || '' },
+    { label: '服装 / 妆容 / 发型 / 道具', value: brief.outfit || '' },
     { label: '妆容与发型', value: brief.makeupHair || '' },
     { label: '道具 / 必留元素', value: brief.props || '' },
-    { label: '画面目标', value: brief.visualGoal || '' },
+    { label: '画面与动作重点', value: brief.visualGoal || '' },
     { label: '动作偏好', value: brief.posePreference || '' },
     { label: '禁忌 / 不希望出现', value: brief.avoid || '' },
   ].filter((item) => item.value.trim())
 })
+
+const customerNeedItems = computed(() => {
+  const aiValues = new Set(aiBriefItems.value.map((item) => item.value.trim()))
+  const items = [
+    { label: '拍摄风格', value: customer.value?.style || '' },
+    { label: '客户爱好', value: customer.value?.hobby || '' },
+    { label: '特殊需求', value: customer.value?.specialNeed || '' },
+    { label: '现场备注', value: schedule.value?.note || '' },
+    { label: '陪同人员', value: customer.value?.companions || '' },
+    { label: '穿搭建议', value: customer.value?.outfit || '' },
+  ]
+  return items.filter((item) => item.value.trim() && !aiValues.has(item.value.trim()))
+})
+
+const hasShootingNeeds = computed(
+  () => aiBriefItems.value.length > 0 || customerNeedItems.value.length > 0,
+)
+
+const hasSavedAiPlan = computed(() => {
+  const aiPlan = schedule.value?.serviceMeta?.aiPlan
+  return Boolean(aiPlan && typeof aiPlan === 'object' && !Array.isArray(aiPlan))
+})
+
+const customerTagItems = computed(() => customer.value?.tags || [])
+
+const hasReferenceImages = computed(
+  () => isEditing.value || Boolean(schedule.value?.referenceImages?.length),
+)
 </script>
 
 <template>
@@ -111,120 +141,157 @@ const aiBriefItems = computed(() => {
       @right="isEditing = !isEditing"
     />
 
+    <article class="card mb-3 p-3 soft-yellow">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-lg font-extrabold text-slate-800">{{ customer.name }}</p>
+          <p class="mt-1 text-xs text-slate-500">
+            {{ catalogStore.getCustomerTypeName(customer.type) }} · {{ customer.phone }}
+          </p>
+        </div>
+        <div class="flex shrink-0 gap-1">
+          <button class="chip" type="button" title="复制电话" @click="copyPhone">
+            <i class="fa-regular fa-copy" />
+          </button>
+          <a class="chip" :href="`tel:${customer.phone}`" title="拨打电话">
+            <i class="fa-solid fa-phone" />
+          </a>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap items-center gap-1.5">
+        <span v-if="isStored" class="chip border-amber-200 bg-amber-50 text-amber-600">
+          <i class="fa-solid fa-box-archive mr-1" />暂存
+        </span>
+        <span
+          v-else-if="isCompleted"
+          class="chip border-emerald-200 bg-emerald-50 text-emerald-600"
+        >
+          <i class="fa-solid fa-circle-check mr-1" />已完成
+        </span>
+        <span v-for="tag in customerTagItems" :key="tag" class="chip">{{ tag }}</span>
+      </div>
+    </article>
+
     <article class="card mb-3 p-3 soft-pink">
-      <p class="mb-2 text-sm font-extrabold">
-        <i class="fa-regular fa-calendar mr-1 text-rose-500" />排单基础信息
+      <p class="mb-3 text-sm font-extrabold">
+        <i class="fa-regular fa-calendar mr-1 text-rose-500" />拍摄安排
       </p>
-      <p v-if="isStored" class="mb-2 text-xs font-bold text-amber-600">
-        <i class="fa-solid fa-box-archive mr-1" />当前订单处于暂存状态，不参与日程安排。
-      </p>
-      <p v-else-if="isCompleted" class="mb-2 text-xs font-bold text-emerald-600">
-        <i class="fa-solid fa-circle-check mr-1" />当前订单已完成，可在日历的当天完成中查看。
-      </p>
-      <div class="space-y-1 text-sm">
-        <template v-if="isEditing">
-          <CellGroup inset>
-            <Field
-              :model-value="editForm.date"
-              label="拍摄日期"
-              readonly
-              is-link
-              @click="openDate"
-            />
-            <Field
-              :model-value="editForm.startTime"
-              label="开始时间"
-              readonly
-              is-link
-              @click="openStartTime"
-            />
-            <Field
-              :model-value="editForm.endTime"
-              label="结束时间"
-              readonly
-              is-link
-              @click="openEndTime"
-            />
-            <Field v-model="editForm.location" label="拍摄地点" placeholder="请输入地点" />
-          </CellGroup>
-        </template>
-        <template v-else>
-          <p>拍摄日期：{{ formatCnDate(schedule.date) }}</p>
-          <p>拍摄时段：{{ schedule.startTime }} - {{ schedule.endTime }}</p>
-          <p>
-            支付情况：{{ depositStatusText[schedule.depositStatus] }}（¥{{ schedule.amount }}）
-            <span v-if="customer.tailPaymentDate">· 尾款 {{ customer.tailPaymentDate }}</span>
-          </p>
-          <p>
-            拍摄地点：{{ schedule.location }}
-            <button type="button" class="chip ml-1" @click="navigateToMap">一键导航</button>
-          </p>
-        </template>
+      <template v-if="isEditing">
+        <CellGroup inset>
+          <Field :model-value="editForm.date" label="拍摄日期" readonly is-link @click="openDate" />
+          <Field
+            :model-value="editForm.startTime"
+            label="开始时间"
+            readonly
+            is-link
+            @click="openStartTime"
+          />
+          <Field
+            :model-value="editForm.endTime"
+            label="结束时间"
+            readonly
+            is-link
+            @click="openEndTime"
+          />
+          <Field v-model="editForm.location" label="拍摄地点" placeholder="请输入地点" />
+        </CellGroup>
+      </template>
+      <template v-else>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <p class="text-[11px] font-bold text-slate-400">拍摄日期</p>
+            <p class="mt-1 text-sm font-extrabold text-slate-800">
+              {{ formatCnDate(schedule.date) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold text-slate-400">拍摄时间</p>
+            <p class="mt-1 text-sm font-extrabold text-slate-800">
+              {{ schedule.startTime }} - {{ schedule.endTime }}
+            </p>
+          </div>
+        </div>
+        <div class="mt-3 border-t border-rose-100 pt-3">
+          <p class="text-[11px] font-bold text-slate-400">拍摄地点</p>
+          <div class="mt-1 flex items-center justify-between gap-2">
+            <p class="min-w-0 text-sm font-bold text-slate-800">{{ schedule.location }}</p>
+            <button type="button" class="chip shrink-0" @click="navigateToMap">
+              <i class="fa-solid fa-location-arrow mr-1" />导航
+            </button>
+          </div>
+        </div>
+      </template>
+      <div
+        class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-rose-100 pt-3 text-xs text-slate-600"
+      >
+        <span>{{ catalogStore.getServiceTypeName(schedule.serviceTypeCode) }}</span>
+        <ServiceTags :role-codes="detailRoleCodes" />
+        <span>
+          {{ depositStatusText[schedule.depositStatus] }} · ¥{{ schedule.amount }}
+          <span v-if="customer.tailPaymentDate">· 尾款 {{ customer.tailPaymentDate }}</span>
+        </span>
       </div>
     </article>
 
     <article class="card mb-3 p-3 soft-blue">
-      <p class="mb-2 text-sm font-extrabold">
-        <i class="fa-solid fa-book-open mr-1 text-blue-500" />客户备注信息
+      <p class="mb-3 text-sm font-extrabold">
+        <i class="fa-solid fa-book-open mr-1 text-blue-500" />拍摄需求
       </p>
       <template v-if="isEditing">
-        <textarea v-model="editForm.note" class="textarea" rows="4" />
+        <textarea
+          v-model="editForm.note"
+          class="textarea"
+          rows="4"
+          placeholder="补充客户现场要求"
+        />
       </template>
       <template v-else>
-        <div class="space-y-1 text-xs leading-6 text-slate-600">
-          <p><span class="font-extrabold">拍摄风格：</span>{{ customer.style || '未填写' }}</p>
-          <p><span class="font-extrabold">客户爱好：</span>{{ customer.hobby || '未填写' }}</p>
-          <p>
-            <span class="font-extrabold">特殊需求：</span>{{ customer.specialNeed || '未填写' }}
-          </p>
-          <p><span class="font-extrabold">现场备注：</span>{{ schedule.note || '无' }}</p>
-          <p><span class="font-extrabold">穿搭建议：</span>{{ customer.outfit || '未填写' }}</p>
-          <p><span class="font-extrabold">陪同人员：</span>{{ customer.companions || '无' }}</p>
+        <div v-if="aiBriefItems.length" class="space-y-2">
+          <p class="text-xs font-extrabold text-blue-600">AI 角色与造型</p>
+          <div class="space-y-2">
+            <div
+              v-for="item in aiBriefItems"
+              :key="item.label"
+              class="rounded-lg bg-white/80 px-3 py-2 text-xs leading-5 text-slate-600"
+            >
+              <span class="font-extrabold text-slate-700">{{ item.label }}</span>
+              <p class="mt-0.5">{{ item.value }}</p>
+            </div>
+          </div>
         </div>
+        <div v-if="customerNeedItems.length" class="mt-3 space-y-2">
+          <p class="text-xs font-extrabold text-blue-600">客户补充信息</p>
+          <div class="space-y-1.5 text-xs leading-5 text-slate-600">
+            <p v-for="item in customerNeedItems" :key="item.label">
+              <span class="font-extrabold text-slate-700">{{ item.label }}：</span>{{ item.value }}
+            </p>
+          </div>
+        </div>
+        <p v-if="!hasShootingNeeds" class="text-xs text-slate-500">暂无补充需求</p>
       </template>
     </article>
 
-    <article v-if="aiBriefItems.length" class="card mb-3 p-3 soft-blue">
-      <p class="mb-2 text-sm font-extrabold">
-        <i class="fa-solid fa-wand-magic-sparkles mr-1 text-blue-500" />AI 角色与造型信息
-      </p>
-      <div class="space-y-1 text-xs leading-6 text-slate-600">
-        <p v-for="item in aiBriefItems" :key="item.label">
-          <span class="font-extrabold">{{ item.label }}：</span>{{ item.value }}
-        </p>
-      </div>
-    </article>
-
-    <article class="card mb-3 p-3 soft-yellow">
-      <p class="mb-2 text-sm font-extrabold">
-        <i class="fa-solid fa-user mr-1 text-amber-500" />客户基础信息
-      </p>
-      <div class="space-y-1 text-sm">
-        <p>客户姓名：{{ customer.name }}</p>
-        <p>
-          联系电话：{{ customer.phone }}
-          <button class="chip ml-1" type="button" @click="copyPhone">复制</button>
-          <a class="chip ml-1" :href="`tel:${customer.phone}`">拨号</a>
-        </p>
-        <p>服务类型：{{ catalogStore.getServiceTypeName(schedule.serviceTypeCode) }}</p>
-        <div class="flex items-start gap-1">
-          <span class="text-sm">服务角色：</span>
-          <ServiceTags :role-codes="detailRoleCodes" />
+    <article class="card mb-3 p-3 soft-pink">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="mb-1 text-sm font-extrabold">
+            <i class="fa-solid fa-wand-magic-sparkles mr-1 text-rose-500" />AI 拍摄助手
+          </p>
+          <p class="text-xs leading-5 text-slate-600">
+            {{ hasSavedAiPlan ? '已有上次生成方案，可直接查看。' : '首次打开时生成现场拍摄建议。' }}
+          </p>
         </div>
-        <p>客户类型：{{ catalogStore.getCustomerTypeName(customer.type) }}</p>
-        <p>
-          备注标签：
-          <span v-for="tag in customer.tags" :key="tag" class="chip ml-1">{{ tag }}</span>
-          <span v-if="!customer.tags.length" class="text-xs text-slate-500">无</span>
-        </p>
+        <button class="chip shrink-0" type="button" @click="openAssistant">
+          <i class="fa-solid fa-arrow-up-right-from-square" />打开
+        </button>
       </div>
     </article>
 
-    <article class="card mb-4 p-3">
-      <p class="mb-2 text-sm font-extrabold">
+    <details class="card mb-3 p-3">
+      <summary class="cursor-pointer text-sm font-extrabold">
         <i class="fa-regular fa-bell mr-1 text-rose-500" />提醒设置
-      </p>
-      <div class="grid grid-cols-2 gap-2 text-xs">
+      </summary>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
         <button class="btn-secondary" type="button" @click="toggleReminder('1d')">
           <i
             :class="
@@ -248,163 +315,166 @@ const aiBriefItems = computed(() => {
           提前 1 小时
         </button>
       </div>
-    </article>
+    </details>
 
-    <article class="card mb-4 p-3 soft-pink">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="mb-1 text-sm font-extrabold">
-            <i class="fa-solid fa-wand-magic-sparkles mr-1 text-rose-500" />AI 拍摄助手
-          </p>
-          <p class="text-xs leading-5 text-slate-600">
-            根据当前客户和排单信息生成可执行的现场拍摄方案。
-          </p>
+    <details class="card mb-3 p-3 soft-yellow">
+      <summary class="cursor-pointer text-sm font-extrabold">
+        <i class="fa-solid fa-wallet mr-1 text-amber-500" />收款详情
+        <span class="ml-2 text-xs font-normal text-slate-500">
+          {{ depositStatusText[schedule.depositStatus] }} · ¥{{ schedule.amount }}
+        </span>
+      </summary>
+      <div class="mt-3">
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <button
+            type="button"
+            class="btn-secondary"
+            :class="
+              paymentForm.depositStatus === 'unpaid'
+                ? 'ring-2 ring-rose-200 bg-rose-50 text-rose-500'
+                : ''
+            "
+            @click="paymentForm.depositStatus = 'unpaid'"
+          >
+            未支付
+          </button>
+          <button
+            type="button"
+            class="btn-secondary"
+            :class="
+              paymentForm.depositStatus === 'paid'
+                ? 'ring-2 ring-blue-200 bg-blue-50 text-blue-500'
+                : ''
+            "
+            @click="paymentForm.depositStatus = 'paid'"
+          >
+            已支付
+          </button>
+          <button
+            type="button"
+            class="btn-secondary"
+            :class="
+              paymentForm.depositStatus === 'full'
+                ? 'ring-2 ring-emerald-200 bg-emerald-50 text-emerald-600'
+                : ''
+            "
+            @click="paymentForm.depositStatus = 'full'"
+          >
+            全款
+          </button>
         </div>
-        <button class="chip shrink-0" type="button" @click="openAssistant">
-          <i class="fa-solid fa-arrow-up-right-from-square" />打开
-        </button>
-      </div>
-    </article>
 
-    <article class="card mb-4 p-3 soft-yellow">
-      <p class="mb-2 text-sm font-extrabold">
-        <i class="fa-solid fa-wallet mr-1 text-amber-500" />收款确认
-      </p>
-      <div class="grid grid-cols-3 gap-2 text-xs">
-        <button
-          type="button"
-          class="btn-secondary"
-          :class="
-            paymentForm.depositStatus === 'unpaid'
-              ? 'ring-2 ring-rose-200 bg-rose-50 text-rose-500'
-              : ''
-          "
-          @click="paymentForm.depositStatus = 'unpaid'"
-        >
-          未支付
-        </button>
-        <button
-          type="button"
-          class="btn-secondary"
-          :class="
-            paymentForm.depositStatus === 'paid'
-              ? 'ring-2 ring-blue-200 bg-blue-50 text-blue-500'
-              : ''
-          "
-          @click="paymentForm.depositStatus = 'paid'"
-        >
-          已支付
-        </button>
-        <button
-          type="button"
-          class="btn-secondary"
-          :class="
-            paymentForm.depositStatus === 'full'
-              ? 'ring-2 ring-emerald-200 bg-emerald-50 text-emerald-600'
-              : ''
-          "
-          @click="paymentForm.depositStatus = 'full'"
-        >
-          全款
-        </button>
-      </div>
-
-      <Field
-        v-model="paymentForm.amount"
-        class="mt-2 rounded-xl"
-        label="实收金额"
-        type="number"
-        placeholder="请输入到账金额"
-      />
-
-      <p class="mt-1 text-xs text-slate-500">
-        建议到账后再确认状态；切回未支付时将保留历史金额记录。
-      </p>
-
-      <Button block round type="primary" class="mt-2" @click="savePaymentStatus">
-        <i class="fa-solid fa-money-check-dollar mr-1" />保存收款状态
-      </Button>
-    </article>
-
-    <article v-if="isEditing || schedule.referenceImages?.length" class="card mb-4 p-3 soft-blue">
-      <div class="mb-2 flex items-center justify-between">
-        <p class="text-sm font-extrabold">
-          <i class="fa-regular fa-image mr-1 text-blue-500" />动作参考图
-        </p>
-        <button class="chip" type="button" @click="previewReferences(0)">预览全部</button>
-      </div>
-
-      <div v-if="isEditing" class="mb-2">
-        <Uploader
-          v-model="referenceFileList"
-          :max-count="6"
-          multiple
-          :disabled="uploadingReferences"
-          :after-read="onAfterReadReference"
-          :deletable="!uploadingReferences"
-          preview-size="72"
-          upload-text="继续添加参考图"
+        <Field
+          v-model="paymentForm.amount"
+          class="mt-2 rounded-xl"
+          label="实收金额"
+          type="number"
+          placeholder="请输入到账金额"
         />
 
-        <div v-if="failedReferenceUploads.length" class="mt-2 space-y-1">
-          <div
-            v-for="item in failedReferenceUploads"
-            :key="item.url || item.file?.name"
-            class="flex items-center justify-between text-xs text-amber-700"
-          >
-            <span>有图片上传失败，可重试</span>
-            <Button
-              size="small"
-              round
-              plain
-              type="primary"
-              :disabled="uploadingReferences"
-              @click="retryReferenceUpload(item)"
+        <p class="mt-1 text-xs text-slate-500">
+          建议到账后再确认状态；切回未支付时将保留历史金额记录。
+        </p>
+
+        <Button block round type="primary" class="mt-2" @click="savePaymentStatus">
+          <i class="fa-solid fa-money-check-dollar mr-1" />保存收款状态
+        </Button>
+      </div>
+    </details>
+
+    <details v-if="hasReferenceImages" class="card mb-3 p-3 soft-blue">
+      <summary class="cursor-pointer text-sm font-extrabold">
+        <i class="fa-regular fa-image mr-1 text-blue-500" />参考图
+        <span class="ml-2 text-xs font-normal text-slate-500">
+          {{ (isEditing ? getReferenceUrls() : schedule.referenceImages || []).length }} 张
+        </span>
+      </summary>
+      <div class="mt-3">
+        <div v-if="isEditing" class="mb-2">
+          <Uploader
+            v-model="referenceFileList"
+            :max-count="6"
+            multiple
+            :disabled="uploadingReferences"
+            :after-read="onAfterReadReference"
+            :deletable="!uploadingReferences"
+            preview-size="72"
+            upload-text="继续添加参考图"
+          />
+
+          <div v-if="failedReferenceUploads.length" class="mt-2 space-y-1">
+            <div
+              v-for="item in failedReferenceUploads"
+              :key="item.url || item.file?.name"
+              class="flex items-center justify-between text-xs text-amber-700"
             >
-              重试
-            </Button>
+              <span>有图片上传失败，可重试</span>
+              <Button
+                size="small"
+                round
+                plain
+                type="primary"
+                :disabled="uploadingReferences"
+                @click="retryReferenceUpload(item)"
+              >
+                重试
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="grid grid-cols-3 gap-2">
-        <button
-          v-for="(image, index) in isEditing ? getReferenceUrls() : schedule.referenceImages || []"
-          :key="`${image}-${index}`"
-          type="button"
-          class="overflow-hidden rounded-xl border border-blue-100 bg-white"
-          @click="previewReferences(index)"
-        >
-          <img :src="image" alt="动作参考图" class="h-20 w-full object-cover" />
-        </button>
+        <div class="grid grid-cols-3 gap-2">
+          <button
+            v-for="(image, index) in isEditing
+              ? getReferenceUrls()
+              : schedule.referenceImages || []"
+            :key="`${image}-${index}`"
+            type="button"
+            class="overflow-hidden rounded-xl border border-blue-100 bg-white"
+            @click="previewReferences(index)"
+          >
+            <img :src="image" alt="动作参考图" class="h-20 w-full object-cover" />
+          </button>
+        </div>
       </div>
-    </article>
+    </details>
 
     <p v-if="feedback" class="mb-2 text-xs text-blue-500">{{ feedback }}</p>
-    <div class="grid grid-cols-2 gap-2">
-      <button v-if="isEditing" class="btn-primary" type="button" @click="saveEdit">
+    <div class="sticky bottom-0 z-10 -mx-4 mt-4 border-t bg-white/95 px-4 py-3 backdrop-blur">
+      <button v-if="isEditing" class="btn-primary w-full" type="button" @click="saveEdit">
         <i class="fa-solid fa-floppy-disk mr-1" />保存修改
       </button>
-      <button v-else class="btn-primary" type="button" @click="router.push({ name: 'settings' })">
-        <i class="fa-regular fa-bell mr-1" />设置提醒
-      </button>
-      <button class="btn-secondary" type="button" @click="remove">
-        <i class="fa-solid fa-trash-can mr-1" />删除排单
-      </button>
-      <button
-        v-if="!isEditing && !isStored && !isCompleted"
-        class="btn-secondary"
-        type="button"
-        @click="completeSchedule"
-      >
-        <i class="fa-solid fa-flag-checkered mr-1" />完成订单
-      </button>
-      <button v-if="!isStored" class="btn-secondary" type="button" @click="storeSchedule">
-        <i class="fa-solid fa-box-archive mr-1" />存单
-      </button>
-      <button v-else class="btn-primary" type="button" @click="openRestoreDate">
-        <i class="fa-solid fa-calendar-check mr-1" />恢复排单
-      </button>
+      <template v-else>
+        <button
+          v-if="!isStored && !isCompleted"
+          class="btn-primary w-full"
+          type="button"
+          @click="completeSchedule"
+        >
+          <i class="fa-solid fa-flag-checkered mr-1" />完成订单
+        </button>
+        <button
+          v-else-if="isStored"
+          class="btn-primary w-full"
+          type="button"
+          @click="openRestoreDate"
+        >
+          <i class="fa-solid fa-calendar-check mr-1" />恢复排单
+        </button>
+        <details class="mt-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+          <summary class="cursor-pointer text-center text-xs font-bold text-slate-600">
+            更多操作
+          </summary>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <button v-if="!isStored" class="btn-secondary" type="button" @click="storeSchedule">
+              <i class="fa-solid fa-box-archive mr-1" />存单
+            </button>
+            <button class="btn-secondary" type="button" @click="remove">
+              <i class="fa-solid fa-trash-can mr-1" />删除排单
+            </button>
+          </div>
+        </details>
+      </template>
     </div>
 
     <Popup v-model:show="showDatePicker" position="bottom" round>
@@ -468,7 +538,10 @@ const aiBriefItems = computed(() => {
         >
           <div>
             <p class="text-base font-extrabold text-slate-800">AI 拍摄方案</p>
-            <p class="mt-0.5 text-xs text-slate-500">仅基于当前排单文字信息生成</p>
+            <p v-if="aiIsCached && aiGeneratedAtText" class="mt-0.5 text-xs text-slate-500">
+              已使用上次生成方案 · {{ aiGeneratedAtText }}
+            </p>
+            <p v-else class="mt-0.5 text-xs text-slate-500">仅基于当前排单文字信息生成</p>
           </div>
           <button class="chip" type="button" :disabled="aiIsGenerating" @click="closeAssistant">
             <i class="fa-solid fa-xmark" />关闭
@@ -581,15 +654,18 @@ const aiBriefItems = computed(() => {
             type="button"
             @click="retryAiGeneration"
           >
-            <i class="fa-solid fa-rotate-right mr-1" />重新生成
+            <i class="fa-solid fa-rotate-right mr-1" />重新获取拍摄方案
           </button>
         </div>
 
         <div
           v-if="aiResult && !aiIsGenerating"
-          class="grid grid-cols-2 gap-2 border-t px-4 py-3"
+          class="grid grid-cols-3 gap-2 border-t px-4 py-3"
           style="border-color: var(--line)"
         >
+          <button class="btn-secondary" type="button" @click="retryAiGeneration">
+            <i class="fa-solid fa-rotate-right mr-1" />重新获取
+          </button>
           <button class="btn-secondary" type="button" @click="copyAiResult">
             <i class="fa-regular fa-copy mr-1" />复制方案
           </button>

@@ -24,7 +24,7 @@ export function useScheduleDetailPage() {
     schedule.value ? customerStore.getCustomerById(schedule.value.customerId) : undefined,
   )
 
-  const aiAssistant = useScheduleAiAssistant(scheduleId, async () => {
+  const aiAssistant = useScheduleAiAssistant(scheduleId, schedule, async () => {
     await scheduleStore.load()
   })
 

@@ -25,6 +25,7 @@ export type {
   SceneAdviceItem,
   SceneSource,
   SceneType,
+  SavedShootPlan,
   ShootPlanResult,
 } from '@/api/ai/types'
 

@@ -67,6 +67,12 @@ export interface ShootPlanResult {
   format?: 'structured' | 'markdown'
 }
 
+export interface SavedShootPlan {
+  scene: SceneType
+  generatedAt?: string
+  result: ShootPlanResult
+}
+
 export type SceneSource = KnowledgeSource
 
 export interface SceneStreamHandlers {

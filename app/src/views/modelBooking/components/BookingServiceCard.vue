@@ -73,11 +73,11 @@ const {
       />
       <Field
         v-model="serviceDrafts[service.code].requirement"
-        label="服务者补充要求"
+        label="服务者补充要求（可选）"
         type="textarea"
         rows="3"
         autosize
-        placeholder="例如：摄影师多抓拍互动，妆娘加强眼妆还原"
+        placeholder="可选：摄影师多抓拍互动，妆娘加强眼妆还原"
       />
     </CellGroup>
 
@@ -233,9 +233,12 @@ const {
       </template>
     </div>
 
-    <div class="mt-3">
-      <p class="mb-2 text-xs font-bold text-slate-500">参考图（最多 6 张）</p>
+    <details class="mt-3 rounded-xl border border-slate-100 bg-white/70 px-3 py-2">
+      <summary class="cursor-pointer text-xs font-bold text-slate-500">
+        参考图（可选，最多 6 张）
+      </summary>
       <Uploader
+        class="mt-2"
         v-model="serviceDrafts[service.code].referenceFileList"
         :max-count="6"
         multiple
@@ -272,6 +275,6 @@ const {
           >
         </div>
       </div>
-    </div>
+    </details>
   </article>
 </template>

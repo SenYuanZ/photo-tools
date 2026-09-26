@@ -28,13 +28,8 @@ import {
 const createAiBriefForm = (): ModelBookingAiBriefForm => ({
   themeType: '',
   workName: '',
-  characterName: '',
-  characterSetting: '',
   outfit: '',
-  makeupHair: '',
-  props: '',
   visualGoal: '',
-  posePreference: '',
   avoid: '',
 })
 
@@ -940,11 +935,6 @@ export function useModelBooking() {
 
       if (!draft.startTime || !draft.endTime) {
         error.value = `请补全${serviceLabel}的服务时间。`
-        return
-      }
-
-      if (!draft.requirement.trim()) {
-        error.value = `请填写${serviceLabel}的需求说明。`
         return
       }
 
