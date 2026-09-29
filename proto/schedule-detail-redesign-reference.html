@@ -1,0 +1,1332 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="pink">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>排单详情设计原型</title>
+    <link
+      rel="stylesheet"
+      href="../app/node_modules/@fortawesome/fontawesome-free/css/all.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --accent: #ff7fae;
+        --accent-rgb: 255, 127, 174;
+        --accent-strong: #ff5f98;
+        --accent-soft: #ffd9e9;
+        --accent-bg: #fff6fb;
+        --background-a: #fff9fc;
+        --background-b: #f6fbff;
+        --surface: #ffffff;
+        --surface-raised: #ffffff;
+        --ink: #3f3b4f;
+        --muted: #756d86;
+        --muted-soft: #8a8295;
+        --line: #f1d6e7;
+        --status: #b96c12;
+        --status-bg: #fff6e8;
+        --status-line: #ffd6a6;
+        --shadow: rgba(255, 127, 174, 0.12);
+      }
+
+      :root[data-theme="blue"] {
+        --accent: #5da8ff;
+        --accent-rgb: 93, 168, 255;
+        --accent-strong: #3a8bf0;
+        --accent-soft: #dcebff;
+        --accent-bg: #f3f8ff;
+        --background-a: #f6fbff;
+        --background-b: #f8fdff;
+        --muted: #65758a;
+        --muted-soft: #8291a3;
+        --line: #d8e7ff;
+        --status: #347a9c;
+        --status-bg: #edf8ff;
+        --status-line: #cde9ff;
+        --shadow: rgba(93, 168, 255, 0.12);
+      }
+
+      :root[data-theme="yellow"] {
+        --accent: #d39b23;
+        --accent-rgb: 211, 155, 35;
+        --accent-strong: #b98010;
+        --accent-soft: #f7e7bd;
+        --accent-bg: #fff9e9;
+        --background-a: #fffcf0;
+        --background-b: #fffdf6;
+        --muted: #756f62;
+        --muted-soft: #8b8373;
+        --line: #f2e0b8;
+        --status: #9d6a00;
+        --status-bg: #fff8e5;
+        --status-line: #f1d59a;
+        --shadow: rgba(211, 155, 35, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-height: 100%;
+        background: #eef2f7;
+      }
+
+      body {
+        min-height: 100%;
+        margin: 0;
+        padding: 16px;
+        color: var(--ink);
+        background: #eef2f7;
+        font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      button,
+      summary {
+        font: inherit;
+      }
+
+      button {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .prototype-toolbar {
+        display: flex;
+        width: min(390px, 100%);
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 auto 10px;
+        color: #667085;
+        font-size: 12px;
+      }
+
+      .prototype-toolbar strong {
+        color: #344054;
+        font-size: 13px;
+      }
+
+      .theme-switcher {
+        display: inline-flex;
+        gap: 5px;
+        padding: 4px;
+        border: 1px solid #d8dee8;
+        border-radius: 10px;
+        background: #ffffff;
+      }
+
+      .theme-switcher button {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #667085;
+      }
+
+      .theme-switcher button[aria-pressed="true"] {
+        background: #f2f4f7;
+        color: #101828;
+        box-shadow: inset 0 0 0 1px #d0d5dd;
+      }
+
+      .theme-switcher i {
+        font-size: 12px;
+      }
+
+      .app-shell {
+        position: relative;
+        width: min(390px, 100%);
+        min-height: 844px;
+        margin: 0 auto;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--line) 72%, #d5dae3);
+        border-radius: 16px;
+        background: linear-gradient(
+          145deg,
+          var(--background-a),
+          var(--background-b)
+        );
+        box-shadow: 0 18px 48px rgba(28, 39, 64, 0.12);
+      }
+
+      .page-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: grid;
+        min-height: 54px;
+        grid-template-columns: 54px minmax(0, 1fr) 54px;
+        align-items: center;
+        border-bottom: 1px solid
+          color-mix(in srgb, var(--line) 72%, transparent);
+        padding: 0 12px;
+        background: color-mix(in srgb, var(--surface) 92%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .page-header h1 {
+        overflow: hidden;
+        margin: 0;
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 800;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .header-button {
+        display: inline-flex;
+        min-width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .header-button:first-child {
+        justify-self: start;
+      }
+
+      .header-button:last-child {
+        justify-self: end;
+        color: var(--accent-strong);
+      }
+
+      .page-content {
+        display: grid;
+        gap: 12px;
+        padding: 12px 12px 150px;
+      }
+
+      .surface {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: 0 8px 20px var(--shadow);
+      }
+
+      .customer-summary {
+        padding: 14px;
+      }
+
+      .customer-summary__top {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 11px;
+      }
+
+      .customer-avatar {
+        display: inline-flex;
+        width: 46px;
+        height: 46px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 13px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 18px;
+        font-weight: 800;
+      }
+
+      .customer-copy {
+        min-width: 0;
+      }
+
+      .customer-name-row {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .customer-name-row h2 {
+        overflow: hidden;
+        margin: 0;
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .status-chip {
+        flex: 0 0 auto;
+        border: 1px solid var(--accent-soft);
+        border-radius: 999px;
+        padding: 2px 7px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .customer-copy p {
+        overflow: hidden;
+        margin: 4px 0 0;
+        color: var(--muted-soft);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .icon-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .icon-button {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--surface);
+        color: var(--accent-strong);
+      }
+
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 11px;
+      }
+
+      .tag-list span {
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: color-mix(in srgb, var(--accent-bg) 76%, var(--surface));
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .schedule-focus {
+        padding: 14px;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .section-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0;
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .section-title i {
+        color: var(--accent-strong);
+      }
+
+      .section-note {
+        color: var(--muted-soft);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .schedule-time {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 13px;
+        align-items: stretch;
+      }
+
+      .date-block {
+        display: flex;
+        min-height: 82px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+      }
+
+      .date-block strong {
+        font-size: 29px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+
+      .date-block span {
+        margin-top: 5px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .time-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .time-copy > span {
+        color: var(--muted-soft);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .time-copy strong {
+        margin-top: 4px;
+        color: var(--ink);
+        font-size: 22px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+      }
+
+      .time-copy p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .location-row {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 9px;
+        margin-top: 13px;
+        border-top: 1px solid var(--line);
+        padding-top: 13px;
+      }
+
+      .location-icon {
+        display: inline-flex;
+        width: 34px;
+        height: 34px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+      }
+
+      .location-copy {
+        min-width: 0;
+      }
+
+      .location-copy span {
+        color: var(--muted-soft);
+        font-size: 10px;
+      }
+
+      .location-copy strong {
+        display: block;
+        overflow: hidden;
+        margin-top: 2px;
+        color: var(--ink);
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .text-button {
+        display: inline-flex;
+        min-width: 62px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 1px solid var(--accent-soft);
+        border-radius: 10px;
+        padding: 0 10px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .schedule-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 12px;
+      }
+
+      .schedule-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 8px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .schedule-meta .payment-status {
+        border-color: var(--status-line);
+        background: var(--status-bg);
+        color: var(--status);
+      }
+
+      .needs-card {
+        padding: 14px;
+      }
+
+      .needs-list {
+        display: grid;
+        gap: 0;
+      }
+
+      .need-row {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 10px;
+        padding: 9px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .need-row:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .need-row:last-child {
+        padding-bottom: 0;
+      }
+
+      .need-row dt {
+        color: var(--muted-soft);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .need-row dd {
+        margin: 0;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.55;
+      }
+
+      .ai-panel {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 11px;
+        border: 1px solid var(--accent-soft);
+        border-radius: 14px;
+        padding: 13px;
+        background: var(--accent-bg);
+      }
+
+      .ai-panel__icon {
+        display: inline-flex;
+        width: 42px;
+        height: 42px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: var(--surface);
+        color: var(--accent-strong);
+        box-shadow: 0 6px 14px var(--shadow);
+      }
+
+      .ai-panel__copy {
+        min-width: 0;
+      }
+
+      .ai-panel__copy strong {
+        display: block;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .ai-panel__copy span {
+        display: block;
+        overflow: hidden;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .secondary-list {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .secondary-list details + details {
+        border-top: 1px solid var(--line);
+      }
+
+      .secondary-list summary {
+        display: grid;
+        min-height: 56px;
+        grid-template-columns: 32px minmax(0, 1fr) auto 14px;
+        align-items: center;
+        gap: 9px;
+        padding: 0 13px;
+        list-style: none;
+        color: var(--ink);
+      }
+
+      .secondary-list summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .secondary-list summary > i:first-child {
+        display: inline-flex;
+        width: 32px;
+        height: 32px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+      }
+
+      .secondary-list summary strong {
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .secondary-list summary span {
+        color: var(--muted-soft);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .secondary-list .summary-arrow {
+        color: var(--muted-soft);
+        font-size: 10px;
+        transition: transform 180ms ease;
+      }
+
+      .secondary-list details[open] .summary-arrow {
+        transform: rotate(90deg);
+      }
+
+      .details-content {
+        margin: 0 13px 13px 54px;
+        border-top: 1px solid var(--line);
+        padding-top: 11px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.7;
+      }
+
+      .reminder-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .reminder-options span {
+        border-radius: 999px;
+        padding: 5px 9px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-weight: 700;
+      }
+
+      .payment-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .payment-line strong {
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .reference-placeholder {
+        display: flex;
+        width: 72px;
+        height: 72px;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed var(--accent-soft);
+        border-radius: 10px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+      }
+
+      .action-dock {
+        position: fixed;
+        right: 50%;
+        bottom: 54px;
+        z-index: 20;
+        display: grid;
+        width: min(390px, 100%);
+        grid-template-columns: minmax(0, 1fr) 44px;
+        gap: 8px;
+        transform: translateX(50%);
+        border-top: 1px solid var(--line);
+        padding: 10px 12px;
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .primary-button {
+        display: inline-flex;
+        min-width: 0;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(
+          135deg,
+          var(--accent),
+          var(--accent-strong)
+        );
+        color: #ffffff;
+        box-shadow: 0 8px 18px
+          color-mix(in srgb, var(--accent) 28%, transparent);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .more-button {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+        color: var(--muted);
+      }
+
+      .bottom-nav {
+        position: fixed;
+        right: 50%;
+        bottom: 0;
+        z-index: 19;
+        display: grid;
+        width: min(390px, 100%);
+        height: 54px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        transform: translateX(50%);
+        border-top: 1px solid var(--line);
+        background: color-mix(in srgb, var(--surface) 96%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .bottom-nav button {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        border: 0;
+        background: transparent;
+        color: #91a0b5;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .bottom-nav button[aria-current="page"] {
+        color: var(--accent-strong);
+      }
+
+      .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgba(33, 39, 50, 0.28);
+      }
+
+      .sheet-backdrop[hidden] {
+        display: none;
+      }
+
+      .action-sheet {
+        width: min(390px, 100%);
+        border-radius: 16px 16px 0 0;
+        padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
+        background: var(--surface);
+        box-shadow: 0 -16px 40px rgba(22, 31, 48, 0.16);
+      }
+
+      .sheet-handle {
+        width: 38px;
+        height: 4px;
+        margin: 2px auto 10px;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .action-sheet h2 {
+        margin: 0 0 6px;
+        font-size: 14px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .sheet-action {
+        display: flex;
+        width: 100%;
+        min-height: 48px;
+        align-items: center;
+        gap: 10px;
+        border: 0;
+        border-top: 1px solid var(--line);
+        background: transparent;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      .sheet-action i {
+        width: 30px;
+        color: var(--accent-strong);
+        text-align: center;
+      }
+
+      .sheet-action--danger {
+        color: #d84f5f;
+      }
+
+      .sheet-action--danger i {
+        color: #d84f5f;
+      }
+
+      .sheet-cancel {
+        display: inline-flex;
+        width: 100%;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin-top: 6px;
+        border: 0;
+        border-radius: 11px;
+        background: var(--accent-bg);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .toast {
+        position: fixed;
+        top: 74px;
+        left: 50%;
+        z-index: 60;
+        max-width: calc(100vw - 40px);
+        transform: translateX(-50%) translateY(-10px);
+        border-radius: 999px;
+        padding: 8px 13px;
+        background: color-mix(in srgb, var(--ink) 90%, transparent);
+        color: #ffffff;
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .toast.is-visible {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      @media (max-width: 430px) {
+        body {
+          padding: 0;
+          background: linear-gradient(
+            145deg,
+            var(--background-a),
+            var(--background-b)
+          );
+        }
+
+        .prototype-toolbar {
+          padding: 8px 12px;
+          margin-bottom: 0;
+          background: #eef2f7;
+        }
+
+        .app-shell {
+          width: 100%;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+
+      @media (max-width: 350px) {
+        .page-content {
+          padding-right: 10px;
+          padding-left: 10px;
+        }
+
+        .customer-summary__top {
+          grid-template-columns: 42px minmax(0, 1fr) auto;
+          gap: 8px;
+        }
+
+        .customer-avatar {
+          width: 42px;
+          height: 42px;
+        }
+
+        .icon-actions {
+          gap: 3px;
+        }
+
+        .schedule-time {
+          grid-template-columns: 64px minmax(0, 1fr);
+        }
+
+        .time-copy strong {
+          font-size: 19px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype-toolbar" aria-label="原型预览工具">
+      <div>
+        <strong>排单详情方案</strong>
+        <span>主题预览</span>
+      </div>
+      <div class="theme-switcher" role="group" aria-label="切换主题">
+        <button
+          type="button"
+          data-theme-value="pink"
+          aria-label="粉色主题"
+          aria-pressed="true"
+        >
+          <i
+            class="fa-solid fa-circle"
+            style="color: #ff7fae"
+            aria-hidden="true"
+          ></i>
+        </button>
+        <button
+          type="button"
+          data-theme-value="blue"
+          aria-label="蓝色主题"
+          aria-pressed="false"
+        >
+          <i
+            class="fa-solid fa-circle"
+            style="color: #5da8ff"
+            aria-hidden="true"
+          ></i>
+        </button>
+        <button
+          type="button"
+          data-theme-value="yellow"
+          aria-label="黄色主题"
+          aria-pressed="false"
+        >
+          <i
+            class="fa-solid fa-circle"
+            style="color: #d39b23"
+            aria-hidden="true"
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    <main class="app-shell" id="schedule-detail-prototype">
+      <header class="page-header">
+        <button class="header-button" type="button" data-toast="返回上一页">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          返回
+        </button>
+        <h1>排单详情</h1>
+        <button class="header-button" type="button" data-toast="进入编辑模式">
+          <i class="fa-solid fa-pen" aria-hidden="true"></i>
+          编辑
+        </button>
+      </header>
+
+      <div class="page-content">
+        <section
+          class="surface customer-summary"
+          aria-labelledby="customer-name"
+        >
+          <div class="customer-summary__top">
+            <div class="customer-avatar" aria-hidden="true">天</div>
+            <div class="customer-copy">
+              <div class="customer-name-row">
+                <h2 id="customer-name">天天</h2>
+                <span class="status-chip">正常排单</span>
+              </div>
+              <p>个人写真 · 180 7025 6005</p>
+            </div>
+            <div class="icon-actions">
+              <button
+                class="icon-button"
+                type="button"
+                aria-label="复制电话"
+                data-toast="电话已复制"
+              >
+                <i class="fa-regular fa-copy" aria-hidden="true"></i>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                aria-label="拨打电话"
+                data-toast="拨打客户电话"
+              >
+                <i class="fa-solid fa-phone" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <div class="tag-list" aria-label="客户标签">
+            <span>模特自助预约</span>
+            <span>首次合作</span>
+          </div>
+        </section>
+
+        <section
+          class="surface schedule-focus"
+          aria-labelledby="schedule-heading"
+        >
+          <div class="section-heading">
+            <h2 class="section-title" id="schedule-heading">
+              <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+              拍摄安排
+            </h2>
+            <span class="section-note">距离开始 1 天</span>
+          </div>
+
+          <div class="schedule-time">
+            <div class="date-block">
+              <strong>29</strong>
+              <span>9月 · 周二</span>
+            </div>
+            <div class="time-copy">
+              <span>2026年9月29日</span>
+              <strong>10:00–11:00</strong>
+              <p>预计 1 小时</p>
+            </div>
+          </div>
+
+          <div class="location-row">
+            <span class="location-icon">
+              <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            </span>
+            <div class="location-copy">
+              <span>拍摄地点</span>
+              <strong>萤火虫漫展 · A馆东入口</strong>
+            </div>
+            <button class="text-button" type="button" data-toast="打开地图导航">
+              <i class="fa-solid fa-location-arrow" aria-hidden="true"></i>
+              导航
+            </button>
+          </div>
+
+          <div class="schedule-meta" aria-label="服务与收款摘要">
+            <span
+              ><i class="fa-solid fa-camera" aria-hidden="true"></i>约拍</span
+            >
+            <span
+              ><i class="fa-solid fa-user-tag" aria-hidden="true"></i>摄影</span
+            >
+            <span class="payment-status">
+              <i class="fa-solid fa-wallet" aria-hidden="true"></i>未支付 · ¥0
+            </span>
+          </div>
+        </section>
+
+        <section class="surface needs-card" aria-labelledby="needs-heading">
+          <div class="section-heading">
+            <h2 class="section-title" id="needs-heading">
+              <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+              拍摄需求
+            </h2>
+            <span class="section-note">3 项</span>
+          </div>
+          <dl class="needs-list">
+            <div class="need-row">
+              <dt>特殊需求</dt>
+              <dd>以自然抓拍为主，保留互动感</dd>
+            </div>
+            <div class="need-row">
+              <dt>现场备注</dt>
+              <dd>多拍半身与动态画面</dd>
+            </div>
+            <div class="need-row">
+              <dt>陪同人员</dt>
+              <dd>闺蜜 3 人</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="ai-panel" aria-labelledby="ai-heading">
+          <span class="ai-panel__icon">
+            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          </span>
+          <div class="ai-panel__copy">
+            <strong id="ai-heading">AI 拍摄助手</strong>
+            <span>已有拍摄方案 · 今天 09:32</span>
+          </div>
+          <button
+            class="text-button"
+            type="button"
+            data-toast="打开 AI 拍摄方案"
+          >
+            查看
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </section>
+
+        <section class="secondary-list" aria-label="其他排单信息">
+          <details>
+            <summary>
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <strong>提醒设置</strong>
+              <span>提前 1 天、1 小时</span>
+              <i
+                class="fa-solid fa-chevron-right summary-arrow"
+                aria-hidden="true"
+              ></i>
+            </summary>
+            <div class="details-content">
+              <div class="reminder-options">
+                <span
+                  ><i class="fa-solid fa-check" aria-hidden="true"></i> 提前 1
+                  天</span
+                >
+                <span
+                  ><i class="fa-solid fa-check" aria-hidden="true"></i> 提前 1
+                  小时</span
+                >
+              </div>
+            </div>
+          </details>
+          <details>
+            <summary>
+              <i class="fa-solid fa-wallet" aria-hidden="true"></i>
+              <strong>收款详情</strong>
+              <span>未支付 · ¥0</span>
+              <i
+                class="fa-solid fa-chevron-right summary-arrow"
+                aria-hidden="true"
+              ></i>
+            </summary>
+            <div class="details-content">
+              <div class="payment-line">
+                <span>当前收款状态</span>
+                <strong>未支付</strong>
+              </div>
+              <div class="payment-line">
+                <span>实收金额</span>
+                <strong>¥0</strong>
+              </div>
+            </div>
+          </details>
+          <details>
+            <summary>
+              <i class="fa-regular fa-image" aria-hidden="true"></i>
+              <strong>参考图</strong>
+              <span>1 张</span>
+              <i
+                class="fa-solid fa-chevron-right summary-arrow"
+                aria-hidden="true"
+              ></i>
+            </summary>
+            <div class="details-content">
+              <div class="reference-placeholder" aria-label="参考图占位">
+                <i class="fa-regular fa-image" aria-hidden="true"></i>
+              </div>
+            </div>
+          </details>
+        </section>
+      </div>
+    </main>
+
+    <div class="action-dock" aria-label="订单操作">
+      <button
+        class="primary-button"
+        type="button"
+        data-toast="完成订单需再次确认"
+      >
+        <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
+        完成订单
+      </button>
+      <button
+        class="more-button"
+        type="button"
+        id="more-action"
+        aria-label="更多操作"
+        aria-expanded="false"
+      >
+        <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button type="button" aria-current="page">
+        <i class="fa-solid fa-camera" aria-hidden="true"></i>
+        首页
+      </button>
+      <button type="button">
+        <i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
+        日历
+      </button>
+      <button type="button">
+        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+        AI问答
+      </button>
+      <button type="button">
+        <i class="fa-regular fa-user" aria-hidden="true"></i>
+        我的
+      </button>
+    </nav>
+
+    <div class="sheet-backdrop" id="action-sheet" hidden>
+      <section
+        class="action-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="action-sheet-title"
+      >
+        <div class="sheet-handle"></div>
+        <h2 id="action-sheet-title">更多操作</h2>
+        <button class="sheet-action" type="button" data-toast="订单已暂存">
+          <i class="fa-solid fa-box-archive" aria-hidden="true"></i>
+          暂存订单
+        </button>
+        <button
+          class="sheet-action sheet-action--danger"
+          type="button"
+          data-toast="删除操作需要二次确认"
+        >
+          <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+          删除排单
+        </button>
+        <button class="sheet-cancel" type="button" id="close-sheet">
+          取消
+        </button>
+      </section>
+    </div>
+
+    <div
+      class="toast"
+      id="prototype-toast"
+      role="status"
+      aria-live="polite"
+    ></div>
+
+    <script>
+      const root = document.documentElement;
+      const themeButtons = [...document.querySelectorAll("[data-theme-value]")];
+      const toast = document.getElementById("prototype-toast");
+      const actionSheet = document.getElementById("action-sheet");
+      const moreAction = document.getElementById("more-action");
+      const closeSheet = document.getElementById("close-sheet");
+      let toastTimer = 0;
+
+      const requestedTheme = new URLSearchParams(window.location.search).get(
+        "theme",
+      );
+
+      const showToast = (message) => {
+        window.clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        toastTimer = window.setTimeout(
+          () => toast.classList.remove("is-visible"),
+          1600,
+        );
+      };
+
+      themeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const theme = button.dataset.themeValue;
+          root.dataset.theme = theme;
+          themeButtons.forEach((item) =>
+            item.setAttribute("aria-pressed", String(item === button)),
+          );
+        });
+      });
+
+      const initialThemeButton = themeButtons.find(
+        (button) => button.dataset.themeValue === requestedTheme,
+      );
+      if (initialThemeButton) initialThemeButton.click();
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => showToast(button.dataset.toast));
+      });
+
+      const setSheetOpen = (open) => {
+        actionSheet.hidden = !open;
+        moreAction.setAttribute("aria-expanded", String(open));
+      };
+
+      moreAction.addEventListener("click", () => setSheetOpen(true));
+      closeSheet.addEventListener("click", () => setSheetOpen(false));
+      actionSheet.addEventListener("click", (event) => {
+        if (event.target === actionSheet) setSheetOpen(false);
+      });
+      actionSheet.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => setSheetOpen(false));
+      });
+
+      document
+        .querySelectorAll(".secondary-list details")
+        .forEach((details) => {
+          details.addEventListener("toggle", () => {
+            if (!details.open) return;
+            document
+              .querySelectorAll(".secondary-list details")
+              .forEach((item) => {
+                if (item !== details) item.open = false;
+              });
+          });
+        });
+    </script>
+  </body>
+</html>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef } from 'vue'
+import dayjs from 'dayjs'
 import { Button, CellGroup, DatePicker, Field, Popup, TimePicker, Uploader } from 'vant'
-import PageHeader from '@/components/PageHeader.vue'
 import type { PublicBookingAiBrief } from '@/api/public-booking/types'
-import ServiceTags from '@/components/ServiceTags.vue'
+import DetailAccordionRow from '@/views/scheduleDetail/components/DetailAccordionRow.vue'
+import DetailActionDock from '@/views/scheduleDetail/components/DetailActionDock.vue'
+import DetailCustomerSummary from '@/views/scheduleDetail/components/DetailCustomerSummary.vue'
+import DetailScheduleOverview from '@/views/scheduleDetail/components/DetailScheduleOverview.vue'
 import { useScheduleDetailPage } from '@/views/scheduleDetail/hooks/useScheduleDetailPage'
 
 const {
@@ -22,6 +25,7 @@ const {
   failedReferenceUploads,
   selectedDateValues,
   selectedRestoreDateValues,
+  restoreMinDate,
   selectedStartTimeValues,
   selectedEndTimeValues,
   timeColumns,
@@ -49,7 +53,6 @@ const {
   onAfterReadReference,
   retryReferenceUpload,
   depositStatusText,
-  formatCnDate,
   showAssistant,
   isGenerating: aiIsGenerating,
   rawText: aiRawText,
@@ -129,54 +132,165 @@ const customerTagItems = computed(() => customer.value?.tags || [])
 const hasReferenceImages = computed(
   () => isEditing.value || Boolean(schedule.value?.referenceImages?.length),
 )
+
+const showMoreActions = shallowRef(false)
+
+const statusLabel = computed(() => {
+  if (isStored.value) return '暂存'
+  if (isCompleted.value) return '已完成'
+  if (schedule.value?.status === 'pending_confirm') return '待确认'
+  return '正常排单'
+})
+
+const scheduleDate = computed(() => dayjs(schedule.value?.date))
+const dateDay = computed(() => scheduleDate.value.format('DD'))
+const weekdayLabels = ['日', '一', '二', '三', '四', '五', '六']
+const dateCaption = computed(
+  () => `${scheduleDate.value.month() + 1}月 · 周${weekdayLabels[scheduleDate.value.day()]}`,
+)
+const fullDate = computed(
+  () =>
+    `${scheduleDate.value.year()}年${scheduleDate.value.month() + 1}月${scheduleDate.value.date()}日`,
+)
+const timeRange = computed(
+  () => `${schedule.value?.startTime || '--:--'}–${schedule.value?.endTime || '--:--'}`,
+)
+const durationText = computed(() => {
+  if (!schedule.value) return '时长待定'
+  const start = dayjs(`${schedule.value.date} ${schedule.value.startTime}`)
+  const end = dayjs(`${schedule.value.date} ${schedule.value.endTime}`)
+  const minutes = Math.max(0, end.diff(start, 'minute'))
+  const hours = Math.floor(minutes / 60)
+  const restMinutes = minutes % 60
+  if (!minutes) return '时长待定'
+  if (!hours) return `预计 ${restMinutes} 分钟`
+  return `预计 ${hours} 小时${restMinutes ? ` ${restMinutes} 分钟` : ''}`
+})
+const proximityText = computed(() => {
+  if (!schedule.value) return ''
+  if (isStored.value) return '订单暂存中'
+  if (isCompleted.value) return '拍摄已完成'
+
+  const start = dayjs(`${schedule.value.date} ${schedule.value.startTime}`)
+  const end = dayjs(`${schedule.value.date} ${schedule.value.endTime}`)
+  const now = dayjs()
+  if (now.isAfter(end)) return '拍摄已结束'
+  if (now.isAfter(start)) return '拍摄进行中'
+
+  const minutes = start.diff(now, 'minute')
+  if (minutes < 60) return `距离开始 ${Math.max(1, minutes)} 分钟`
+  if (minutes < 24 * 60) return `距离开始 ${Math.ceil(minutes / 60)} 小时`
+  return `距离开始 ${Math.ceil(minutes / (24 * 60))} 天`
+})
+
+const serviceTypeLabel = computed(() =>
+  schedule.value ? catalogStore.getServiceTypeName(schedule.value.serviceTypeCode) : '',
+)
+const roleLabels = computed(() =>
+  detailRoleCodes.value.map((code) => catalogStore.getRoleName(code)),
+)
+const paymentLabel = computed(() => {
+  if (!schedule.value) return ''
+  return `${depositStatusText[schedule.value.depositStatus]} · ¥${schedule.value.amount}`
+})
+const shootingNeedItems = computed(() => [...aiBriefItems.value, ...customerNeedItems.value])
+const reminderSummary = computed(() => {
+  if (!schedule.value?.reminders.length) return '未设置'
+  return schedule.value.reminders
+    .map((item) => (item === '1d' ? '提前 1 天' : '提前 1 小时'))
+    .join('、')
+})
+const visibleReferenceImages = computed(() =>
+  isEditing.value ? getReferenceUrls() : schedule.value?.referenceImages || [],
+)
+
+const primaryAction = computed(() => {
+  if (isEditing.value) {
+    return { label: '保存修改', icon: 'fa-solid fa-floppy-disk', disabled: false }
+  }
+  if (isStored.value) {
+    return { label: '恢复排单', icon: 'fa-solid fa-calendar-check', disabled: false }
+  }
+  if (isCompleted.value) {
+    return { label: '订单已完成', icon: 'fa-solid fa-circle-check', disabled: true }
+  }
+  return { label: '完成订单', icon: 'fa-solid fa-flag-checkered', disabled: false }
+})
+
+const handlePrimaryAction = () => {
+  if (isEditing.value) {
+    void saveEdit()
+    return
+  }
+  if (isStored.value) {
+    openRestoreDate()
+    return
+  }
+  if (!isCompleted.value) void completeSchedule()
+}
+
+const handleStoreSchedule = () => {
+  showMoreActions.value = false
+  void storeSchedule()
+}
+
+const handleRemove = () => {
+  showMoreActions.value = false
+  void remove()
+}
 </script>
 
 <template>
-  <section class="bounce-in" v-if="schedule && customer">
-    <PageHeader
-      title="排单详情"
-      back
-      right-text="编辑"
-      @back="router.back()"
-      @right="isEditing = !isEditing"
-    />
+  <section v-if="schedule && customer" class="schedule-detail-page bounce-in">
+    <header class="detail-header">
+      <button type="button" class="header-button" aria-label="返回" @click="router.back()">
+        <i class="fa-solid fa-chevron-left" aria-hidden="true" />
+        返回
+      </button>
+      <h1>排单详情</h1>
+      <button
+        type="button"
+        class="header-button header-button--edit"
+        @click="isEditing = !isEditing"
+      >
+        {{ isEditing ? '取消' : '编辑' }}
+      </button>
+    </header>
 
-    <article class="card mb-3 p-3 soft-yellow">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <p class="text-lg font-extrabold text-slate-800">{{ customer.name }}</p>
-          <p class="mt-1 text-xs text-slate-500">
-            {{ catalogStore.getCustomerTypeName(customer.type) }} · {{ customer.phone }}
-          </p>
-        </div>
-        <div class="flex shrink-0 gap-1">
-          <button class="chip" type="button" title="复制电话" @click="copyPhone">
-            <i class="fa-regular fa-copy" />
-          </button>
-          <a class="chip" :href="`tel:${customer.phone}`" title="拨打电话">
-            <i class="fa-solid fa-phone" />
-          </a>
-        </div>
-      </div>
-      <div class="mt-3 flex flex-wrap items-center gap-1.5">
-        <span v-if="isStored" class="chip border-amber-200 bg-amber-50 text-amber-600">
-          <i class="fa-solid fa-box-archive mr-1" />暂存
-        </span>
-        <span
-          v-else-if="isCompleted"
-          class="chip border-emerald-200 bg-emerald-50 text-emerald-600"
-        >
-          <i class="fa-solid fa-circle-check mr-1" />已完成
-        </span>
-        <span v-for="tag in customerTagItems" :key="tag" class="chip">{{ tag }}</span>
-      </div>
-    </article>
+    <div class="detail-content">
+      <DetailCustomerSummary
+        :customer-name="customer.name"
+        :phone="customer.phone"
+        :customer-type="catalogStore.getCustomerTypeName(customer.type)"
+        :tags="customerTagItems"
+        :status-label="statusLabel"
+        @copy-phone="copyPhone"
+      />
 
-    <article class="card mb-3 p-3 soft-pink">
-      <p class="mb-3 text-sm font-extrabold">
-        <i class="fa-regular fa-calendar mr-1 text-rose-500" />拍摄安排
-      </p>
-      <template v-if="isEditing">
+      <DetailScheduleOverview
+        v-if="!isEditing"
+        :date-day="dateDay"
+        :date-caption="dateCaption"
+        :full-date="fullDate"
+        :time-range="timeRange"
+        :duration-text="durationText"
+        :proximity-text="proximityText"
+        :location="schedule.location"
+        :service-type="serviceTypeLabel"
+        :role-labels="roleLabels"
+        :payment-label="paymentLabel"
+        :tail-payment-date="customer.tailPaymentDate"
+        @navigate="navigateToMap"
+      />
+
+      <article v-else class="surface edit-schedule" aria-labelledby="edit-schedule-heading">
+        <div class="section-heading">
+          <h2 id="edit-schedule-heading" class="section-title">
+            <i class="fa-solid fa-pen-to-square" aria-hidden="true" />
+            编辑拍摄安排
+          </h2>
+          <span class="section-note">保存后立即生效</span>
+        </div>
         <CellGroup inset>
           <Field :model-value="editForm.date" label="拍摄日期" readonly is-link @click="openDate" />
           <Field
@@ -195,287 +309,197 @@ const hasReferenceImages = computed(
           />
           <Field v-model="editForm.location" label="拍摄地点" placeholder="请输入地点" />
         </CellGroup>
-      </template>
-      <template v-else>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <p class="text-[11px] font-bold text-slate-400">拍摄日期</p>
-            <p class="mt-1 text-sm font-extrabold text-slate-800">
-              {{ formatCnDate(schedule.date) }}
-            </p>
-          </div>
-          <div>
-            <p class="text-[11px] font-bold text-slate-400">拍摄时间</p>
-            <p class="mt-1 text-sm font-extrabold text-slate-800">
-              {{ schedule.startTime }} - {{ schedule.endTime }}
-            </p>
-          </div>
-        </div>
-        <div class="mt-3 border-t border-rose-100 pt-3">
-          <p class="text-[11px] font-bold text-slate-400">拍摄地点</p>
-          <div class="mt-1 flex items-center justify-between gap-2">
-            <p class="min-w-0 text-sm font-bold text-slate-800">{{ schedule.location }}</p>
-            <button type="button" class="chip shrink-0" @click="navigateToMap">
-              <i class="fa-solid fa-location-arrow mr-1" />导航
-            </button>
-          </div>
-        </div>
-      </template>
-      <div
-        class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-rose-100 pt-3 text-xs text-slate-600"
-      >
-        <span>{{ catalogStore.getServiceTypeName(schedule.serviceTypeCode) }}</span>
-        <ServiceTags :role-codes="detailRoleCodes" />
-        <span>
-          {{ depositStatusText[schedule.depositStatus] }} · ¥{{ schedule.amount }}
-          <span v-if="customer.tailPaymentDate">· 尾款 {{ customer.tailPaymentDate }}</span>
-        </span>
-      </div>
-    </article>
+      </article>
 
-    <article class="card mb-3 p-3 soft-blue">
-      <p class="mb-3 text-sm font-extrabold">
-        <i class="fa-solid fa-book-open mr-1 text-blue-500" />拍摄需求
-      </p>
-      <template v-if="isEditing">
+      <article class="surface needs-card" aria-labelledby="detail-needs-heading">
+        <div class="section-heading">
+          <h2 id="detail-needs-heading" class="section-title">
+            <i class="fa-solid fa-clipboard-list" aria-hidden="true" />
+            拍摄需求
+          </h2>
+          <span class="section-note">{{
+            isEditing ? '编辑现场备注' : `${shootingNeedItems.length} 项`
+          }}</span>
+        </div>
         <textarea
+          v-if="isEditing"
           v-model="editForm.note"
           class="textarea"
           rows="4"
           placeholder="补充客户现场要求"
         />
-      </template>
-      <template v-else>
-        <div v-if="aiBriefItems.length" class="space-y-2">
-          <p class="text-xs font-extrabold text-blue-600">AI 角色与造型</p>
-          <div class="space-y-2">
-            <div
-              v-for="item in aiBriefItems"
-              :key="item.label"
-              class="rounded-lg bg-white/80 px-3 py-2 text-xs leading-5 text-slate-600"
-            >
-              <span class="font-extrabold text-slate-700">{{ item.label }}</span>
-              <p class="mt-0.5">{{ item.value }}</p>
-            </div>
+        <dl v-else-if="hasShootingNeeds" class="needs-list">
+          <div v-for="item in shootingNeedItems" :key="item.label" class="need-row">
+            <dt>{{ item.label }}</dt>
+            <dd>{{ item.value }}</dd>
           </div>
-        </div>
-        <div v-if="customerNeedItems.length" class="mt-3 space-y-2">
-          <p class="text-xs font-extrabold text-blue-600">客户补充信息</p>
-          <div class="space-y-1.5 text-xs leading-5 text-slate-600">
-            <p v-for="item in customerNeedItems" :key="item.label">
-              <span class="font-extrabold text-slate-700">{{ item.label }}：</span>{{ item.value }}
-            </p>
-          </div>
-        </div>
-        <p v-if="!hasShootingNeeds" class="text-xs text-slate-500">暂无补充需求</p>
-      </template>
-    </article>
+        </dl>
+        <p v-else class="empty-copy">暂无补充需求</p>
+      </article>
 
-    <article class="card mb-3 p-3 soft-pink">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="mb-1 text-sm font-extrabold">
-            <i class="fa-solid fa-wand-magic-sparkles mr-1 text-rose-500" />AI 拍摄助手
-          </p>
-          <p class="text-xs leading-5 text-slate-600">
-            {{ hasSavedAiPlan ? '已有上次生成方案，可直接查看。' : '首次打开时生成现场拍摄建议。' }}
-          </p>
-        </div>
-        <button class="chip shrink-0" type="button" @click="openAssistant">
-          <i class="fa-solid fa-arrow-up-right-from-square" />打开
-        </button>
-      </div>
-    </article>
-
-    <details class="card mb-3 p-3">
-      <summary class="cursor-pointer text-sm font-extrabold">
-        <i class="fa-regular fa-bell mr-1 text-rose-500" />提醒设置
-      </summary>
-      <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <button class="btn-secondary" type="button" @click="toggleReminder('1d')">
-          <i
-            :class="
-              schedule.reminders.includes('1d')
-                ? 'fa-solid fa-toggle-on text-blue-500'
-                : 'fa-solid fa-toggle-off text-slate-300'
-            "
-            class="mr-1"
-          />
-          提前 1 天
-        </button>
-        <button class="btn-secondary" type="button" @click="toggleReminder('1h')">
-          <i
-            :class="
-              schedule.reminders.includes('1h')
-                ? 'fa-solid fa-toggle-on text-blue-500'
-                : 'fa-solid fa-toggle-off text-slate-300'
-            "
-            class="mr-1"
-          />
-          提前 1 小时
-        </button>
-      </div>
-    </details>
-
-    <details class="card mb-3 p-3 soft-yellow">
-      <summary class="cursor-pointer text-sm font-extrabold">
-        <i class="fa-solid fa-wallet mr-1 text-amber-500" />收款详情
-        <span class="ml-2 text-xs font-normal text-slate-500">
-          {{ depositStatusText[schedule.depositStatus] }} · ¥{{ schedule.amount }}
+      <button type="button" class="ai-panel" @click="openAssistant">
+        <span class="ai-panel__icon">
+          <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />
         </span>
-      </summary>
-      <div class="mt-3">
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <button
-            type="button"
-            class="btn-secondary"
-            :class="
-              paymentForm.depositStatus === 'unpaid'
-                ? 'ring-2 ring-rose-200 bg-rose-50 text-rose-500'
-                : ''
-            "
-            @click="paymentForm.depositStatus = 'unpaid'"
-          >
-            未支付
-          </button>
-          <button
-            type="button"
-            class="btn-secondary"
-            :class="
-              paymentForm.depositStatus === 'paid'
-                ? 'ring-2 ring-blue-200 bg-blue-50 text-blue-500'
-                : ''
-            "
-            @click="paymentForm.depositStatus = 'paid'"
-          >
-            已支付
-          </button>
-          <button
-            type="button"
-            class="btn-secondary"
-            :class="
-              paymentForm.depositStatus === 'full'
-                ? 'ring-2 ring-emerald-200 bg-emerald-50 text-emerald-600'
-                : ''
-            "
-            @click="paymentForm.depositStatus = 'full'"
-          >
-            全款
-          </button>
-        </div>
-
-        <Field
-          v-model="paymentForm.amount"
-          class="mt-2 rounded-xl"
-          label="实收金额"
-          type="number"
-          placeholder="请输入到账金额"
-        />
-
-        <p class="mt-1 text-xs text-slate-500">
-          建议到账后再确认状态；切回未支付时将保留历史金额记录。
-        </p>
-
-        <Button block round type="primary" class="mt-2" @click="savePaymentStatus">
-          <i class="fa-solid fa-money-check-dollar mr-1" />保存收款状态
-        </Button>
-      </div>
-    </details>
-
-    <details v-if="hasReferenceImages" class="card mb-3 p-3 soft-blue">
-      <summary class="cursor-pointer text-sm font-extrabold">
-        <i class="fa-regular fa-image mr-1 text-blue-500" />参考图
-        <span class="ml-2 text-xs font-normal text-slate-500">
-          {{ (isEditing ? getReferenceUrls() : schedule.referenceImages || []).length }} 张
+        <span class="ai-panel__copy">
+          <strong>AI 拍摄助手</strong>
+          <span>{{ hasSavedAiPlan ? '已有拍摄方案，可直接查看' : '生成现场拍摄建议' }}</span>
         </span>
-      </summary>
-      <div class="mt-3">
-        <div v-if="isEditing" class="mb-2">
-          <Uploader
-            v-model="referenceFileList"
-            :max-count="6"
-            multiple
-            :disabled="uploadingReferences"
-            :after-read="onAfterReadReference"
-            :deletable="!uploadingReferences"
-            preview-size="72"
-            upload-text="继续添加参考图"
-          />
-
-          <div v-if="failedReferenceUploads.length" class="mt-2 space-y-1">
-            <div
-              v-for="item in failedReferenceUploads"
-              :key="item.url || item.file?.name"
-              class="flex items-center justify-between text-xs text-amber-700"
-            >
-              <span>有图片上传失败，可重试</span>
-              <Button
-                size="small"
-                round
-                plain
-                type="primary"
-                :disabled="uploadingReferences"
-                @click="retryReferenceUpload(item)"
-              >
-                重试
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            v-for="(image, index) in isEditing
-              ? getReferenceUrls()
-              : schedule.referenceImages || []"
-            :key="`${image}-${index}`"
-            type="button"
-            class="overflow-hidden rounded-xl border border-blue-100 bg-white"
-            @click="previewReferences(index)"
-          >
-            <img :src="image" alt="动作参考图" class="h-20 w-full object-cover" />
-          </button>
-        </div>
-      </div>
-    </details>
-
-    <p v-if="feedback" class="mb-2 text-xs text-blue-500">{{ feedback }}</p>
-    <div class="sticky bottom-0 z-10 -mx-4 mt-4 border-t bg-white/95 px-4 py-3 backdrop-blur">
-      <button v-if="isEditing" class="btn-primary w-full" type="button" @click="saveEdit">
-        <i class="fa-solid fa-floppy-disk mr-1" />保存修改
+        <span class="ai-panel__action">
+          {{ hasSavedAiPlan ? '查看' : '生成' }}
+          <i class="fa-solid fa-chevron-right" aria-hidden="true" />
+        </span>
       </button>
-      <template v-else>
-        <button
-          v-if="!isStored && !isCompleted"
-          class="btn-primary w-full"
-          type="button"
-          @click="completeSchedule"
-        >
-          <i class="fa-solid fa-flag-checkered mr-1" />完成订单
-        </button>
-        <button
-          v-else-if="isStored"
-          class="btn-primary w-full"
-          type="button"
-          @click="openRestoreDate"
-        >
-          <i class="fa-solid fa-calendar-check mr-1" />恢复排单
-        </button>
-        <details class="mt-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-          <summary class="cursor-pointer text-center text-xs font-bold text-slate-600">
-            更多操作
-          </summary>
-          <div class="mt-2 grid grid-cols-2 gap-2">
-            <button v-if="!isStored" class="btn-secondary" type="button" @click="storeSchedule">
-              <i class="fa-solid fa-box-archive mr-1" />存单
+
+      <section class="secondary-list" aria-label="其他排单信息">
+        <DetailAccordionRow icon="fa-regular fa-bell" title="提醒设置" :summary="reminderSummary">
+          <div class="reminder-options">
+            <button
+              type="button"
+              :class="{ 'is-active': schedule.reminders.includes('1d') }"
+              @click="toggleReminder('1d')"
+            >
+              <i
+                :class="
+                  schedule.reminders.includes('1d') ? 'fa-solid fa-check' : 'fa-solid fa-plus'
+                "
+                aria-hidden="true"
+              />
+              提前 1 天
             </button>
-            <button class="btn-secondary" type="button" @click="remove">
-              <i class="fa-solid fa-trash-can mr-1" />删除排单
+            <button
+              type="button"
+              :class="{ 'is-active': schedule.reminders.includes('1h') }"
+              @click="toggleReminder('1h')"
+            >
+              <i
+                :class="
+                  schedule.reminders.includes('1h') ? 'fa-solid fa-check' : 'fa-solid fa-plus'
+                "
+                aria-hidden="true"
+              />
+              提前 1 小时
             </button>
           </div>
-        </details>
-      </template>
+        </DetailAccordionRow>
+
+        <DetailAccordionRow icon="fa-solid fa-wallet" title="收款详情" :summary="paymentLabel">
+          <div class="payment-options" role="group" aria-label="收款状态">
+            <button
+              type="button"
+              :class="{ 'is-active': paymentForm.depositStatus === 'unpaid' }"
+              @click="paymentForm.depositStatus = 'unpaid'"
+            >
+              未支付
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-active': paymentForm.depositStatus === 'paid' }"
+              @click="paymentForm.depositStatus = 'paid'"
+            >
+              已支付
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-active': paymentForm.depositStatus === 'full' }"
+              @click="paymentForm.depositStatus = 'full'"
+            >
+              全款
+            </button>
+          </div>
+          <Field
+            v-model="paymentForm.amount"
+            class="payment-field"
+            label="实收金额"
+            type="number"
+            placeholder="请输入到账金额"
+          />
+          <p class="form-hint">建议到账后再确认状态；切回未支付时将保留历史金额记录。</p>
+          <Button block round type="primary" class="payment-save" @click="savePaymentStatus">
+            <i class="fa-solid fa-money-check-dollar" aria-hidden="true" />保存收款状态
+          </Button>
+        </DetailAccordionRow>
+
+        <DetailAccordionRow
+          v-if="hasReferenceImages"
+          icon="fa-regular fa-image"
+          title="参考图"
+          :summary="`${visibleReferenceImages.length} 张`"
+        >
+          <div v-if="isEditing" class="reference-uploader">
+            <Uploader
+              v-model="referenceFileList"
+              :max-count="6"
+              multiple
+              :disabled="uploadingReferences"
+              :after-read="onAfterReadReference"
+              :deletable="!uploadingReferences"
+              preview-size="72"
+              upload-text="继续添加参考图"
+            />
+
+            <div v-if="failedReferenceUploads.length" class="upload-errors">
+              <div
+                v-for="item in failedReferenceUploads"
+                :key="item.url || item.file?.name"
+                class="upload-error"
+              >
+                <span>有图片上传失败，可重试</span>
+                <Button
+                  size="small"
+                  round
+                  plain
+                  type="primary"
+                  :disabled="uploadingReferences"
+                  @click="retryReferenceUpload(item)"
+                >
+                  重试
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div class="reference-grid">
+            <button
+              v-for="(image, index) in visibleReferenceImages"
+              :key="`${image}-${index}`"
+              type="button"
+              class="reference-image"
+              @click="previewReferences(index)"
+            >
+              <img :src="image" alt="动作参考图" />
+            </button>
+          </div>
+        </DetailAccordionRow>
+      </section>
+
+      <p v-if="feedback" class="feedback" role="status">{{ feedback }}</p>
     </div>
+
+    <DetailActionDock
+      :primary-label="primaryAction.label"
+      :primary-icon="primaryAction.icon"
+      :primary-disabled="primaryAction.disabled"
+      :show-more="!isEditing"
+      @primary="handlePrimaryAction"
+      @more="showMoreActions = true"
+    />
+
+    <Popup v-model:show="showMoreActions" position="bottom" round>
+      <section class="action-sheet" aria-labelledby="more-action-heading">
+        <div class="sheet-handle" />
+        <h2 id="more-action-heading">更多操作</h2>
+        <button v-if="!isStored" type="button" class="sheet-action" @click="handleStoreSchedule">
+          <i class="fa-solid fa-box-archive" aria-hidden="true" />
+          暂存订单
+        </button>
+        <button type="button" class="sheet-action sheet-action--danger" @click="handleRemove">
+          <i class="fa-regular fa-trash-can" aria-hidden="true" />
+          删除排单
+        </button>
+        <button type="button" class="sheet-cancel" @click="showMoreActions = false">取消</button>
+      </section>
+    </Popup>
 
     <Popup v-model:show="showDatePicker" position="bottom" round>
       <DatePicker
@@ -495,6 +519,7 @@ const hasReferenceImages = computed(
       <DatePicker
         v-model="selectedRestoreDateValues"
         title="恢复排单日期"
+        :min-date="restoreMinDate"
         @cancel="showRestoreDatePicker = false"
         @confirm="({ selectedValues }: any) => restoreSchedule(selectedValues)"
       />
@@ -531,74 +556,66 @@ const hasReferenceImages = computed(
     </Popup>
 
     <Popup v-model:show="showAssistant" position="bottom" round :style="{ height: '88%' }">
-      <div class="flex h-full flex-col bg-white">
-        <div
-          class="flex items-center justify-between border-b px-4 py-3"
-          style="border-color: var(--line)"
-        >
+      <div class="ai-assistant">
+        <div class="ai-header">
           <div>
-            <p class="text-base font-extrabold text-slate-800">AI 拍摄方案</p>
-            <p v-if="aiIsCached && aiGeneratedAtText" class="mt-0.5 text-xs text-slate-500">
+            <p class="ai-title">AI 拍摄方案</p>
+            <p v-if="aiIsCached && aiGeneratedAtText" class="ai-subtitle">
               已使用上次生成方案 · {{ aiGeneratedAtText }}
             </p>
-            <p v-else class="mt-0.5 text-xs text-slate-500">仅基于当前排单文字信息生成</p>
+            <p v-else class="ai-subtitle">仅基于当前排单文字信息生成</p>
           </div>
-          <button class="chip" type="button" :disabled="aiIsGenerating" @click="closeAssistant">
+          <button
+            class="ai-close"
+            type="button"
+            aria-label="关闭 AI 拍摄方案"
+            :disabled="aiIsGenerating"
+            @click="closeAssistant"
+          >
             <i class="fa-solid fa-xmark" />关闭
           </button>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <div
-            v-if="aiIsGenerating"
-            class="mb-3 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600"
-          >
+        <div class="ai-scroll">
+          <div v-if="aiIsGenerating" class="ai-progress">
             <span><i class="fa-solid fa-spinner fa-spin mr-1" />正在生成拍摄方案...</span>
-            <button class="chip" type="button" @click="stopAiGeneration">停止</button>
+            <button class="ai-inline-button" type="button" @click="stopAiGeneration">停止</button>
           </div>
 
-          <p
-            v-if="aiError"
-            class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-600"
-          >
+          <p v-if="aiError" class="ai-error">
             {{ aiError }}
           </p>
 
-          <p
-            v-if="aiIsGenerating && aiRawText"
-            class="rounded-xl bg-slate-50 p-3 text-xs leading-6 text-slate-600"
-          >
+          <p v-if="aiIsGenerating && aiRawText" class="ai-raw">
             已收到方案内容，正在整理为可执行的拍摄建议...
           </p>
 
           <template v-if="aiResult">
-            <section class="rounded-xl bg-rose-50 p-3">
-              <h3 class="text-base font-extrabold text-slate-800">
+            <section class="ai-summary">
+              <h3>
                 {{ aiResult.title || 'AI 拍摄方案' }}
               </h3>
-              <p class="mt-1 text-xs leading-5 text-slate-600">
+              <p>
                 {{ aiResult.summary || '暂无摘要' }}
               </p>
             </section>
 
-            <section v-if="aiResult.format === 'markdown'" class="mt-3 rounded-xl bg-slate-50 p-3">
-              <pre class="whitespace-pre-wrap text-xs leading-6 text-slate-700">{{
-                aiResult.markdown
-              }}</pre>
+            <section v-if="aiResult.format === 'markdown'" class="ai-advice-block">
+              <pre class="ai-markdown">{{ aiResult.markdown }}</pre>
             </section>
 
             <template v-else>
-              <section v-if="aiTimeline.length" class="mt-3">
-                <h3 class="mb-2 text-sm font-extrabold text-slate-800">时间安排</h3>
-                <div class="space-y-2">
+              <section v-if="aiTimeline.length" class="ai-section">
+                <h3 class="ai-section-title">时间安排</h3>
+                <div class="ai-timeline">
                   <div
                     v-for="item in aiTimeline"
                     :key="`${item.time}-${item.title}`"
-                    class="rounded-xl border border-rose-100 bg-white p-3"
+                    class="ai-timeline-item"
                   >
-                    <p class="text-xs font-extrabold text-rose-500">{{ item.time || '待定' }}</p>
-                    <p class="mt-1 text-sm font-bold text-slate-800">{{ item.title }}</p>
-                    <p class="mt-1 text-xs leading-5 text-slate-600">{{ item.detail }}</p>
+                    <p class="ai-time">{{ item.time || '待定' }}</p>
+                    <p class="ai-item-title">{{ item.title }}</p>
+                    <p class="ai-item-copy">{{ item.detail }}</p>
                   </div>
                 </div>
               </section>
@@ -613,10 +630,10 @@ const hasReferenceImages = computed(
                 ]"
                 :key="section.title"
                 v-show="section.items.length"
-                class="mt-3 rounded-xl bg-slate-50 p-3"
+                class="ai-advice-block"
               >
-                <h3 class="mb-1 text-sm font-extrabold text-slate-800">{{ section.title }}</h3>
-                <ul class="space-y-1 text-xs leading-5 text-slate-600">
+                <h3 class="ai-section-title">{{ section.title }}</h3>
+                <ul class="ai-advice-list">
                   <li v-for="(item, index) in section.items" :key="`${section.title}-${index}`">
                     {{ formatAiAdviceItem(item) }}
                   </li>
@@ -624,24 +641,16 @@ const hasReferenceImages = computed(
               </section>
             </template>
 
-            <p
-              v-for="warning in aiWarnings"
-              :key="warning"
-              class="mt-3 text-xs leading-5 text-amber-600"
-            >
+            <p v-for="warning in aiWarnings" :key="warning" class="ai-warning">
               <i class="fa-solid fa-triangle-exclamation mr-1" />{{ warning }}
             </p>
 
-            <section
-              v-if="aiSources.length"
-              class="mt-3 border-t pt-3"
-              style="border-color: var(--line)"
-            >
-              <p class="mb-1 text-xs font-extrabold text-slate-700">参考资料</p>
+            <section v-if="aiSources.length" class="ai-sources">
+              <p class="ai-source-title">参考资料</p>
               <p
                 v-for="source in aiSources"
                 :key="`${source.source}-${source.chunkId}`"
-                class="text-xs leading-5 text-slate-500"
+                class="ai-source"
               >
                 {{ source.source }}
               </p>
@@ -650,7 +659,7 @@ const hasReferenceImages = computed(
 
           <button
             v-if="aiError && !aiIsGenerating"
-            class="btn-secondary mt-3"
+            class="btn-secondary ai-retry"
             type="button"
             @click="retryAiGeneration"
           >
@@ -658,11 +667,7 @@ const hasReferenceImages = computed(
           </button>
         </div>
 
-        <div
-          v-if="aiResult && !aiIsGenerating"
-          class="grid grid-cols-3 gap-2 border-t px-4 py-3"
-          style="border-color: var(--line)"
-        >
+        <div v-if="aiResult && !aiIsGenerating" class="ai-actions">
           <button class="btn-secondary" type="button" @click="retryAiGeneration">
             <i class="fa-solid fa-rotate-right mr-1" />重新获取
           </button>
@@ -677,5 +682,619 @@ const hasReferenceImages = computed(
     </Popup>
   </section>
 
-  <section v-else class="card p-4 text-sm text-slate-500">未找到排单信息，可能已被删除。</section>
+  <section v-else class="empty-state">未找到排单信息，可能已被删除。</section>
 </template>
+
+<style scoped>
+.schedule-detail-page {
+  padding-bottom: 74px;
+}
+
+.detail-header {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.detail-header h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.header-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.header-button--edit {
+  justify-content: flex-end;
+  color: var(--theme-accent-strong);
+}
+
+.detail-content {
+  display: grid;
+  gap: 12px;
+}
+
+.surface,
+.secondary-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--theme-surface);
+  box-shadow: 0 8px 20px rgba(var(--theme-accent-rgb), 0.1);
+}
+
+.edit-schedule,
+.needs-card {
+  padding: 14px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.section-title i {
+  color: var(--theme-accent-strong);
+}
+
+.section-note {
+  color: var(--theme-muted-soft);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.needs-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.need-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding: 9px 0;
+}
+
+.need-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.need-row:last-child {
+  padding-bottom: 0;
+}
+
+.need-row dt {
+  color: var(--theme-muted-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.need-row dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.empty-copy {
+  margin: 0;
+  color: var(--theme-muted-soft);
+  font-size: 12px;
+}
+
+.ai-panel {
+  display: grid;
+  width: 100%;
+  min-height: 70px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--theme-accent-soft);
+  border-radius: 14px;
+  padding: 13px;
+  background: var(--theme-accent-bg);
+  color: inherit;
+  text-align: left;
+}
+
+.ai-panel__icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--theme-surface);
+  color: var(--theme-accent-strong);
+  box-shadow: 0 6px 14px var(--theme-shadow);
+}
+
+.ai-panel__copy {
+  min-width: 0;
+}
+
+.ai-panel__copy strong,
+.ai-panel__copy > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-panel__copy strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ai-panel__copy > span {
+  margin-top: 3px;
+  color: var(--theme-muted);
+  font-size: 10px;
+}
+
+.ai-panel__action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
+  color: var(--theme-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reminder-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.reminder-options button,
+.payment-options button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reminder-options button.is-active,
+.payment-options button.is-active {
+  border-color: var(--theme-accent-soft);
+  background: var(--theme-accent-bg);
+  color: var(--theme-accent-strong);
+  box-shadow: 0 0 0 2px var(--theme-focus-ring);
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.payment-field {
+  margin-top: 10px;
+  border: 1px solid var(--theme-form-border);
+  border-radius: 12px;
+}
+
+.form-hint {
+  margin: 7px 0 0;
+  color: var(--theme-muted-soft);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.payment-save {
+  margin-top: 9px;
+}
+
+.reference-uploader {
+  margin-bottom: 8px;
+}
+
+.upload-errors {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.upload-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--theme-status);
+  font-size: 11px;
+}
+
+.reference-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.reference-image {
+  overflow: hidden;
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+  background: var(--theme-surface);
+}
+
+.reference-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feedback {
+  margin: 0;
+  border: 1px solid var(--theme-accent-soft);
+  border-radius: 10px;
+  padding: 9px 11px;
+  background: var(--theme-accent-bg);
+  color: var(--theme-accent-strong);
+  font-size: 11px;
+}
+
+.action-sheet {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--theme-surface);
+}
+
+.sheet-handle {
+  width: 38px;
+  height: 4px;
+  margin: 2px auto 10px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.action-sheet h2 {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.sheet-action {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.sheet-action i {
+  width: 30px;
+  color: var(--theme-accent-strong);
+  text-align: center;
+}
+
+.sheet-action--danger,
+.sheet-action--danger i {
+  color: #c94b5d;
+}
+
+.sheet-cancel {
+  display: inline-flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--theme-accent-bg);
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-assistant {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  background: var(--theme-surface);
+}
+
+.ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 16px;
+}
+
+.ai-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ai-subtitle {
+  margin: 2px 0 0;
+  color: var(--theme-muted-soft);
+  font-size: 11px;
+}
+
+.ai-close,
+.ai-inline-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--theme-accent-soft);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: var(--theme-accent-bg);
+  color: var(--theme-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-close:disabled {
+  opacity: 0.5;
+}
+
+.ai-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.ai-progress,
+.ai-error,
+.ai-raw,
+.ai-summary,
+.ai-advice-block,
+.ai-timeline-item {
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.ai-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  background: var(--theme-accent-bg);
+  color: var(--theme-accent-strong);
+  font-size: 11px;
+}
+
+.ai-error {
+  margin: 0 0 12px;
+  background: #fff1f2;
+  color: #c94b5d;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.ai-raw,
+.ai-advice-block {
+  margin-top: 12px;
+  background: color-mix(in srgb, var(--theme-accent-bg) 54%, var(--theme-surface));
+  color: var(--theme-muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.ai-summary {
+  background: var(--theme-accent-bg);
+}
+
+.ai-summary h3,
+.ai-summary p {
+  margin: 0;
+}
+
+.ai-summary h3 {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ai-summary p {
+  margin-top: 4px;
+  color: var(--theme-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.ai-markdown {
+  margin: 0;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.ai-section {
+  margin-top: 12px;
+}
+
+.ai-section-title {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ai-timeline {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-timeline-item {
+  border: 1px solid var(--line);
+  background: var(--theme-surface);
+}
+
+.ai-time,
+.ai-item-title,
+.ai-item-copy {
+  margin: 0;
+}
+
+.ai-time {
+  color: var(--theme-accent-strong);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-item-title {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ai-item-copy {
+  margin-top: 4px;
+  color: var(--theme-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.ai-advice-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--theme-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.ai-warning {
+  margin: 12px 0 0;
+  color: var(--theme-status);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.ai-sources {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.ai-source-title,
+.ai-source {
+  margin: 0;
+  font-size: 11px;
+}
+
+.ai-source-title {
+  margin-bottom: 4px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.ai-source {
+  color: var(--theme-muted-soft);
+  line-height: 1.7;
+}
+
+.ai-retry {
+  margin-top: 12px;
+}
+
+.ai-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+}
+
+.empty-state {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 350px) {
+  .schedule-detail-page {
+    margin-right: -6px;
+    margin-left: -6px;
+  }
+
+  .need-row {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .ai-actions {
+    gap: 6px;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .ai-actions :deep(.btn-secondary),
+  .ai-actions :deep(.btn-primary) {
+    font-size: 11px;
+  }
+}
+</style>

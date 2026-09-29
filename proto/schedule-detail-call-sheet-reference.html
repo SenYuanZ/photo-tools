@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>排单详情 · 摄影通告单方案</title>
+    <link
+      rel="stylesheet"
+      href="../app/node_modules/@fortawesome/fontawesome-free/css/all.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --rose: #f85f9b;
+        --rose-deep: #d93d7a;
+        --rose-soft: #ffd8e8;
+        --rose-paper: #fff5f9;
+        --paper: #ffffff;
+        --ink: #332d38;
+        --muted: #817886;
+        --muted-light: #a099a6;
+        --rule: #f0d9e3;
+        --danger: #d9485f;
+        --shadow: rgba(170, 46, 98, 0.13);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      html {
+        background: #eef1f6;
+      }
+
+      body {
+        color: var(--ink);
+        background: #eef1f6;
+        font-family:
+          "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      button,
+      summary {
+        font: inherit;
+      }
+
+      button {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid rgba(248, 95, 155, 0.28);
+        outline-offset: 2px;
+      }
+
+      .app-shell {
+        position: relative;
+        width: min(390px, 100%);
+        min-height: 100vh;
+        margin: 0 auto;
+        overflow: hidden;
+        background: var(--rose-paper);
+        box-shadow: 0 18px 55px rgba(38, 29, 49, 0.14);
+      }
+
+      .page-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: grid;
+        min-height: 56px;
+        grid-template-columns: 64px minmax(0, 1fr) 64px;
+        align-items: center;
+        border-bottom: 1px solid var(--rule);
+        padding: 0 10px;
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(14px);
+      }
+
+      .page-header h1 {
+        overflow: hidden;
+        margin: 0;
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 800;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .header-action {
+        display: inline-flex;
+        min-width: 44px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .header-action:first-child {
+        justify-self: start;
+      }
+
+      .header-action:last-child {
+        justify-self: end;
+        color: var(--rose-deep);
+      }
+
+      .schedule-cover {
+        position: relative;
+        overflow: hidden;
+        margin: 12px 12px 0;
+        border-radius: 16px;
+        padding: 16px;
+        background: var(--rose);
+        color: #ffffff;
+        box-shadow: 0 14px 30px rgba(217, 61, 122, 0.24);
+      }
+
+      .schedule-cover::after {
+        position: absolute;
+        top: 16px;
+        right: -44px;
+        width: 112px;
+        height: 112px;
+        border: 18px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        content: "";
+        pointer-events: none;
+      }
+
+      .cover-kicker {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .cover-kicker > span:first-child {
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .cover-status {
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        border-radius: 999px;
+        padding: 4px 9px;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .cover-time {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 15px;
+        margin-top: 13px;
+      }
+
+      .cover-date {
+        display: flex;
+        min-height: 88px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid rgba(255, 255, 255, 0.28);
+        padding-right: 14px;
+      }
+
+      .cover-date strong {
+        font-size: 38px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        line-height: 0.95;
+      }
+
+      .cover-date span {
+        margin-top: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .cover-time-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .cover-time-copy span {
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .cover-time-copy strong {
+        margin-top: 5px;
+        font-size: 30px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .cover-time-copy p {
+        margin: 7px 0 0;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 11px;
+      }
+
+      .cover-customer {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.24);
+        padding-top: 14px;
+      }
+
+      .cover-avatar {
+        display: inline-flex;
+        width: 42px;
+        height: 42px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: #ffffff;
+        color: var(--rose-deep);
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .cover-customer-copy {
+        min-width: 0;
+      }
+
+      .cover-customer-copy strong {
+        display: block;
+        overflow: hidden;
+        font-size: 16px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .cover-customer-copy span {
+        display: block;
+        overflow: hidden;
+        margin-top: 3px;
+        color: rgba(255, 255, 255, 0.76);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .cover-contact-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .cover-icon-button {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #ffffff;
+      }
+
+      .cover-location {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        border-radius: 12px;
+        padding: 9px 10px;
+        background: rgba(255, 255, 255, 0.13);
+      }
+
+      .cover-location > i {
+        text-align: center;
+      }
+
+      .cover-location-copy {
+        min-width: 0;
+      }
+
+      .cover-location-copy span {
+        display: block;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 9px;
+      }
+
+      .cover-location-copy strong {
+        display: block;
+        overflow: hidden;
+        margin-top: 2px;
+        font-size: 12px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .cover-navigation {
+        display: inline-flex;
+        min-width: 60px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 0;
+        border-radius: 10px;
+        padding: 0 9px;
+        background: #ffffff;
+        color: var(--rose-deep);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .cover-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 11px;
+      }
+
+      .cover-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .call-sheet {
+        margin-top: 12px;
+        padding-bottom: 154px;
+        background: var(--paper);
+      }
+
+      .sheet-section {
+        padding: 17px 16px;
+        border-top: 8px solid var(--rose-paper);
+      }
+
+      .sheet-section:first-child {
+        border-top: 0;
+      }
+
+      .sheet-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .sheet-heading h2 {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .sheet-heading h2 i {
+        color: var(--rose-deep);
+      }
+
+      .sheet-count {
+        color: var(--muted-light);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .brief-list {
+        margin: 0;
+      }
+
+      .brief-row {
+        display: grid;
+        grid-template-columns: 78px minmax(0, 1fr);
+        gap: 12px;
+        border-top: 1px solid var(--rule);
+        padding: 10px 0;
+      }
+
+      .brief-row:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .brief-row:last-child {
+        padding-bottom: 0;
+      }
+
+      .brief-row dt {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .brief-row dd {
+        margin: 0;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.55;
+      }
+
+      .ai-row {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 11px;
+        border-top: 8px solid var(--rose-paper);
+        padding: 15px 16px;
+        background: #fffafd;
+      }
+
+      .ai-icon {
+        display: inline-flex;
+        width: 42px;
+        height: 42px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: var(--rose-paper);
+        color: var(--rose-deep);
+      }
+
+      .ai-copy {
+        min-width: 0;
+      }
+
+      .ai-copy strong {
+        display: block;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .ai-copy span {
+        display: block;
+        overflow: hidden;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .row-action {
+        display: inline-flex;
+        min-width: 66px;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px solid var(--rose-soft);
+        border-radius: 11px;
+        padding: 0 10px;
+        background: var(--paper);
+        color: var(--rose-deep);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .utility-list {
+        border-top: 8px solid var(--rose-paper);
+      }
+
+      .utility-list details + details {
+        border-top: 1px solid var(--rule);
+      }
+
+      .utility-list summary {
+        display: grid;
+        min-height: 60px;
+        grid-template-columns: 34px minmax(0, 1fr) auto 14px;
+        align-items: center;
+        gap: 10px;
+        padding: 0 16px;
+        background: var(--paper);
+        list-style: none;
+      }
+
+      .utility-list summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .utility-icon {
+        display: inline-flex;
+        width: 34px;
+        height: 34px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: var(--rose-paper);
+        color: var(--rose-deep);
+      }
+
+      .utility-list summary strong {
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .utility-list summary > span {
+        color: var(--muted);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .utility-list summary > i:last-child {
+        color: var(--muted-light);
+        font-size: 10px;
+        transition: transform 180ms ease;
+      }
+
+      .utility-list details[open] summary > i:last-child {
+        transform: rotate(90deg);
+      }
+
+      .utility-content {
+        margin: 0 16px 14px 60px;
+        border-top: 1px solid var(--rule);
+        padding-top: 12px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.7;
+      }
+
+      .reminder-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .reminder-pills span {
+        border-radius: 999px;
+        padding: 5px 9px;
+        background: var(--rose-paper);
+        color: var(--rose-deep);
+        font-weight: 700;
+      }
+
+      .payment-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .payment-summary strong {
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .reference-tile {
+        display: inline-flex;
+        width: 72px;
+        height: 72px;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed var(--rose-soft);
+        border-radius: 10px;
+        background: var(--rose-paper);
+        color: var(--rose-deep);
+      }
+
+      .action-dock {
+        position: fixed;
+        right: 50%;
+        bottom: 54px;
+        z-index: 30;
+        display: grid;
+        width: min(390px, 100%);
+        grid-template-columns: minmax(0, 1fr) 46px;
+        gap: 8px;
+        transform: translateX(50%);
+        border-top: 1px solid var(--rule);
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(14px);
+      }
+
+      .primary-action {
+        display: inline-flex;
+        min-height: 46px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--rose-deep);
+        color: #ffffff;
+        box-shadow: 0 8px 18px rgba(217, 61, 122, 0.22);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .more-action {
+        display: inline-flex;
+        width: 46px;
+        height: 46px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--rose-soft);
+        border-radius: 12px;
+        background: var(--paper);
+        color: var(--muted);
+      }
+
+      .bottom-nav {
+        position: fixed;
+        right: 50%;
+        bottom: 0;
+        z-index: 29;
+        display: grid;
+        width: min(390px, 100%);
+        height: 54px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        transform: translateX(50%);
+        border-top: 1px solid var(--rule);
+        background: rgba(255, 255, 255, 0.97);
+        backdrop-filter: blur(14px);
+      }
+
+      .bottom-nav button {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        border: 0;
+        background: transparent;
+        color: #99a5b7;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .bottom-nav button[aria-current="page"] {
+        color: var(--rose-deep);
+      }
+
+      .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        background: rgba(44, 34, 48, 0.32);
+      }
+
+      .sheet-backdrop[hidden] {
+        display: none;
+      }
+
+      .action-sheet {
+        width: min(390px, 100%);
+        border-radius: 16px 16px 0 0;
+        padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
+        background: var(--paper);
+        box-shadow: 0 -18px 50px rgba(48, 32, 44, 0.18);
+      }
+
+      .sheet-handle {
+        width: 40px;
+        height: 4px;
+        margin: 2px auto 11px;
+        border-radius: 999px;
+        background: var(--rule);
+      }
+
+      .action-sheet h2 {
+        margin: 0 0 6px;
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .sheet-action {
+        display: flex;
+        width: 100%;
+        min-height: 50px;
+        align-items: center;
+        gap: 11px;
+        border: 0;
+        border-top: 1px solid var(--rule);
+        background: transparent;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+        text-align: left;
+      }
+
+      .sheet-action i {
+        width: 32px;
+        color: var(--rose-deep);
+        text-align: center;
+      }
+
+      .sheet-action--danger,
+      .sheet-action--danger i {
+        color: var(--danger);
+      }
+
+      .sheet-cancel {
+        display: inline-flex;
+        width: 100%;
+        min-height: 46px;
+        align-items: center;
+        justify-content: center;
+        margin-top: 6px;
+        border: 0;
+        border-radius: 11px;
+        background: var(--rose-paper);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .toast {
+        position: fixed;
+        top: 72px;
+        left: 50%;
+        z-index: 70;
+        max-width: calc(100vw - 40px);
+        transform: translateX(-50%) translateY(-8px);
+        border-radius: 999px;
+        padding: 8px 13px;
+        background: rgba(51, 45, 56, 0.92);
+        color: #ffffff;
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .toast.is-visible {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      @media (min-width: 431px) {
+        body {
+          padding: 18px;
+        }
+
+        .app-shell {
+          min-height: calc(100vh - 36px);
+          border: 1px solid #dfe3ea;
+          border-radius: 16px;
+        }
+      }
+
+      @media (max-width: 350px) {
+        .schedule-cover {
+          margin-right: 10px;
+          margin-left: 10px;
+          padding: 14px;
+        }
+
+        .cover-time {
+          grid-template-columns: 66px minmax(0, 1fr);
+          gap: 11px;
+        }
+
+        .cover-date {
+          padding-right: 10px;
+        }
+
+        .cover-time-copy strong {
+          font-size: 25px;
+        }
+
+        .cover-contact-actions {
+          gap: 3px;
+        }
+
+        .cover-customer {
+          grid-template-columns: 40px minmax(0, 1fr) auto;
+          gap: 7px;
+        }
+
+        .cover-icon-button {
+          width: 42px;
+        }
+
+        .cover-navigation {
+          min-width: 54px;
+          padding: 0 7px;
+        }
+
+        .sheet-section,
+        .ai-row {
+          padding-right: 14px;
+          padding-left: 14px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell" id="call-sheet-prototype">
+      <header class="page-header">
+        <button class="header-action" type="button" data-toast="返回上一页">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          返回
+        </button>
+        <h1>排单详情</h1>
+        <button class="header-action" type="button" data-toast="进入编辑模式">
+          <i class="fa-solid fa-pen" aria-hidden="true"></i>
+          编辑
+        </button>
+      </header>
+
+      <section class="schedule-cover" aria-labelledby="cover-customer-name">
+        <div class="cover-kicker">
+          <span>2026年9月29日 · 星期二</span>
+          <span class="cover-status">正常排单</span>
+        </div>
+
+        <div class="cover-time">
+          <div class="cover-date">
+            <strong>29</strong>
+            <span>9月·周二</span>
+          </div>
+          <div class="cover-time-copy">
+            <span>距离开始 1 天</span>
+            <strong>10:00–11:00</strong>
+            <p>预计拍摄 1 小时</p>
+          </div>
+        </div>
+
+        <div class="cover-customer">
+          <span class="cover-avatar" aria-hidden="true">天</span>
+          <div class="cover-customer-copy">
+            <strong id="cover-customer-name">天天</strong>
+            <span>个人写真 · 180 7025 6005</span>
+          </div>
+          <div class="cover-contact-actions">
+            <button
+              class="cover-icon-button"
+              type="button"
+              aria-label="复制电话"
+              data-toast="电话已复制"
+            >
+              <i class="fa-regular fa-copy" aria-hidden="true"></i>
+            </button>
+            <button
+              class="cover-icon-button"
+              type="button"
+              aria-label="拨打电话"
+              data-toast="拨打客户电话"
+            >
+              <i class="fa-solid fa-phone" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="cover-location">
+          <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+          <div class="cover-location-copy">
+            <span>拍摄地点</span>
+            <strong>萤火虫漫展 · A馆东入口</strong>
+          </div>
+          <button
+            class="cover-navigation"
+            type="button"
+            data-toast="打开地图导航"
+          >
+            <i class="fa-solid fa-location-arrow" aria-hidden="true"></i>
+            导航
+          </button>
+        </div>
+
+        <div class="cover-meta" aria-label="服务与收款摘要">
+          <span><i class="fa-solid fa-camera" aria-hidden="true"></i>约拍</span>
+          <span
+            ><i class="fa-solid fa-user-tag" aria-hidden="true"></i>摄影</span
+          >
+          <span
+            ><i class="fa-solid fa-wallet" aria-hidden="true"></i>未支付 ·
+            ¥0</span
+          >
+          <span
+            ><i class="fa-solid fa-tag" aria-hidden="true"></i>自助预约</span
+          >
+        </div>
+      </section>
+
+      <div class="call-sheet">
+        <section class="sheet-section" aria-labelledby="brief-heading">
+          <div class="sheet-heading">
+            <h2 id="brief-heading">
+              <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+              拍摄通告
+            </h2>
+            <span class="sheet-count">3 项需求</span>
+          </div>
+          <dl class="brief-list">
+            <div class="brief-row">
+              <dt>特殊需求</dt>
+              <dd>以自然抓拍为主，保留互动感</dd>
+            </div>
+            <div class="brief-row">
+              <dt>现场重点</dt>
+              <dd>多拍半身和动态画面，避免僵硬摆拍</dd>
+            </div>
+            <div class="brief-row">
+              <dt>同行人员</dt>
+              <dd>闺蜜 3 人</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="ai-row" aria-labelledby="ai-heading-call-sheet">
+          <span class="ai-icon">
+            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          </span>
+          <div class="ai-copy">
+            <strong id="ai-heading-call-sheet">AI 拍摄方案已准备</strong>
+            <span>今天 09:32 更新 · 可直接查看</span>
+          </div>
+          <button
+            class="row-action"
+            type="button"
+            data-toast="打开 AI 拍摄方案"
+          >
+            查看方案
+          </button>
+        </section>
+
+        <section class="utility-list" aria-label="其他排单信息">
+          <details>
+            <summary>
+              <span class="utility-icon">
+                <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              </span>
+              <strong>提醒设置</strong>
+              <span>提前 1 天、1 小时</span>
+              <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </summary>
+            <div class="utility-content">
+              <div class="reminder-pills">
+                <span
+                  ><i class="fa-solid fa-check" aria-hidden="true"></i> 提前 1
+                  天</span
+                >
+                <span
+                  ><i class="fa-solid fa-check" aria-hidden="true"></i> 提前 1
+                  小时</span
+                >
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>
+              <span class="utility-icon">
+                <i class="fa-solid fa-wallet" aria-hidden="true"></i>
+              </span>
+              <strong>收款详情</strong>
+              <span>未支付 · ¥0</span>
+              <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </summary>
+            <div class="utility-content">
+              <div class="payment-summary">
+                <span>当前收款状态</span>
+                <strong>未支付</strong>
+              </div>
+              <div class="payment-summary">
+                <span>实收金额</span>
+                <strong>¥0</strong>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>
+              <span class="utility-icon">
+                <i class="fa-regular fa-image" aria-hidden="true"></i>
+              </span>
+              <strong>参考图</strong>
+              <span>1 张</span>
+              <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </summary>
+            <div class="utility-content">
+              <span class="reference-tile" aria-label="参考图占位">
+                <i class="fa-regular fa-image" aria-hidden="true"></i>
+              </span>
+            </div>
+          </details>
+        </section>
+      </div>
+    </main>
+
+    <div class="action-dock" aria-label="订单操作">
+      <button
+        class="primary-action"
+        type="button"
+        data-toast="完成订单需再次确认"
+      >
+        <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
+        完成订单
+      </button>
+      <button
+        class="more-action"
+        type="button"
+        id="call-sheet-more"
+        aria-label="更多操作"
+        aria-expanded="false"
+      >
+        <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button type="button" aria-current="page">
+        <i class="fa-solid fa-camera" aria-hidden="true"></i>
+        首页
+      </button>
+      <button type="button">
+        <i class="fa-regular fa-calendar-days" aria-hidden="true"></i>
+        日历
+      </button>
+      <button type="button">
+        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+        AI问答
+      </button>
+      <button type="button">
+        <i class="fa-regular fa-user" aria-hidden="true"></i>
+        我的
+      </button>
+    </nav>
+
+    <div class="sheet-backdrop" id="call-sheet-actions" hidden>
+      <section
+        class="action-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="call-sheet-actions-title"
+      >
+        <div class="sheet-handle"></div>
+        <h2 id="call-sheet-actions-title">更多操作</h2>
+        <button class="sheet-action" type="button" data-toast="订单已暂存">
+          <i class="fa-solid fa-box-archive" aria-hidden="true"></i>
+          暂存订单
+        </button>
+        <button
+          class="sheet-action sheet-action--danger"
+          type="button"
+          data-toast="删除排单需要二次确认"
+        >
+          <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+          删除排单
+        </button>
+        <button class="sheet-cancel" type="button" id="call-sheet-cancel">
+          取消
+        </button>
+      </section>
+    </div>
+
+    <div
+      class="toast"
+      id="call-sheet-toast"
+      role="status"
+      aria-live="polite"
+    ></div>
+
+    <script>
+      const toast = document.getElementById("call-sheet-toast");
+      const actionSheet = document.getElementById("call-sheet-actions");
+      const moreAction = document.getElementById("call-sheet-more");
+      const cancelAction = document.getElementById("call-sheet-cancel");
+      let toastTimer = 0;
+
+      const showToast = (message) => {
+        window.clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        toastTimer = window.setTimeout(
+          () => toast.classList.remove("is-visible"),
+          1600,
+        );
+      };
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => showToast(button.dataset.toast));
+      });
+
+      const setSheetOpen = (open) => {
+        actionSheet.hidden = !open;
+        moreAction.setAttribute("aria-expanded", String(open));
+      };
+
+      moreAction.addEventListener("click", () => setSheetOpen(true));
+      cancelAction.addEventListener("click", () => setSheetOpen(false));
+      actionSheet.addEventListener("click", (event) => {
+        if (event.target === actionSheet) setSheetOpen(false);
+      });
+      actionSheet.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => setSheetOpen(false));
+      });
+
+      document.querySelectorAll(".utility-list details").forEach((details) => {
+        details.addEventListener("toggle", () => {
+          if (!details.open) return;
+          document.querySelectorAll(".utility-list details").forEach((item) => {
+            if (item !== details) item.open = false;
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

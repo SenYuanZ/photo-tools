@@ -10,6 +10,7 @@ import { useScheduleStore } from '@/stores/schedules'
 import { useUploadQueue, type UploadItem } from '@/hooks/useUploadQueue'
 import { formatCnDate, isAfterTime } from '@/utils/time'
 import { useScheduleAiAssistant } from '@/views/scheduleDetail/hooks/useScheduleAiAssistant'
+import { getHomeTabForDate } from '@/views/home/homeScheduleRoute'
 
 export function useScheduleDetailPage() {
   const route = useRoute()
@@ -47,6 +48,7 @@ export function useScheduleDetailPage() {
 
   const selectedDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
   const selectedRestoreDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
+  const restoreMinDate = new Date()
   const selectedStartTimeValues = ref(['09', '00'])
   const selectedEndTimeValues = ref(['10', '00'])
 
@@ -75,6 +77,9 @@ export function useScheduleDetailPage() {
     depositStatus: 'unpaid' as 'unpaid' | 'paid' | 'full',
     amount: '0',
   })
+
+  const getDialogErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : String(error ?? '')
 
   watch(
     schedule,
@@ -228,7 +233,10 @@ export function useScheduleDetailPage() {
       return
     }
 
-    feedback.value = '已存单，可在首页暂存订单中恢复。'
+    await router.replace({
+      name: 'home',
+      query: { tab: 'stored', transition: 'stored' },
+    })
   }
 
   const completeSchedule = async () => {
@@ -250,7 +258,7 @@ export function useScheduleDetailPage() {
           ? '订单已完成，可在日历的当天完成中查看。'
           : '订单状态已更新。'
     } catch (error) {
-      const message = (error as Error).message || ''
+      const message = getDialogErrorMessage(error)
       if (message === 'cancel') {
         return
       }
@@ -280,16 +288,34 @@ export function useScheduleDetailPage() {
       return
     }
 
-    feedback.value = '已恢复为正常排单。'
     showRestoreDatePicker.value = false
+    await router.replace({
+      name: 'home',
+      query: { tab: getHomeTabForDate(date), transition: 'restored' },
+    })
   }
 
   const remove = async () => {
     if (!schedule.value) {
       return
     }
-    await scheduleStore.deleteSchedule(schedule.value.id)
-    router.push({ name: 'home' })
+
+    try {
+      await showConfirmDialog({
+        title: '删除排单确认',
+        message: '删除后无法恢复，是否继续？',
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+      })
+      await scheduleStore.deleteSchedule(schedule.value.id)
+      router.push({ name: 'home' })
+    } catch (error) {
+      const message = getDialogErrorMessage(error)
+      if (message === 'cancel') {
+        return
+      }
+      feedback.value = message || '删除排单失败，请稍后重试。'
+    }
   }
 
   const copyPhone = async () => {
@@ -344,6 +370,7 @@ export function useScheduleDetailPage() {
     failedReferenceUploads,
     selectedDateValues,
     selectedRestoreDateValues,
+    restoreMinDate,
     selectedStartTimeValues,
     selectedEndTimeValues,
     timeColumns,

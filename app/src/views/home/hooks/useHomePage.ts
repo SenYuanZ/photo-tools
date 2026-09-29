@@ -1,27 +1,39 @@
 import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCustomerStore } from '@/stores/customers'
 import { useScheduleStore } from '@/stores/schedules'
 import { formatCnDate } from '@/utils/time'
+import {
+  getHomeTabForDate,
+  getHomeTransitionFeedback,
+  parseHomeTab,
+  type HomeTab,
+} from '@/views/home/homeScheduleRoute'
 
 export function useHomePage() {
+  const route = useRoute()
   const router = useRouter()
   const customerStore = useCustomerStore()
   const scheduleStore = useScheduleStore()
 
-  type HomeTab = 'today' | 'tomorrow' | 'future' | 'stored'
-
-  const activeTab = ref<HomeTab>('today')
+  const activeTab = ref<HomeTab>(parseHomeTab(route.query.tab) ?? 'today')
   const nowTick = ref(dayjs())
   const showStoredDatePicker = ref(false)
   const restoreScheduleId = ref('')
   const restoreDateValues = ref(dayjs().format('YYYY-MM-DD').split('-'))
+  const restoreMinDate = new Date()
   const storedFeedback = ref('')
 
   let tickTimer = 0
 
   onMounted(() => {
+    const transitionFeedback = getHomeTransitionFeedback(route.query.transition, activeTab.value)
+    if (transitionFeedback) {
+      storedFeedback.value = transitionFeedback
+      void router.replace({ name: 'home', query: { tab: activeTab.value } })
+    }
+
     tickTimer = window.setInterval(() => {
       nowTick.value = dayjs()
     }, 30000)
@@ -67,47 +79,40 @@ export function useHomePage() {
       .map(([date, items]) => ({ date, items }))
   })
 
-  const tabIndicatorClass = computed(() => {
-    if (activeTab.value === 'tomorrow') {
-      return 'translate-x-full bg-blue-100'
-    }
-    if (activeTab.value === 'future') {
-      return 'translate-x-[200%] bg-amber-100'
-    }
-    if (activeTab.value === 'stored') {
-      return 'translate-x-[300%] bg-indigo-100'
-    }
-    return 'translate-x-0 bg-rose-100'
-  })
-
   const formatFutureDay = (date: string) => dayjs(date).format('M月D日 dddd')
+
+  const selectTab = (tab: HomeTab) => {
+    activeTab.value = tab
+    storedFeedback.value = ''
+    void router.replace({ name: 'home', query: { tab } })
+  }
 
   const activeMeta = computed(() => {
     if (activeTab.value === 'tomorrow') {
       return {
         title: '明日排单',
-        icon: 'fa-solid fa-cloud-sun text-blue-500',
+        icon: 'fa-solid fa-cloud-sun',
         empty: '明日暂无排单。',
       }
     }
     if (activeTab.value === 'future') {
       return {
         title: '未来排单',
-        icon: 'fa-solid fa-hourglass-half text-amber-500',
+        icon: 'fa-solid fa-hourglass-half',
         empty: '未来暂无排单。',
       }
     }
     if (activeTab.value === 'stored') {
       return {
         title: '暂存订单',
-        icon: 'fa-solid fa-box-archive text-indigo-500',
+        icon: 'fa-solid fa-box-archive',
         empty: '当前没有暂存订单。',
       }
     }
     return {
       title: '今日排单',
-      icon: 'fa-solid fa-star text-rose-500',
-      empty: '暂无排单哦～',
+      icon: 'fa-solid fa-star',
+      empty: '今日暂无排单。',
     }
   })
 
@@ -158,25 +163,30 @@ export function useHomePage() {
       todaySchedules.value.filter((item) => isInProgress(item.date, item.startTime, item.endTime))
         .length,
   )
-  const hasInProgress = computed(() => inProgressTodayCount.value > 0)
-
-  const cardToneClass = computed(() => {
-    if (activeTab.value === 'tomorrow') {
-      return 'text-blue-500'
-    }
-    if (activeTab.value === 'future') {
-      return 'text-amber-600'
-    }
-    if (activeTab.value === 'stored') {
-      return 'text-indigo-600'
-    }
-    return 'text-rose-500'
+  const nextTodaySchedule = computed(() =>
+    todaySchedules.value.find((item) =>
+      dayjs(`${item.date} ${item.startTime}`).isAfter(nowTick.value),
+    ),
+  )
+  const greetingText = computed(() => {
+    const hour = nowTick.value.hour()
+    if (hour < 12) return '上午好，今天的安排都在这里'
+    if (hour < 18) return '下午好，今天的安排都在这里'
+    return '晚上好，今天辛苦了'
   })
 
   const openRestoreDatePicker = (id: string) => {
     restoreScheduleId.value = id
     restoreDateValues.value = dayjs().format('YYYY-MM-DD').split('-')
     showStoredDatePicker.value = true
+  }
+
+  const toScheduleEntry = () => {
+    router.push({ name: 'schedule-new' })
+  }
+
+  const toCalendar = () => {
+    router.push({ name: 'calendar' })
   }
 
   const normalizeDate = (values: string[]) => {
@@ -202,9 +212,12 @@ export function useHomePage() {
       return
     }
 
-    storedFeedback.value = `已恢复排单至 ${formatCnDate(date)}`
     showStoredDatePicker.value = false
     restoreScheduleId.value = ''
+    const targetTab = getHomeTabForDate(date)
+    activeTab.value = targetTab
+    storedFeedback.value = getHomeTransitionFeedback('restored', targetTab)
+    void router.replace({ name: 'home', query: { tab: targetTab } })
   }
 
   return {
@@ -213,6 +226,7 @@ export function useHomePage() {
     activeTab,
     showStoredDatePicker,
     restoreDateValues,
+    restoreMinDate,
     storedFeedback,
     storedScheduleSorted,
     today,
@@ -221,8 +235,8 @@ export function useHomePage() {
     tomorrowSchedules,
     futureSchedules,
     futureGroups,
-    tabIndicatorClass,
     formatFutureDay,
+    selectTab,
     activeMeta,
     activeSchedules,
     toDetail,
@@ -230,10 +244,12 @@ export function useHomePage() {
     isInProgress,
     currentCount,
     inProgressTodayCount,
-    hasInProgress,
-    cardToneClass,
+    nextTodaySchedule,
+    greetingText,
     openRestoreDatePicker,
     restoreStoredSchedule,
+    toScheduleEntry,
+    toCalendar,
     formatCnDate,
   }
 }
