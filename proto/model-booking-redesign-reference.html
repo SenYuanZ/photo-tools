@@ -1,0 +1,1943 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="pink">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>预约拍摄设计原型</title>
+    <link rel="icon" href="data:," />
+    <link
+      rel="stylesheet"
+      href="../app/node_modules/@fortawesome/fontawesome-free/css/all.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --accent: #ff7fae;
+        --accent-rgb: 255, 127, 174;
+        --accent-strong: #ff5f98;
+        --accent-soft: #ffd9e9;
+        --accent-bg: #fff6fb;
+        --background: #fff9fc;
+        --surface: #ffffff;
+        --ink: #3f3b4f;
+        --muted: #756d86;
+        --muted-soft: #8a8295;
+        --line: #f1d6e7;
+        --status: #a86512;
+        --status-bg: #fff7e8;
+        --status-line: #f2d8ac;
+        --success: #2f836c;
+        --success-bg: #effaf6;
+        --success-line: #ccecdf;
+        --danger: #ca4d61;
+        --shadow: rgba(255, 127, 174, 0.12);
+      }
+
+      :root[data-theme="blue"] {
+        --accent: #5da8ff;
+        --accent-rgb: 93, 168, 255;
+        --accent-strong: #3a8bf0;
+        --accent-soft: #dcebff;
+        --accent-bg: #f3f8ff;
+        --background: #f6fbff;
+        --muted: #65758a;
+        --muted-soft: #8291a3;
+        --line: #d8e7ff;
+        --status: #347a9c;
+        --status-bg: #edf8ff;
+        --status-line: #cde9ff;
+        --shadow: rgba(93, 168, 255, 0.12);
+      }
+
+      :root[data-theme="yellow"] {
+        --accent: #d39b23;
+        --accent-rgb: 211, 155, 35;
+        --accent-strong: #b98010;
+        --accent-soft: #f7e7bd;
+        --accent-bg: #fff9e9;
+        --background: #fffcf0;
+        --muted: #756f62;
+        --muted-soft: #8b8373;
+        --line: #f2e0b8;
+        --status: #9d6a00;
+        --status-bg: #fff8e5;
+        --status-line: #f1d59a;
+        --shadow: rgba(211, 155, 35, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      html {
+        min-height: 100%;
+        background: #eef2f7;
+      }
+
+      body {
+        min-height: 100%;
+        margin: 0;
+        padding: 16px;
+        background: #eef2f7;
+        color: var(--ink);
+        font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      button,
+      input,
+      textarea,
+      summary {
+        font: inherit;
+      }
+
+      button,
+      summary,
+      input,
+      textarea {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .prototype-toolbar {
+        display: flex;
+        width: min(760px, 100%);
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 auto 10px;
+        color: #667085;
+        font-size: 12px;
+      }
+
+      .prototype-toolbar strong {
+        color: #344054;
+        font-size: 13px;
+      }
+
+      .theme-switcher {
+        display: inline-flex;
+        gap: 5px;
+        border: 1px solid #d8dee8;
+        border-radius: 10px;
+        padding: 4px;
+        background: #ffffff;
+      }
+
+      .theme-switcher button {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #667085;
+      }
+
+      .theme-switcher button[aria-pressed="true"] {
+        background: #f2f4f7;
+        box-shadow: inset 0 0 0 1px #d0d5dd;
+        color: #101828;
+      }
+
+      .theme-dot {
+        display: block;
+        width: 14px;
+        height: 14px;
+        margin: auto;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px #c8ced8;
+      }
+
+      .theme-dot--pink {
+        background: #ff7fae;
+      }
+
+      .theme-dot--blue {
+        background: #5da8ff;
+      }
+
+      .theme-dot--yellow {
+        background: #d39b23;
+      }
+
+      .app-shell {
+        position: relative;
+        width: min(760px, 100%);
+        min-height: 844px;
+        margin: 0 auto;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--line) 72%, #d5dae3);
+        border-radius: 16px;
+        background: var(--background);
+        box-shadow: 0 18px 48px rgba(28, 39, 64, 0.12);
+      }
+
+      .booking-header {
+        position: sticky;
+        top: 0;
+        z-index: 12;
+        display: grid;
+        min-height: 64px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid
+          color-mix(in srgb, var(--line) 72%, transparent);
+        padding: 8px 18px;
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .booking-brand {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .brand-mark {
+        display: inline-flex;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--accent-soft);
+        border-radius: 11px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 17px;
+      }
+
+      .booking-brand h1,
+      .booking-brand p {
+        margin: 0;
+      }
+
+      .booking-brand h1 {
+        color: var(--ink);
+        font-size: 19px;
+        font-weight: 800;
+      }
+
+      .booking-brand p {
+        overflow: hidden;
+        margin-top: 2px;
+        color: var(--muted-soft);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .header-links {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .header-link {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        gap: 5px;
+        border: 0;
+        padding: 0 9px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .header-link:last-child {
+        color: var(--accent-strong);
+      }
+
+      .page-content {
+        padding: 14px 14px 94px;
+      }
+
+      .booking-paper {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: 0 10px 28px var(--shadow);
+      }
+
+      .form-section {
+        position: relative;
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 12px;
+        padding: 18px;
+      }
+
+      .form-section + .form-section {
+        border-top: 1px solid var(--line);
+      }
+
+      .step-rail {
+        position: relative;
+        display: flex;
+        justify-content: center;
+      }
+
+      .step-rail::after {
+        position: absolute;
+        top: 34px;
+        bottom: -19px;
+        width: 1px;
+        background: var(--line);
+        content: "";
+      }
+
+      .form-section:last-child .step-rail::after {
+        display: none;
+      }
+
+      .step-number {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--accent-soft);
+        border-radius: 9px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .section-body {
+        min-width: 0;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 30px;
+        margin-bottom: 13px;
+      }
+
+      .section-heading h2,
+      .section-heading p {
+        margin: 0;
+      }
+
+      .section-heading h2 {
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .section-note {
+        color: var(--muted-soft);
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .field {
+        display: block;
+        min-width: 0;
+      }
+
+      .field--wide {
+        grid-column: 1 / -1;
+      }
+
+      .field-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .required {
+        color: var(--danger);
+      }
+
+      .field-control,
+      .field-button {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .field-control {
+        padding: 0 12px;
+        outline: 0;
+      }
+
+      textarea.field-control {
+        min-height: 78px;
+        resize: vertical;
+        padding-top: 11px;
+        line-height: 1.6;
+      }
+
+      .field-control::placeholder {
+        color: color-mix(in srgb, var(--muted-soft) 58%, transparent);
+      }
+
+      .field-control:focus,
+      .field-button:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+      }
+
+      .field-button {
+        display: grid;
+        grid-template-columns: 20px minmax(0, 1fr) 14px;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        text-align: left;
+      }
+
+      .field-button > i:first-child {
+        color: var(--accent-strong);
+      }
+
+      .field-button span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .field-button > i:last-child {
+        color: var(--muted-soft);
+        font-size: 10px;
+        text-align: right;
+      }
+
+      .inline-details {
+        margin-top: 12px;
+        border-top: 1px dashed var(--line);
+        padding-top: 4px;
+      }
+
+      .inline-details summary,
+      .preference-panel summary {
+        display: grid;
+        min-height: 44px;
+        grid-template-columns: 24px minmax(0, 1fr) auto 12px;
+        align-items: center;
+        gap: 7px;
+        list-style: none;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .inline-details summary::-webkit-details-marker,
+      .preference-panel summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .inline-details summary > i:first-child,
+      .preference-panel summary > i:first-child {
+        color: var(--accent-strong);
+      }
+
+      .inline-details summary strong,
+      .preference-panel summary strong {
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .summary-meta {
+        color: var(--muted-soft);
+        font-size: 10px;
+      }
+
+      .summary-arrow {
+        color: var(--muted-soft);
+        font-size: 10px;
+        transition: transform 180ms ease;
+      }
+
+      details[open] > summary .summary-arrow {
+        transform: rotate(90deg);
+      }
+
+      .details-body {
+        padding: 7px 0 4px 31px;
+      }
+
+      .preference-panel {
+        border: 1px solid var(--accent-soft);
+        border-radius: 11px;
+        background: var(--accent-bg);
+      }
+
+      .preference-panel summary {
+        padding: 0 12px;
+      }
+
+      .preference-panel .details-body {
+        border-top: 1px solid
+          color-mix(in srgb, var(--accent-soft) 76%, transparent);
+        padding: 12px;
+      }
+
+      .theme-chips,
+      .availability-chips,
+      .role-switch {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .theme-chip,
+      .time-chip,
+      .role-option {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 0 10px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .theme-chip[aria-pressed="true"],
+      .role-option[aria-pressed="true"] {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #ffffff;
+      }
+
+      .preference-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .preference-grid .field-control {
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+      }
+
+      .service-panel {
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 12px;
+        background: color-mix(in srgb, var(--accent-bg) 38%, var(--surface));
+      }
+
+      .service-panel + .service-panel {
+        margin-top: 10px;
+      }
+
+      .service-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .service-index {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .service-icon {
+        display: inline-flex;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+      }
+
+      .service-index strong,
+      .service-index span {
+        display: block;
+      }
+
+      .service-index strong {
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .service-index span {
+        margin-top: 2px;
+        color: var(--muted-soft);
+        font-size: 10px;
+      }
+
+      .icon-button {
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--muted);
+      }
+
+      .provider-row {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 12px;
+      }
+
+      .provider-avatar {
+        display: block;
+        width: 48px;
+        height: 48px;
+        border: 2px solid var(--surface);
+        border-radius: 12px;
+        background: var(--accent-bg);
+        box-shadow: 0 0 0 1px var(--accent-soft);
+        object-fit: cover;
+      }
+
+      .provider-copy {
+        min-width: 0;
+      }
+
+      .provider-name-line {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .provider-name-line strong {
+        overflow: hidden;
+        font-size: 13px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .provider-status {
+        flex: 0 0 auto;
+        border: 1px solid var(--success-line);
+        border-radius: 999px;
+        padding: 2px 6px;
+        background: var(--success-bg);
+        color: var(--success);
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      .provider-copy p {
+        overflow: hidden;
+        margin: 3px 0 0;
+        color: var(--muted-soft);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .text-button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 0;
+        padding: 0 4px;
+        background: transparent;
+        color: var(--accent-strong);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .service-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .role-block,
+      .availability-block {
+        grid-column: 1 / -1;
+      }
+
+      .sub-label {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .availability-block {
+        border-top: 1px dashed var(--line);
+        padding-top: 11px;
+      }
+
+      .time-chip {
+        min-height: 34px;
+        border-color: var(--success-line);
+        background: var(--success-bg);
+        color: var(--success);
+      }
+
+      .time-chip[aria-pressed="true"] {
+        border-color: var(--success);
+        box-shadow: 0 0 0 2px
+          color-mix(in srgb, var(--success) 18%, transparent);
+      }
+
+      .busy-note {
+        margin: 8px 0 0;
+        color: var(--status);
+        font-size: 10px;
+      }
+
+      .service-extras {
+        grid-column: 1 / -1;
+        border-top: 1px dashed var(--line);
+        padding-top: 4px;
+      }
+
+      .service-extras summary {
+        min-height: 44px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .upload-placeholder {
+        display: inline-flex;
+        width: 76px;
+        height: 76px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border: 1px dashed var(--accent-soft);
+        border-radius: 10px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 10px;
+      }
+
+      .add-service {
+        display: inline-flex;
+        width: 100%;
+        min-height: 46px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 10px;
+        border: 1px dashed var(--accent-soft);
+        border-radius: 10px;
+        background: var(--accent-bg);
+        color: var(--accent-strong);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .submit-dock {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 20;
+        display: grid;
+        width: min(760px, 100%);
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 280px);
+        align-items: center;
+        gap: 14px;
+        margin: 0 auto;
+        border-top: 1px solid var(--line);
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        background: color-mix(in srgb, var(--surface) 95%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .submit-summary strong,
+      .submit-summary span {
+        display: block;
+      }
+
+      .submit-summary strong {
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .submit-summary span {
+        margin-top: 2px;
+        color: var(--muted-soft);
+        font-size: 10px;
+      }
+
+      .primary-button {
+        display: inline-flex;
+        width: 100%;
+        min-height: 46px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 0;
+        border-radius: 11px;
+        background: var(--accent-strong);
+        color: #ffffff;
+        box-shadow: 0 9px 18px rgba(var(--accent-rgb), 0.24);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0;
+        background: rgba(28, 35, 48, 0.3);
+      }
+
+      .sheet-backdrop[hidden] {
+        display: none;
+      }
+
+      .provider-sheet {
+        width: min(760px, 100%);
+        max-height: 82vh;
+        overflow: hidden;
+        border-radius: 16px 16px 0 0;
+        background: var(--surface);
+        box-shadow: 0 -18px 44px rgba(28, 35, 48, 0.18);
+      }
+
+      .sheet-handle {
+        width: 38px;
+        height: 4px;
+        margin: 9px auto 4px;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 14px;
+      }
+
+      .sheet-header h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .sheet-search {
+        display: grid;
+        min-height: 46px;
+        grid-template-columns: 20px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        margin: 0 14px 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0 12px;
+        background: var(--accent-bg);
+        color: var(--muted-soft);
+      }
+
+      .sheet-search input {
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--ink);
+      }
+
+      .provider-list {
+        display: grid;
+        gap: 8px;
+        max-height: calc(82vh - 126px);
+        overflow-y: auto;
+        padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+      }
+
+      .provider-option {
+        display: grid;
+        width: 100%;
+        min-height: 70px;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 10px;
+        background: var(--surface);
+        color: var(--ink);
+        text-align: left;
+      }
+
+      .provider-option.is-selected {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+      }
+
+      .provider-option img {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        object-fit: cover;
+      }
+
+      .provider-option strong,
+      .provider-option span {
+        display: block;
+      }
+
+      .provider-option strong {
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .provider-option span {
+        overflow: hidden;
+        margin-top: 3px;
+        color: var(--muted-soft);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .availability-count {
+        color: var(--success);
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .toast {
+        position: fixed;
+        top: 78px;
+        left: 50%;
+        z-index: 60;
+        max-width: calc(100vw - 40px);
+        transform: translateX(-50%) translateY(-8px);
+        border-radius: 999px;
+        padding: 8px 13px;
+        background: color-mix(in srgb, var(--ink) 92%, transparent);
+        color: #ffffff;
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .toast.is-visible {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      @media (max-width: 620px) {
+        body {
+          padding: 0;
+          background: var(--background);
+        }
+
+        .prototype-toolbar {
+          padding: 8px 12px;
+          margin: 0;
+          background: #eef2f7;
+        }
+
+        .app-shell {
+          width: 100%;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+
+        .booking-header {
+          padding-right: 12px;
+          padding-left: 12px;
+        }
+
+        .header-link span {
+          display: none;
+        }
+
+        .header-link {
+          width: 44px;
+          justify-content: center;
+          padding: 0;
+          font-size: 14px;
+        }
+
+        .page-content {
+          padding: 10px 10px 100px;
+        }
+
+        .form-section {
+          grid-template-columns: 28px minmax(0, 1fr);
+          gap: 9px;
+          padding: 14px 12px;
+        }
+
+        .step-number {
+          width: 28px;
+          height: 28px;
+        }
+
+        .step-rail::after {
+          top: 32px;
+          bottom: -15px;
+        }
+
+        .field-grid,
+        .preference-grid,
+        .service-fields {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .field--wide,
+        .role-block,
+        .availability-block,
+        .service-extras {
+          grid-column: 1;
+        }
+
+        .details-body {
+          padding-left: 0;
+        }
+
+        .submit-dock {
+          grid-template-columns: minmax(0, 1fr) minmax(150px, 58%);
+          gap: 8px;
+          padding-right: 10px;
+          padding-left: 10px;
+        }
+      }
+
+      @media (max-width: 350px) {
+        .booking-brand p,
+        .submit-summary span {
+          display: none;
+        }
+
+        .booking-brand h1 {
+          font-size: 17px;
+        }
+
+        .brand-mark {
+          width: 36px;
+          height: 36px;
+        }
+
+        .booking-header {
+          gap: 6px;
+        }
+
+        .page-content {
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+
+        .form-section {
+          grid-template-columns: 26px minmax(0, 1fr);
+          gap: 7px;
+          padding-right: 9px;
+          padding-left: 9px;
+        }
+
+        .step-number {
+          width: 26px;
+          height: 26px;
+        }
+
+        .provider-row {
+          grid-template-columns: 44px minmax(0, 1fr);
+        }
+
+        .provider-row .text-button {
+          grid-column: 1 / -1;
+          width: 100%;
+          border-top: 1px solid var(--line);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype-toolbar">
+      <strong>预约入口 UI 原型</strong>
+      <div class="theme-switcher" role="group" aria-label="切换主题">
+        <button
+          type="button"
+          data-theme-option="pink"
+          aria-label="粉色主题"
+          aria-pressed="true"
+        >
+          <span class="theme-dot theme-dot--pink"></span>
+        </button>
+        <button
+          type="button"
+          data-theme-option="blue"
+          aria-label="蓝色主题"
+          aria-pressed="false"
+        >
+          <span class="theme-dot theme-dot--blue"></span>
+        </button>
+        <button
+          type="button"
+          data-theme-option="yellow"
+          aria-label="黄色主题"
+          aria-pressed="false"
+        >
+          <span class="theme-dot theme-dot--yellow"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <header class="booking-header">
+        <div class="booking-brand">
+          <span class="brand-mark"
+            ><i class="fa-solid fa-camera-retro" aria-hidden="true"></i
+          ></span>
+          <div>
+            <h1>预约拍摄</h1>
+            <p>2026年9月30日 · 公开预约入口</p>
+          </div>
+        </div>
+        <div class="header-links">
+          <button class="header-link" type="button" data-toast="打开订单查询">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <span>查询订单</span>
+          </button>
+          <button class="header-link" type="button" data-toast="进入服务者登录">
+            <i class="fa-regular fa-user" aria-hidden="true"></i>
+            <span>服务者登录</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <form class="booking-paper" id="booking-form">
+          <section class="form-section" aria-labelledby="basic-heading">
+            <div class="step-rail"><span class="step-number">1</span></div>
+            <div class="section-body">
+              <div class="section-heading">
+                <h2 id="basic-heading">预约资料</h2>
+                <span class="section-note">必填 6 项</span>
+              </div>
+
+              <div class="field-grid">
+                <label class="field">
+                  <span class="field-label"
+                    ><span><b class="required">*</b> 客户昵称</span></span
+                  >
+                  <input
+                    class="field-control"
+                    type="text"
+                    value="小葵"
+                    placeholder="请输入昵称"
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label"
+                    ><span><b class="required">*</b> 联系电话</span></span
+                  >
+                  <input
+                    class="field-control"
+                    type="tel"
+                    value="180 7015 2564"
+                    placeholder="请输入手机号"
+                  />
+                </label>
+                <div class="field">
+                  <span class="field-label"
+                    ><span><b class="required">*</b> 客户类型</span></span
+                  >
+                  <button
+                    class="field-button"
+                    type="button"
+                    data-toast="选择客户类型"
+                  >
+                    <i class="fa-regular fa-user" aria-hidden="true"></i>
+                    <span>个人写真</span>
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="field">
+                  <span class="field-label"><span>服务类型</span></span>
+                  <button
+                    class="field-button"
+                    type="button"
+                    data-toast="选择服务类型"
+                  >
+                    <i class="fa-solid fa-user-tag" aria-hidden="true"></i>
+                    <span>全部角色</span>
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="field">
+                  <span class="field-label"
+                    ><span><b class="required">*</b> 服务日期</span></span
+                  >
+                  <button
+                    class="field-button"
+                    type="button"
+                    data-toast="选择服务日期"
+                  >
+                    <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+                    <span>2026-09-30</span>
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <label class="field">
+                  <span class="field-label"
+                    ><span><b class="required">*</b> 服务地点</span></span
+                  >
+                  <input
+                    class="field-control"
+                    type="text"
+                    value="萤火虫漫展 A 馆"
+                    placeholder="工作室或集合地点"
+                  />
+                </label>
+              </div>
+
+              <details class="inline-details">
+                <summary>
+                  <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+                  <strong>更多资料</strong>
+                  <span class="summary-meta">可选</span>
+                  <i
+                    class="fa-solid fa-chevron-right summary-arrow"
+                    aria-hidden="true"
+                  ></i>
+                </summary>
+                <div class="details-body field-grid">
+                  <label class="field">
+                    <span class="field-label">陪同人员</span>
+                    <input
+                      class="field-control"
+                      type="text"
+                      placeholder="例如：闺蜜 1 人"
+                    />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">协同备注</span>
+                    <input
+                      class="field-control"
+                      type="text"
+                      placeholder="例如：妆容偏日系"
+                    />
+                  </label>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="preference-heading">
+            <div class="step-rail"><span class="step-number">2</span></div>
+            <div class="section-body">
+              <div class="section-heading">
+                <h2 id="preference-heading">拍摄偏好</h2>
+                <span class="section-note">全部可选</span>
+              </div>
+
+              <details class="preference-panel" open>
+                <summary>
+                  <i
+                    class="fa-solid fa-wand-magic-sparkles"
+                    aria-hidden="true"
+                  ></i>
+                  <strong>让 AI 读懂这次拍摄</strong>
+                  <span class="summary-meta">已填写 3 项</span>
+                  <i
+                    class="fa-solid fa-chevron-right summary-arrow"
+                    aria-hidden="true"
+                  ></i>
+                </summary>
+                <div class="details-body">
+                  <div class="theme-chips" aria-label="拍摄主题">
+                    <button
+                      class="theme-chip"
+                      type="button"
+                      aria-pressed="true"
+                    >
+                      Cosplay
+                    </button>
+                    <button
+                      class="theme-chip"
+                      type="button"
+                      aria-pressed="false"
+                    >
+                      JK
+                    </button>
+                    <button
+                      class="theme-chip"
+                      type="button"
+                      aria-pressed="false"
+                    >
+                      洛丽塔
+                    </button>
+                    <button
+                      class="theme-chip"
+                      type="button"
+                      aria-pressed="false"
+                    >
+                      汉服
+                    </button>
+                    <button
+                      class="theme-chip"
+                      type="button"
+                      aria-pressed="false"
+                    >
+                      日常写真
+                    </button>
+                    <button
+                      class="theme-chip"
+                      type="button"
+                      aria-pressed="false"
+                    >
+                      其他
+                    </button>
+                  </div>
+
+                  <div class="preference-grid">
+                    <label class="field">
+                      <span class="field-label">作品 / 角色 / 风格</span>
+                      <input
+                        class="field-control"
+                        type="text"
+                        value="原神 · 胡桃"
+                        placeholder="角色或画面风格"
+                      />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">服装 / 妆容 / 发型 / 道具</span>
+                      <input
+                        class="field-control"
+                        type="text"
+                        value="黑红短裙、双马尾"
+                        placeholder="服装和造型重点"
+                      />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">画面与动作重点</span>
+                      <textarea
+                        class="field-control"
+                        placeholder="想保留的画面和动作"
+                      >
+还原角色立绘，俏皮互动，动作自然</textarea>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">禁忌 / 不希望出现</span>
+                      <textarea
+                        class="field-control"
+                        placeholder="明确不希望出现的内容"
+                      ></textarea>
+                    </label>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="service-heading">
+            <div class="step-rail"><span class="step-number">3</span></div>
+            <div class="section-body">
+              <div class="section-heading">
+                <h2 id="service-heading">服务安排</h2>
+                <span class="section-note" id="service-count-note"
+                  >1 位服务者</span
+                >
+              </div>
+
+              <div id="service-list">
+                <article class="service-panel" data-service-card>
+                  <div class="service-panel__header">
+                    <div class="service-index">
+                      <span class="service-icon"
+                        ><i class="fa-solid fa-camera" aria-hidden="true"></i
+                      ></span>
+                      <div>
+                        <strong data-service-title>服务者 1</strong>
+                        <span>摄影服务</span>
+                      </div>
+                    </div>
+                    <button
+                      class="icon-button remove-service"
+                      type="button"
+                      aria-label="移除服务者"
+                      title="移除服务者"
+                      hidden
+                    >
+                      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                  </div>
+
+                  <div class="provider-row">
+                    <img
+                      class="provider-avatar"
+                      src="../app/src/assets/DefaultAvatar.png"
+                      alt="服务者头像"
+                    />
+                    <div class="provider-copy">
+                      <div class="provider-name-line">
+                        <strong data-provider-name>森鸢</strong>
+                        <span class="provider-status">当日可约</span>
+                      </div>
+                      <p>人像摄影 · 擅长漫展与自然抓拍</p>
+                    </div>
+                    <button class="text-button choose-provider" type="button">
+                      更换
+                      <i
+                        class="fa-solid fa-chevron-right"
+                        aria-hidden="true"
+                      ></i>
+                    </button>
+                  </div>
+
+                  <div class="service-fields">
+                    <div class="role-block">
+                      <span class="sub-label"
+                        ><b class="required">*</b> 本次服务角色</span
+                      >
+                      <div class="role-switch">
+                        <button
+                          class="role-option"
+                          type="button"
+                          aria-pressed="true"
+                        >
+                          摄影
+                        </button>
+                        <button
+                          class="role-option"
+                          type="button"
+                          aria-pressed="false"
+                        >
+                          妆娘
+                        </button>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <span class="field-label"
+                        ><span><b class="required">*</b> 开始时间</span></span
+                      >
+                      <button
+                        class="field-button"
+                        type="button"
+                        data-toast="选择开始时间"
+                      >
+                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                        <span data-start-time>10:00</span>
+                        <i
+                          class="fa-solid fa-chevron-right"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                    </div>
+                    <div class="field">
+                      <span class="field-label"
+                        ><span><b class="required">*</b> 结束时间</span></span
+                      >
+                      <button
+                        class="field-button"
+                        type="button"
+                        data-toast="选择结束时间"
+                      >
+                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                        <span data-end-time>11:30</span>
+                        <i
+                          class="fa-solid fa-chevron-right"
+                          aria-hidden="true"
+                        ></i>
+                      </button>
+                    </div>
+                    <div class="availability-block">
+                      <span class="sub-label">可约时间段</span>
+                      <div class="availability-chips">
+                        <button
+                          class="time-chip"
+                          type="button"
+                          data-range="09:00|10:30"
+                          aria-pressed="false"
+                        >
+                          09:00–10:30
+                        </button>
+                        <button
+                          class="time-chip"
+                          type="button"
+                          data-range="10:00|11:30"
+                          aria-pressed="true"
+                        >
+                          10:00–11:30
+                        </button>
+                        <button
+                          class="time-chip"
+                          type="button"
+                          data-range="15:00|17:00"
+                          aria-pressed="false"
+                        >
+                          15:00–17:00
+                        </button>
+                      </div>
+                      <p class="busy-note">
+                        <i
+                          class="fa-regular fa-circle-xmark"
+                          aria-hidden="true"
+                        ></i>
+                        13:00–14:30 已占用
+                      </p>
+                    </div>
+                    <details class="service-extras">
+                      <summary>补充要求与参考图（可选）</summary>
+                      <label class="field">
+                        <span class="field-label">给服务者的补充要求</span>
+                        <textarea
+                          class="field-control"
+                          placeholder="例如：多抓拍互动，加强眼妆还原"
+                        ></textarea>
+                      </label>
+                      <button
+                        class="upload-placeholder"
+                        type="button"
+                        data-toast="选择参考图片"
+                      >
+                        <i class="fa-regular fa-image" aria-hidden="true"></i>
+                        上传参考图
+                      </button>
+                    </details>
+                  </div>
+                </article>
+              </div>
+
+              <button class="add-service" type="button" id="add-service">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                新增一位服务者
+              </button>
+            </div>
+          </section>
+        </form>
+      </main>
+
+      <div class="submit-dock" aria-label="提交预约">
+        <div class="submit-summary">
+          <strong id="submit-summary-title">1 位服务者</strong>
+          <span>摄影 · 10:00–11:30</span>
+        </div>
+        <button class="primary-button" type="submit" form="booking-form">
+          <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+          提交预约
+        </button>
+      </div>
+    </div>
+
+    <div class="sheet-backdrop" id="provider-sheet" hidden>
+      <section
+        class="provider-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="provider-sheet-title"
+      >
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <h2 id="provider-sheet-title">选择服务者</h2>
+          <button
+            class="icon-button"
+            type="button"
+            id="close-provider-sheet"
+            aria-label="关闭服务者选择"
+          >
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <label class="sheet-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            id="provider-search"
+            placeholder="搜索昵称 / 账号 / 简介"
+          />
+        </label>
+        <div class="provider-list" id="provider-list">
+          <button
+            class="provider-option is-selected"
+            type="button"
+            data-provider="森鸢"
+          >
+            <img src="../app/src/assets/DefaultAvatar.png" alt="森鸢头像" />
+            <span
+              ><strong>森鸢</strong><span>人像摄影 · 漫展与自然抓拍</span></span
+            >
+            <b class="availability-count">3 个时段</b>
+          </button>
+          <button class="provider-option" type="button" data-provider="阿禾">
+            <img src="../app/src/assets/DefaultAvatar.png" alt="阿禾头像" />
+            <span
+              ><strong>阿禾</strong
+              ><span>摄影 / 妆娘 · 清透日系风格</span></span
+            >
+            <b class="availability-count">2 个时段</b>
+          </button>
+          <button class="provider-option" type="button" data-provider="小岛">
+            <img src="../app/src/assets/DefaultAvatar.png" alt="小岛头像" />
+            <span
+              ><strong>小岛</strong
+              ><span>妆造服务 · Cosplay 角色还原</span></span
+            >
+            <b class="availability-count">1 个时段</b>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <template id="service-template">
+      <article class="service-panel" data-service-card>
+        <div class="service-panel__header">
+          <div class="service-index">
+            <span class="service-icon"
+              ><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i
+            ></span>
+            <div>
+              <strong data-service-title>服务者</strong><span>协同服务</span>
+            </div>
+          </div>
+          <button
+            class="icon-button remove-service"
+            type="button"
+            aria-label="移除服务者"
+            title="移除服务者"
+          >
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="provider-row">
+          <img
+            class="provider-avatar"
+            src="../app/src/assets/DefaultAvatar.png"
+            alt="服务者头像"
+          />
+          <div class="provider-copy">
+            <div class="provider-name-line">
+              <strong data-provider-name>请选择服务者</strong>
+            </div>
+            <p>选择后显示可约时间和服务角色</p>
+          </div>
+          <button class="text-button choose-provider" type="button">
+            选择 <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="service-fields">
+          <div class="role-block">
+            <span class="sub-label"
+              ><b class="required">*</b> 本次服务角色</span
+            >
+            <div class="role-switch">
+              <button class="role-option" type="button" aria-pressed="true">
+                摄影
+              </button>
+              <button class="role-option" type="button" aria-pressed="false">
+                妆娘
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label"
+              ><span><b class="required">*</b> 开始时间</span></span
+            >
+            <button
+              class="field-button"
+              type="button"
+              data-toast="选择开始时间"
+            >
+              <i class="fa-regular fa-clock" aria-hidden="true"></i
+              ><span data-start-time>15:00</span
+              ><i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="field">
+            <span class="field-label"
+              ><span><b class="required">*</b> 结束时间</span></span
+            >
+            <button
+              class="field-button"
+              type="button"
+              data-toast="选择结束时间"
+            >
+              <i class="fa-regular fa-clock" aria-hidden="true"></i
+              ><span data-end-time>17:00</span
+              ><i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="availability-block">
+            <span class="sub-label">可约时间段</span>
+            <div class="availability-chips">
+              <button
+                class="time-chip"
+                type="button"
+                data-range="13:00|14:30"
+                aria-pressed="false"
+              >
+                13:00–14:30
+              </button>
+              <button
+                class="time-chip"
+                type="button"
+                data-range="15:00|17:00"
+                aria-pressed="true"
+              >
+                15:00–17:00
+              </button>
+            </div>
+          </div>
+          <details class="service-extras">
+            <summary>补充要求与参考图（可选）</summary>
+            <label class="field"
+              ><span class="field-label">给服务者的补充要求</span
+              ><textarea
+                class="field-control"
+                placeholder="例如：妆容偏日系"
+              ></textarea>
+            </label>
+            <button
+              class="upload-placeholder"
+              type="button"
+              data-toast="选择参考图片"
+            >
+              <i class="fa-regular fa-image" aria-hidden="true"></i>上传参考图
+            </button>
+          </details>
+        </div>
+      </article>
+    </template>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      const root = document.documentElement;
+      const themeButtons = [
+        ...document.querySelectorAll("[data-theme-option]"),
+      ];
+      const themeChips = [...document.querySelectorAll(".theme-chip")];
+      const providerSheet = document.getElementById("provider-sheet");
+      const providerSearch = document.getElementById("provider-search");
+      const serviceList = document.getElementById("service-list");
+      const serviceTemplate = document.getElementById("service-template");
+      const countNote = document.getElementById("service-count-note");
+      const submitTitle = document.getElementById("submit-summary-title");
+      const toast = document.getElementById("toast");
+      let activeServiceCard = document.querySelector("[data-service-card]");
+      let toastTimer = 0;
+
+      const showToast = (message) => {
+        window.clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        toastTimer = window.setTimeout(
+          () => toast.classList.remove("is-visible"),
+          1800,
+        );
+      };
+
+      const setTheme = (theme) => {
+        root.dataset.theme = theme;
+        themeButtons.forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(button.dataset.themeOption === theme),
+          );
+        });
+      };
+
+      themeButtons.forEach((button) => {
+        button.addEventListener("click", () =>
+          setTheme(button.dataset.themeOption),
+        );
+      });
+
+      themeChips.forEach((button) => {
+        button.addEventListener("click", () => {
+          const wasSelected = button.getAttribute("aria-pressed") === "true";
+          themeChips.forEach((item) =>
+            item.setAttribute("aria-pressed", "false"),
+          );
+          button.setAttribute("aria-pressed", String(!wasSelected));
+        });
+      });
+
+      const updateServiceCount = () => {
+        const cards = [...serviceList.querySelectorAll("[data-service-card]")];
+        cards.forEach((card, index) => {
+          card.querySelector("[data-service-title]").textContent =
+            `服务者 ${index + 1}`;
+          card.querySelector(".remove-service").hidden = cards.length === 1;
+        });
+        const label = `${cards.length} 位服务者`;
+        countNote.textContent = label;
+        submitTitle.textContent = label;
+      };
+
+      const setSheetOpen = (open) => {
+        providerSheet.hidden = !open;
+        document.body.style.overflow = open ? "hidden" : "";
+        if (open) {
+          window.setTimeout(() => providerSearch.focus(), 50);
+        }
+      };
+
+      document.addEventListener("click", (event) => {
+        const target = event.target.closest("button");
+        if (!target) return;
+
+        if (target.classList.contains("choose-provider")) {
+          activeServiceCard = target.closest("[data-service-card]");
+          setSheetOpen(true);
+          return;
+        }
+
+        if (target.classList.contains("remove-service")) {
+          target.closest("[data-service-card]").remove();
+          updateServiceCount();
+          showToast("已移除该服务者");
+          return;
+        }
+
+        if (target.classList.contains("role-option")) {
+          target.parentElement
+            .querySelectorAll(".role-option")
+            .forEach((item) => {
+              item.setAttribute("aria-pressed", String(item === target));
+            });
+          return;
+        }
+
+        if (target.classList.contains("time-chip")) {
+          const card = target.closest("[data-service-card]");
+          card.querySelectorAll(".time-chip").forEach((item) => {
+            item.setAttribute("aria-pressed", String(item === target));
+          });
+          const [start, end] = target.dataset.range.split("|");
+          card.querySelector("[data-start-time]").textContent = start;
+          card.querySelector("[data-end-time]").textContent = end;
+          showToast(`已选择 ${start}–${end}`);
+          return;
+        }
+
+        if (target.dataset.toast) showToast(target.dataset.toast);
+      });
+
+      document.getElementById("add-service").addEventListener("click", () => {
+        const fragment = serviceTemplate.content.cloneNode(true);
+        serviceList.appendChild(fragment);
+        updateServiceCount();
+        serviceList.lastElementChild.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+
+      document
+        .getElementById("close-provider-sheet")
+        .addEventListener("click", () => setSheetOpen(false));
+      providerSheet.addEventListener("click", (event) => {
+        if (event.target === providerSheet) setSheetOpen(false);
+      });
+
+      document.querySelectorAll(".provider-option").forEach((option) => {
+        option.addEventListener("click", () => {
+          if (activeServiceCard) {
+            activeServiceCard.querySelector(
+              "[data-provider-name]",
+            ).textContent = option.dataset.provider;
+          }
+          document
+            .querySelectorAll(".provider-option")
+            .forEach((item) => item.classList.remove("is-selected"));
+          option.classList.add("is-selected");
+          setSheetOpen(false);
+          showToast(`已选择 ${option.dataset.provider}`);
+        });
+      });
+
+      providerSearch.addEventListener("input", () => {
+        const keyword = providerSearch.value.trim().toLowerCase();
+        document.querySelectorAll(".provider-option").forEach((option) => {
+          option.hidden = !option.textContent.toLowerCase().includes(keyword);
+        });
+      });
+
+      document
+        .getElementById("booking-form")
+        .addEventListener("submit", (event) => {
+          event.preventDefault();
+          showToast("原型演示：预约信息已准备提交");
+        });
+
+      updateServiceCount();
+    </script>
+  </body>
+</html>

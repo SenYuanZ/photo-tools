@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="pink">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录页设计原型</title>
+    <link rel="icon" href="data:," />
+    <link
+      rel="stylesheet"
+      href="../app/node_modules/@fortawesome/fontawesome-free/css/all.min.css"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --accent: #ff7fae;
+        --accent-rgb: 255, 127, 174;
+        --accent-strong: #ff5f98;
+        --accent-soft: #ffd9e9;
+        --accent-pale: #fff0f7;
+        --page: #fff9fc;
+        --surface: #ffffff;
+        --ink: #3f3b4f;
+        --muted: #756d86;
+        --muted-soft: #9890a4;
+        --line: #f1d6e7;
+        --shadow: rgba(255, 127, 174, 0.14);
+        --focus: rgba(255, 127, 174, 0.24);
+        --status: #b96c12;
+        --status-bg: #fff6e8;
+      }
+
+      :root[data-theme="blue"] {
+        --accent: #5da8ff;
+        --accent-rgb: 93, 168, 255;
+        --accent-strong: #3a8bf0;
+        --accent-soft: #dcebff;
+        --accent-pale: #edf6ff;
+        --page: #f6fbff;
+        --muted: #65758a;
+        --muted-soft: #8c9aab;
+        --line: #d8e7ff;
+        --shadow: rgba(93, 168, 255, 0.14);
+        --focus: rgba(93, 168, 255, 0.24);
+        --status: #347a9c;
+        --status-bg: #edf8ff;
+      }
+
+      :root[data-theme="yellow"] {
+        --accent: #d39b23;
+        --accent-rgb: 211, 155, 35;
+        --accent-strong: #b98010;
+        --accent-soft: #f7e7bd;
+        --accent-pale: #fff7df;
+        --page: #fffcf0;
+        --muted: #756f62;
+        --muted-soft: #918879;
+        --line: #f2e0b8;
+        --shadow: rgba(211, 155, 35, 0.14);
+        --focus: rgba(211, 155, 35, 0.24);
+        --status: #9d6a00;
+        --status-bg: #fff8e5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      html {
+        min-height: 100%;
+        background: #edf1f6;
+      }
+
+      body {
+        min-height: 100%;
+        margin: 0;
+        background: #edf1f6;
+        color: var(--ink);
+        font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      button,
+      input {
+        font: inherit;
+        letter-spacing: 0;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .prototype-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        min-height: 52px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #dfe5ed;
+        padding: 8px 14px;
+        background: rgba(245, 248, 252, 0.96);
+        backdrop-filter: blur(12px);
+      }
+
+      .prototype-toolbar strong {
+        color: #34445c;
+        font-size: 12px;
+      }
+
+      .theme-switcher {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid #d6dde8;
+        border-radius: 10px;
+        padding: 4px;
+        background: #ffffff;
+      }
+
+      .theme-switcher button {
+        display: inline-flex;
+        width: 30px;
+        height: 30px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+      }
+
+      .theme-switcher button[aria-pressed="true"] {
+        border-color: #d5dce6;
+        background: #f3f6fa;
+        box-shadow: 0 2px 6px rgba(52, 68, 92, 0.08);
+      }
+
+      .theme-dot {
+        width: 13px;
+        height: 13px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px #cfd7e3;
+      }
+
+      .theme-dot--pink {
+        background: #ff7fae;
+      }
+
+      .theme-dot--blue {
+        background: #5da8ff;
+      }
+
+      .theme-dot--yellow {
+        background: #d39b23;
+      }
+
+      .app-frame {
+        width: min(440px, 100%);
+        min-height: calc(100vh - 52px);
+        margin: 0 auto;
+        padding: 24px 16px 30px;
+        background: var(--page);
+      }
+
+      .login-intro {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+      }
+
+      .camera-stage {
+        position: relative;
+        width: 170px;
+        height: 122px;
+        margin: 0 auto;
+      }
+
+      .camera-stage__spark {
+        position: absolute;
+        color: var(--accent);
+        font-size: 13px;
+        pointer-events: none;
+      }
+
+      .camera-stage__spark--left {
+        top: 24px;
+        left: 4px;
+        transform: rotate(-12deg);
+      }
+
+      .camera-stage__spark--right {
+        top: 5px;
+        right: 12px;
+        font-size: 16px;
+        transform: rotate(12deg);
+      }
+
+      .camera-stage__spark--small {
+        right: 0;
+        bottom: 20px;
+        font-size: 9px;
+      }
+
+      .camera-mascot {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        width: 138px;
+        height: 102px;
+        transform: translateX(-50%);
+        border: 0;
+        padding: 0;
+        background: transparent;
+      }
+
+      .camera-mascot__strap {
+        position: absolute;
+        top: 1px;
+        left: 50%;
+        width: 84px;
+        height: 38px;
+        transform: translateX(-50%);
+        border: 5px solid var(--accent-soft);
+        border-bottom: 0;
+        border-radius: 46px 46px 0 0;
+      }
+
+      .camera-mascot__body {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 82px;
+        border: 3px solid var(--accent-strong);
+        border-radius: 25px;
+        background: linear-gradient(
+          155deg,
+          var(--accent) 0%,
+          var(--accent-strong) 100%
+        );
+        box-shadow:
+          inset 0 6px 0 rgba(255, 255, 255, 0.2),
+          0 12px 24px var(--shadow);
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      .camera-mascot__grip {
+        position: absolute;
+        top: -12px;
+        left: 18px;
+        width: 34px;
+        height: 18px;
+        border: 3px solid var(--accent-strong);
+        border-bottom: 0;
+        border-radius: 11px 11px 0 0;
+        background: var(--accent);
+      }
+
+      .camera-mascot__shutter {
+        position: absolute;
+        top: 11px;
+        left: 16px;
+        width: 12px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb), 0.24);
+      }
+
+      .camera-mascot__flash {
+        position: absolute;
+        top: 10px;
+        right: 14px;
+        width: 22px;
+        height: 13px;
+        border: 2px solid rgba(255, 255, 255, 0.75);
+        border-radius: 6px;
+        background: #fff7cf;
+      }
+
+      .camera-mascot__lens {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        display: grid;
+        width: 61px;
+        height: 61px;
+        place-items: center;
+        transform: translate(-50%, -44%);
+        border: 5px solid #ffffff;
+        border-radius: 50%;
+        background: var(--accent-pale);
+        box-shadow:
+          0 0 0 3px rgba(255, 255, 255, 0.28),
+          inset 0 0 0 2px var(--accent-soft);
+      }
+
+      .camera-mascot__glass {
+        position: relative;
+        display: block;
+        width: 34px;
+        height: 34px;
+        border: 3px solid var(--accent-soft);
+        border-radius: 50%;
+        background: #79b7ef;
+        box-shadow: inset -8px -7px 0 #6d8bd8;
+      }
+
+      .camera-mascot__glass::before {
+        position: absolute;
+        top: 6px;
+        left: 8px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.88);
+        content: "";
+      }
+
+      .camera-mascot__glass::after {
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #ffd7ec;
+        content: "";
+      }
+
+      .camera-mascot__cheek {
+        position: absolute;
+        top: 52px;
+        width: 16px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.42);
+      }
+
+      .camera-mascot__cheek--left {
+        left: 14px;
+      }
+
+      .camera-mascot__cheek--right {
+        right: 14px;
+      }
+
+      .camera-mascot__badge {
+        position: absolute;
+        top: -11px;
+        right: -8px;
+        min-width: 44px;
+        border: 1px solid var(--accent-soft);
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: var(--surface);
+        color: var(--accent-strong);
+        font-size: 10px;
+        font-weight: 800;
+        box-shadow: 0 5px 12px var(--shadow);
+      }
+
+      .camera-mascot__flash-mask {
+        position: absolute;
+        inset: -10px;
+        border-radius: 30px;
+        background: rgba(255, 255, 255, 0.84);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .camera-mascot:hover .camera-mascot__body {
+        transform: translateY(-2px);
+        box-shadow:
+          inset 0 6px 0 rgba(255, 255, 255, 0.22),
+          0 15px 28px var(--shadow);
+      }
+
+      .camera-mascot:active .camera-mascot__body {
+        transform: scale(0.97) rotate(-1deg);
+      }
+
+      .camera-mascot:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 5px;
+        border-radius: 28px;
+      }
+
+      .camera-mascot.is-shooting .camera-mascot__body {
+        animation: camera-bounce 360ms ease-out;
+      }
+
+      .camera-mascot.is-shooting .camera-mascot__flash-mask {
+        animation: shutter-flash 360ms ease-out;
+      }
+
+      .login-intro h1 {
+        margin: 6px 0 0;
+        color: var(--ink);
+        font-family: "ZCOOL KuaiLe", "YouYuan", "Microsoft YaHei", sans-serif;
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .login-intro p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .login-panel {
+        position: relative;
+        z-index: 1;
+        margin-top: 18px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px 16px 16px;
+        background: var(--surface);
+        box-shadow: 0 14px 30px var(--shadow);
+      }
+
+      .login-panel__heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .login-panel__heading h2 {
+        margin: 0;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .login-panel__heading span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 999px;
+        padding: 5px 8px;
+        background: var(--accent-pale);
+        color: var(--accent-strong);
+        font-size: 9px;
+        font-weight: 800;
+      }
+
+      .field-list {
+        display: grid;
+        gap: 11px;
+      }
+
+      .login-field {
+        display: block;
+      }
+
+      .login-field__label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .input-shell {
+        display: grid;
+        min-height: 48px;
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 0 11px;
+        background: var(--surface);
+        transition:
+          border-color 150ms ease,
+          box-shadow 150ms ease;
+      }
+
+      .input-shell:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--focus);
+      }
+
+      .input-shell > i {
+        color: var(--accent-strong);
+        font-size: 13px;
+        text-align: center;
+      }
+
+      .input-shell input {
+        min-width: 0;
+        height: 44px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .input-shell input::placeholder {
+        color: var(--muted-soft);
+        opacity: 0.75;
+      }
+
+      .icon-button {
+        display: inline-flex;
+        width: 34px;
+        height: 34px;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted-soft);
+      }
+
+      .icon-button:hover {
+        background: var(--accent-pale);
+        color: var(--accent-strong);
+      }
+
+      .icon-button:focus-visible {
+        outline: 2px solid var(--focus);
+      }
+
+      .captcha-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 108px;
+        gap: 8px;
+      }
+
+      .captcha-button {
+        position: relative;
+        display: flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        overflow: hidden;
+        border: 1px solid var(--accent-soft);
+        border-radius: 11px;
+        background: var(--accent-pale);
+        color: var(--accent-strong);
+        font-weight: 800;
+        box-shadow: 0 5px 12px var(--shadow);
+      }
+
+      .captcha-button::before,
+      .captcha-button::after {
+        position: absolute;
+        width: 26px;
+        height: 1px;
+        background: var(--accent-soft);
+        content: "";
+      }
+
+      .captcha-button::before {
+        top: 12px;
+        left: -5px;
+        transform: rotate(18deg);
+      }
+
+      .captcha-button::after {
+        right: -5px;
+        bottom: 11px;
+        transform: rotate(-15deg);
+      }
+
+      .captcha-button span,
+      .captcha-button i {
+        position: relative;
+        z-index: 1;
+      }
+
+      .captcha-button span {
+        font-family: "ZCOOL KuaiLe", "YouYuan", sans-serif;
+        font-size: 15px;
+      }
+
+      .captcha-button i {
+        font-size: 9px;
+      }
+
+      .captcha-button:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .primary-button {
+        display: inline-flex;
+        width: 100%;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 0;
+        border-radius: 12px;
+        margin-top: 16px;
+        background: var(--accent-strong);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 800;
+        box-shadow: 0 10px 18px rgba(var(--accent-rgb), 0.24);
+      }
+
+      .primary-button:hover {
+        background: var(--accent);
+      }
+
+      .primary-button:active {
+        transform: scale(0.99);
+      }
+
+      .primary-button:focus-visible,
+      .secondary-button:focus-visible,
+      .order-link:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      .entry-divider {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
+        margin: 15px 0 10px;
+        color: var(--muted-soft);
+        font-size: 9px;
+      }
+
+      .entry-divider::before,
+      .entry-divider::after {
+        height: 1px;
+        background: var(--line);
+        content: "";
+      }
+
+      .secondary-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .secondary-button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px solid var(--accent-soft);
+        border-radius: 11px;
+        background: var(--surface);
+        color: var(--accent-strong);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .secondary-button:hover {
+        background: var(--accent-pale);
+      }
+
+      .order-link {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 0;
+        margin: 6px auto 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .order-link i:last-child {
+        font-size: 8px;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        z-index: 50;
+        max-width: calc(100vw - 32px);
+        transform: translate(-50%, 14px);
+        border-radius: 9px;
+        padding: 10px 14px;
+        background: #3f3b4f;
+        color: #ffffff;
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .toast.is-visible {
+        transform: translate(-50%, 0);
+        opacity: 1;
+      }
+
+      @keyframes camera-bounce {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0);
+        }
+        35% {
+          transform: translateY(-4px) rotate(2deg);
+        }
+        70% {
+          transform: translateY(1px) rotate(-1deg);
+        }
+      }
+
+      @keyframes shutter-flash {
+        0%,
+        100% {
+          opacity: 0;
+        }
+        18% {
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 359px) {
+        .app-frame {
+          padding-right: 10px;
+          padding-left: 10px;
+        }
+
+        .login-panel {
+          padding-right: 12px;
+          padding-left: 12px;
+        }
+
+        .captcha-layout {
+          grid-template-columns: minmax(0, 1fr) 98px;
+        }
+      }
+
+      @media (min-width: 720px) {
+        .app-frame {
+          margin-top: 18px;
+          margin-bottom: 18px;
+          border: 1px solid #dfe5ed;
+          border-radius: 18px;
+          box-shadow: 0 18px 44px rgba(52, 68, 92, 0.08);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype-toolbar">
+      <strong>登录页 UI 原型</strong>
+      <div class="theme-switcher" role="group" aria-label="切换主题">
+        <button
+          type="button"
+          data-theme-option="pink"
+          aria-label="粉色主题"
+          aria-pressed="true"
+        >
+          <span class="theme-dot theme-dot--pink"></span>
+        </button>
+        <button
+          type="button"
+          data-theme-option="blue"
+          aria-label="蓝色主题"
+          aria-pressed="false"
+        >
+          <span class="theme-dot theme-dot--blue"></span>
+        </button>
+        <button
+          type="button"
+          data-theme-option="yellow"
+          aria-label="黄色主题"
+          aria-pressed="false"
+        >
+          <span class="theme-dot theme-dot--yellow"></span>
+        </button>
+      </div>
+    </div>
+
+    <main class="app-frame">
+      <section class="login-intro" aria-labelledby="login-title">
+        <div class="camera-stage">
+          <i
+            class="fa-solid fa-star camera-stage__spark camera-stage__spark--left"
+          ></i>
+          <i
+            class="fa-solid fa-sparkles camera-stage__spark camera-stage__spark--right"
+          ></i>
+          <i
+            class="fa-solid fa-star camera-stage__spark camera-stage__spark--small"
+          ></i>
+
+          <button
+            type="button"
+            class="camera-mascot"
+            aria-label="播放相机快门特效"
+          >
+            <span class="camera-mascot__strap"></span>
+            <span class="camera-mascot__body">
+              <span class="camera-mascot__grip"></span>
+              <span class="camera-mascot__shutter"></span>
+              <span class="camera-mascot__flash"></span>
+              <span class="camera-mascot__lens">
+                <span class="camera-mascot__glass"></span>
+              </span>
+              <span
+                class="camera-mascot__cheek camera-mascot__cheek--left"
+              ></span>
+              <span
+                class="camera-mascot__cheek camera-mascot__cheek--right"
+              ></span>
+              <span class="camera-mascot__flash-mask"></span>
+            </span>
+            <span class="camera-mascot__badge">咔嚓</span>
+          </button>
+        </div>
+
+        <h1 id="login-title">欢迎回来</h1>
+        <p>登录后继续安排今天的拍摄</p>
+      </section>
+
+      <form class="login-panel" id="login-form">
+        <div class="login-panel__heading">
+          <h2>账号登录</h2>
+          <span><i class="fa-solid fa-camera-retro"></i> 相机排单助手</span>
+        </div>
+
+        <div class="field-list">
+          <label class="login-field">
+            <span class="login-field__label">账号</span>
+            <span class="input-shell">
+              <i class="fa-regular fa-user" aria-hidden="true"></i>
+              <input
+                id="account"
+                type="text"
+                value="lina_photo"
+                placeholder="请输入账号"
+                autocomplete="username"
+              />
+            </span>
+          </label>
+
+          <label class="login-field">
+            <span class="login-field__label">密码</span>
+            <span class="input-shell">
+              <i class="fa-solid fa-lock" aria-hidden="true"></i>
+              <input
+                id="password"
+                type="password"
+                value="123456"
+                placeholder="请输入密码"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="icon-button"
+                id="toggle-password"
+                aria-label="显示密码"
+                title="显示密码"
+              >
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </span>
+          </label>
+
+          <label class="login-field">
+            <span class="login-field__label">验证码</span>
+            <span class="captcha-layout">
+              <span class="input-shell">
+                <i class="fa-solid fa-shield-heart" aria-hidden="true"></i>
+                <input
+                  id="captcha-input"
+                  type="text"
+                  maxlength="4"
+                  placeholder="输入验证码"
+                  autocomplete="off"
+                />
+              </span>
+              <button
+                type="button"
+                class="captcha-button"
+                id="captcha-button"
+                aria-label="刷新验证码"
+                title="刷新验证码"
+              >
+                <span id="captcha-code">D6N6</span>
+                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+              </button>
+            </span>
+          </label>
+        </div>
+
+        <button type="submit" class="primary-button">
+          <i class="fa-solid fa-camera" aria-hidden="true"></i>
+          登录
+        </button>
+
+        <div class="entry-divider">其他入口</div>
+
+        <div class="secondary-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            data-toast="打开账号注册"
+          >
+            <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+            注册账号
+          </button>
+          <button
+            type="button"
+            class="secondary-button"
+            data-toast="打开预约拍摄"
+          >
+            <i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>
+            预约拍摄
+          </button>
+        </div>
+
+        <button type="button" class="order-link" data-toast="打开订单查询">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          查询订单
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </button>
+      </form>
+    </main>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      const root = document.documentElement;
+      const themeButtons = [
+        ...document.querySelectorAll("[data-theme-option]"),
+      ];
+      const camera = document.querySelector(".camera-mascot");
+      const cameraBadge = document.querySelector(".camera-mascot__badge");
+      const password = document.getElementById("password");
+      const passwordToggle = document.getElementById("toggle-password");
+      const captchaCode = document.getElementById("captcha-code");
+      const captchaInput = document.getElementById("captcha-input");
+      const toast = document.getElementById("toast");
+      let toastTimer = 0;
+      let cameraTimer = 0;
+
+      const showToast = (message) => {
+        window.clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        toastTimer = window.setTimeout(
+          () => toast.classList.remove("is-visible"),
+          1800,
+        );
+      };
+
+      const setTheme = (theme) => {
+        root.dataset.theme = theme;
+        themeButtons.forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(button.dataset.themeOption === theme),
+          );
+        });
+      };
+
+      themeButtons.forEach((button) => {
+        button.addEventListener("click", () =>
+          setTheme(button.dataset.themeOption),
+        );
+      });
+
+      const makeCaptcha = () => {
+        const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+        return Array.from(
+          { length: 4 },
+          () => alphabet[Math.floor(Math.random() * alphabet.length)],
+        ).join("");
+      };
+
+      document
+        .getElementById("captcha-button")
+        .addEventListener("click", () => {
+          captchaCode.textContent = makeCaptcha();
+          captchaInput.value = "";
+          showToast("验证码已刷新");
+        });
+
+      passwordToggle.addEventListener("click", () => {
+        const showing = password.type === "text";
+        password.type = showing ? "password" : "text";
+        passwordToggle.setAttribute(
+          "aria-label",
+          showing ? "显示密码" : "隐藏密码",
+        );
+        passwordToggle.setAttribute("title", showing ? "显示密码" : "隐藏密码");
+        passwordToggle.querySelector("i").className = showing
+          ? "fa-regular fa-eye"
+          : "fa-regular fa-eye-slash";
+      });
+
+      camera.addEventListener("click", () => {
+        window.clearTimeout(cameraTimer);
+        camera.classList.remove("is-shooting");
+        window.requestAnimationFrame(() => camera.classList.add("is-shooting"));
+        cameraBadge.textContent = "拍好啦";
+        cameraTimer = window.setTimeout(() => {
+          camera.classList.remove("is-shooting");
+          cameraBadge.textContent = "咔嚓";
+        }, 720);
+      });
+
+      document.querySelectorAll("[data-toast]").forEach((button) => {
+        button.addEventListener("click", () => showToast(button.dataset.toast));
+      });
+
+      document
+        .getElementById("login-form")
+        .addEventListener("submit", (event) => {
+          event.preventDefault();
+          const account = document.getElementById("account").value.trim();
+          if (!account || !password.value || !captchaInput.value.trim()) {
+            showToast("请填写账号、密码和验证码");
+            return;
+          }
+          if (
+            captchaInput.value.trim().toUpperCase() !== captchaCode.textContent
+          ) {
+            showToast("验证码不正确，请重新输入");
+            return;
+          }
+          showToast("登录成功，正在进入首页");
+        });
+    </script>
+  </body>
+</html>
