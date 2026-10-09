@@ -35,6 +35,26 @@ describe('request', () => {
     await expect(request('/empty')).resolves.toBeUndefined()
   })
 
+  it('ignores a late unauthorized response from a previous account', async () => {
+    const unauthorized = vi.fn()
+    setUnauthorizedHandler(unauthorized)
+    setToken('old-account')
+    let resolve!: (response: Response) => void
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockReturnValue(
+        new Promise<Response>((done) => {
+          resolve = done
+        }),
+      ),
+    )
+    const pending = request('/notifications/unread-count')
+    setToken('new-account')
+    resolve(new Response(null, { status: 401 }))
+    await expect(pending).rejects.toMatchObject({ status: 401 })
+    expect(unauthorized).not.toHaveBeenCalled()
+  })
+
   it('throws ApiError and invokes the unauthorized handler once', async () => {
     const unauthorized = vi.fn()
     setUnauthorizedHandler(unauthorized)

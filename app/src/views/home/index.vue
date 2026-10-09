@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import { Button, DatePicker, Popup } from 'vant'
 import HomeScheduleCard from '@/views/home/components/HomeScheduleCard.vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 import { useHomePage } from '@/views/home/hooks/useHomePage'
 
 const {
@@ -44,15 +45,18 @@ const {
           <p class="home-eyebrow"><i class="fa-solid fa-camera" />工作台</p>
           <h1 class="title-font">我的排单</h1>
         </div>
-        <button
-          type="button"
-          class="home-add-button"
-          aria-label="新增排单"
-          title="新增排单"
-          @click="toScheduleEntry"
-        >
-          <i class="fa-solid fa-plus" />
-        </button>
+        <div class="home-hero__actions">
+          <NotificationBell />
+          <button
+            type="button"
+            class="home-add-button"
+            aria-label="新增排单"
+            title="新增排单"
+            @click="toScheduleEntry"
+          >
+            <i class="fa-solid fa-plus" />
+          </button>
+        </div>
       </div>
 
       <div class="home-date-row">
@@ -212,6 +216,11 @@ const {
 </template>
 
 <style scoped>
+.home-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .home-page {
   display: grid;
   gap: 12px;

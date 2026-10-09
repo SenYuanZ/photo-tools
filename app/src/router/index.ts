@@ -3,6 +3,12 @@ import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('@/views/notifications/index.vue'),
+    meta: { requiresAuth: true, tab: 'home' },
+  },
+  {
     path: '/',
     redirect: '/home',
   },

@@ -24,6 +24,7 @@ describe('schedule store conflict fallback', () => {
     store.schedules = [
       {
         ...request,
+        reminders: request.reminders ?? [],
         id: 'schedule-1',
         customerId: 'customer-1',
         serviceTypeCode: 'photography',

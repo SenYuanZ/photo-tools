@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Cell, CellGroup, Popup, Radio, RadioGroup, Switch } from 'vant'
+import { Cell, CellGroup, Popup, Radio, RadioGroup, Switch } from 'vant'
 import PageHeader from '@/components/PageHeader.vue'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -9,6 +9,7 @@ const router = useRouter()
 const store = useSettingsStore()
 const feedback = ref('')
 const showThemePicker = ref(false)
+const savingReminder = ref(false)
 
 const has1d = computed(() => store.defaultReminders.includes('1d'))
 const has1h = computed(() => store.defaultReminders.includes('1h'))
@@ -20,6 +21,8 @@ const themeLabel = computed(() => {
 })
 
 const toggleReminder = async (type: '1d' | '1h') => {
+  if (savingReminder.value) return
+  savingReminder.value = true
   try {
     const set = new Set(store.defaultReminders)
     if (set.has(type)) {
@@ -31,15 +34,8 @@ const toggleReminder = async (type: '1d' | '1h') => {
     feedback.value = '提醒设置已更新'
   } catch (error) {
     feedback.value = (error as Error).message || '提醒设置失败'
-  }
-}
-
-const toggleBackup = async () => {
-  try {
-    await store.updateSettings({ backupEnabled: !store.backupEnabled })
-    feedback.value = '备份设置已更新'
-  } catch (error) {
-    feedback.value = (error as Error).message || '备份设置失败'
+  } finally {
+    savingReminder.value = false
   }
 }
 
@@ -71,36 +67,29 @@ const applyTheme = async (theme: 'pink' | 'blue' | 'yellow') => {
       <p class="mb-2 text-sm font-extrabold">
         <i class="fa-regular fa-bell mr-1 text-amber-500" />默认提醒
       </p>
+      <p class="mb-3 text-xs text-[var(--theme-muted)]">用于后续新建排单，可在站内通知中心查看。</p>
       <CellGroup inset>
         <Cell title="拍摄前 1 天提醒" center>
           <template #right-icon>
-            <Switch :model-value="has1d" size="20" @update:model-value="toggleReminder('1d')" />
+            <Switch
+              :model-value="has1d"
+              :disabled="savingReminder"
+              size="20"
+              @update:model-value="toggleReminder('1d')"
+            />
           </template>
         </Cell>
         <Cell title="拍摄前 1 小时提醒" center>
           <template #right-icon>
-            <Switch :model-value="has1h" size="20" @update:model-value="toggleReminder('1h')" />
-          </template>
-        </Cell>
-      </CellGroup>
-    </article>
-
-    <article class="card mb-3 p-3">
-      <p class="mb-2 text-sm font-extrabold">
-        <i class="fa-solid fa-cloud-arrow-up mr-1 text-rose-500" />数据与引导
-      </p>
-      <CellGroup inset>
-        <Cell title="每日自动备份" center>
-          <template #right-icon>
             <Switch
-              :model-value="store.backupEnabled"
+              :model-value="has1h"
+              :disabled="savingReminder"
               size="20"
-              @update:model-value="toggleBackup"
+              @update:model-value="toggleReminder('1h')"
             />
           </template>
         </Cell>
       </CellGroup>
-      <Button class="mt-3" block round plain type="primary">重新查看新手引导</Button>
     </article>
 
     <article class="card mb-3 p-3 soft-pink">

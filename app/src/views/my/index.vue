@@ -155,7 +155,7 @@ const copyModelBookingLink = async () => {
         <MyMenuItem
           icon="fa-solid fa-sliders"
           title="个人设置"
-          description="切换主题、提醒与备份设置"
+          description="切换主题与默认提醒"
           @click="jump('settings')"
         />
       </div>

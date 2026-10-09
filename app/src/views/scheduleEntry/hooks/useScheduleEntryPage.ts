@@ -12,7 +12,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
 import { useCustomerStore } from '@/stores/customers'
 import { useScheduleStore } from '@/stores/schedules'
-import { useSettingsStore } from '@/stores/settings'
 import { useUploadQueue, type UploadItem } from '@/hooks/useUploadQueue'
 import { isAfterTime } from '@/utils/time'
 
@@ -23,7 +22,6 @@ export function useScheduleEntryPage() {
   const catalogStore = useCatalogStore()
   const customerStore = useCustomerStore()
   const scheduleStore = useScheduleStore()
-  const settingsStore = useSettingsStore()
 
   const customerIdFromQuery =
     typeof route.query.customerId === 'string' ? route.query.customerId : ''
@@ -309,7 +307,6 @@ export function useScheduleEntryPage() {
         referenceImages: uploadQueue.getUploadedUrls(),
         depositStatus: form.depositStatus as 'unpaid' | 'paid' | 'full',
         amount: Number(form.amount) || 0,
-        reminders: [...settingsStore.defaultReminders],
         serviceTypeCode: serviceTypeCode.value,
         serviceRoleCodes: [...selectedRoleCodes.value],
         ...(form.entryMode === 'existing'

@@ -10,9 +10,11 @@ import { User } from '../database/entities/user.entity';
 import { ServiceTypesModule } from '../service-types/service-types.module';
 import { SchedulesController } from './schedules.controller';
 import { SchedulesService } from './schedules.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
+    NotificationsModule,
     TypeOrmModule.forFeature([
       Schedule,
       Customer,

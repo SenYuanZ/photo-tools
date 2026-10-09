@@ -24,10 +24,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const { body, query, skipAuth = false, baseUrl = API_BASE_URL, ...init } = options
   const isFormData = body instanceof FormData
   const headers = new Headers(init.headers || {})
+  const token = skipAuth ? null : getToken()
 
   if (body !== undefined && !isFormData) headers.set('Content-Type', 'application/json')
   if (!skipAuth) {
-    const token = getToken()
     if (token) headers.set('Authorization', `Bearer ${token}`)
   }
 
@@ -39,7 +39,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const data = await parseResponse(response)
 
   if (!response.ok) {
-    if (response.status === 401 && !skipAuth) notifyUnauthorized()
+    // A late response from an old account must not sign out the new session.
+    if (response.status === 401 && !skipAuth && !init.signal?.aborted && token === getToken())
+      notifyUnauthorized()
     throw new ApiError(response.status, resolveApiErrorMessage(data), data)
   }
 

@@ -39,7 +39,7 @@ export interface ScheduleRequest {
   referenceImages: string[]
   depositStatus: DepositStatus
   amount: number
-  reminders: ReminderType[]
+  reminders?: ReminderType[]
   status?: ScheduleStatus
 }
 

@@ -26,9 +26,14 @@ import { ServiceTypesModule } from './service-types/service-types.module';
 import { SettingsModule } from './settings/settings.module';
 import { RolesModule } from './roles/roles.module';
 import { AiSceneModule } from './ai-scene/ai-scene.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduleNotification } from './database/entities/notification.entity';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    NotificationsModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
@@ -43,6 +48,7 @@ import { AiSceneModule } from './ai-scene/ai-scene.module';
         password: configService.get<string>('DB_PASSWORD', 'admin123'),
         database: configService.get<string>('DB_NAME', 'photo_order'),
         entities: [
+          ScheduleNotification,
           User,
           UserSetting,
           Customer,

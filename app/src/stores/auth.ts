@@ -12,6 +12,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useCustomerStore } from '@/stores/customers'
 import { useScheduleStore } from '@/stores/schedules'
 import { useSettingsStore } from '@/stores/settings'
+import { useNotificationsStore } from '@/stores/notifications'
 
 const ACCOUNT_KEY = 'photo_order_account'
 const ROLE_KEY = 'photo_order_role'
@@ -96,6 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = () => {
+    useNotificationsStore().reset()
     isLoggedIn.value = false
     account.value = ''
     userRole.value = 'photographer'

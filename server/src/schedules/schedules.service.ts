@@ -28,6 +28,7 @@ import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { QueryHistoryDto } from './dto/query-history.dto';
 import { QuerySchedulesDto } from './dto/query-schedules.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const toDateString = (date: Date) => date.toISOString().slice(0, 10);
 const DISPLAY_VISIBLE = 'Y';
@@ -50,6 +51,7 @@ export class SchedulesService {
     private readonly bookingGroupsRepository: Repository<BookingGroup>,
     private readonly customerTypesService: CustomerTypesService,
     private readonly serviceTypesService: ServiceTypesService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(userId: string, query: QuerySchedulesDto) {
@@ -178,12 +180,13 @@ export class SchedulesService {
     const setting = await this.settingsRepository.findOne({
       where: { userId },
     });
-    const reminders = payload.reminders?.length
-      ? payload.reminders
-      : (setting?.defaultReminders ?? [
-          ReminderType.ONE_DAY,
-          ReminderType.ONE_HOUR,
-        ]);
+    const reminders =
+      payload.reminders !== undefined
+        ? payload.reminders
+        : (setting?.defaultReminders ?? [
+            ReminderType.ONE_DAY,
+            ReminderType.ONE_HOUR,
+          ]);
 
     const schedule = this.schedulesRepository.create({
       id: uuidv4(),
@@ -365,7 +368,7 @@ export class SchedulesService {
       schedule.referenceImages = normalizeUploadUrls(payload.referenceImages);
     }
 
-    const saved = await this.schedulesRepository.save(schedule);
+    const saved = await this.saveWithNotifications(schedule);
     return {
       ...saved,
       referenceImages: normalizeUploadUrls(saved.referenceImages),
@@ -392,7 +395,7 @@ export class SchedulesService {
     }
 
     schedule.status = ScheduleStatus.COMPLETED;
-    const saved = await this.schedulesRepository.save(schedule);
+    const saved = await this.saveWithNotifications(schedule);
     return {
       ...saved,
       referenceImages: normalizeUploadUrls(saved.referenceImages),
@@ -406,11 +409,27 @@ export class SchedulesService {
     if (!schedule) {
       throw new NotFoundException('排单不存在');
     }
-    await this.schedulesRepository.update(
-      { id, userId, displayStatus: DISPLAY_VISIBLE },
-      { displayStatus: DISPLAY_HIDDEN },
-    );
+    await this.schedulesRepository.manager.transaction(async (manager) => {
+      await manager.update(
+        Schedule,
+        { id, userId, displayStatus: DISPLAY_VISIBLE },
+        { displayStatus: DISPLAY_HIDDEN },
+      );
+      await this.notificationsService.invalidate(userId, id, manager);
+    });
     return { success: true };
+  }
+
+  private saveWithNotifications(schedule: Schedule) {
+    return this.schedulesRepository.manager.transaction(async (manager) => {
+      const saved = await manager.save(Schedule, schedule);
+      await this.notificationsService.invalidate(
+        schedule.userId,
+        schedule.id,
+        manager,
+      );
+      return saved;
+    });
   }
 
   async history(userId: string, query: QueryHistoryDto) {

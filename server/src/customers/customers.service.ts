@@ -12,6 +12,7 @@ import { Schedule } from '../database/entities/schedule.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { QueryCustomersDto } from './dto/query-customers.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DISPLAY_VISIBLE = 'Y';
 const DISPLAY_HIDDEN = 'N';
@@ -24,6 +25,7 @@ export class CustomersService {
     @InjectRepository(Schedule)
     private readonly schedulesRepository: Repository<Schedule>,
     private readonly customerTypesService: CustomerTypesService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findAll(userId: string, query: QueryCustomersDto) {
@@ -143,14 +145,19 @@ export class CustomersService {
       throw new NotFoundException('客户不存在');
     }
 
-    await this.customersRepository.update(
-      { id, userId, displayStatus: DISPLAY_VISIBLE },
-      { displayStatus: DISPLAY_HIDDEN },
-    );
-    await this.schedulesRepository.update(
-      { userId, customerId: id, displayStatus: DISPLAY_VISIBLE },
-      { displayStatus: DISPLAY_HIDDEN },
-    );
+    await this.customersRepository.manager.transaction(async (manager) => {
+      await manager.update(
+        Customer,
+        { id, userId, displayStatus: DISPLAY_VISIBLE },
+        { displayStatus: DISPLAY_HIDDEN },
+      );
+      await manager.update(
+        Schedule,
+        { userId, customerId: id, displayStatus: DISPLAY_VISIBLE },
+        { displayStatus: DISPLAY_HIDDEN },
+      );
+      await this.notificationsService.invalidate(userId, undefined, manager);
+    });
     return { success: true };
   }
 }
