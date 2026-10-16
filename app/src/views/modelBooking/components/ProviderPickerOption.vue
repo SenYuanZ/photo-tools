@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import BookingAvailabilityPanel from '@/views/modelBooking/components/BookingAvailabilityPanel.vue'
+import ProviderPortfolio from '@/views/modelBooking/components/ProviderPortfolio.vue'
+import type { ProviderAvailabilitySummary } from '@/views/modelBooking/types'
 import defaultAvatar from '@/assets/DefaultAvatar.png'
 import type { PublicProvider } from '@/api/public-booking/types'
 
 defineProps<{
+  date: string
+  availabilitySummary?: ProviderAvailabilitySummary
   provider: PublicProvider
   selected: boolean
   roleLabels: string[]
@@ -12,32 +17,73 @@ defineProps<{
 
 const emit = defineEmits<{
   select: []
+  view: []
 }>()
 </script>
 
 <template>
-  <button
-    type="button"
-    class="provider-option"
-    :class="{ 'provider-option--selected': selected }"
-    :aria-pressed="selected"
-    @click="emit('select')"
-  >
-    <img :src="provider.avatarUrl || defaultAvatar" :alt="`${provider.nickname}头像`" />
-    <span class="provider-option__copy">
-      <span class="provider-option__name-line">
-        <strong>{{ provider.nickname }}</strong>
-        <span v-for="label in roleLabels" :key="`${provider.id}-${label}`">{{ label }}</span>
+  <article class="provider-choice">
+    <button
+      type="button"
+      class="provider-option"
+      :class="{ 'provider-option--selected': selected }"
+      :aria-pressed="selected"
+      @click="emit('select')"
+    >
+      <img :src="provider.avatarUrl || defaultAvatar" :alt="`${provider.nickname}头像`" />
+      <span class="provider-option__copy">
+        <span class="provider-option__name-line">
+          <strong>{{ provider.nickname }}</strong>
+          <span v-for="label in roleLabels.slice(0, 3)" :key="`${provider.id}-${label}`">{{
+            label
+          }}</span>
+        </span>
+        <span class="provider-option__bio">{{ provider.bio || provider.account }}</span>
       </span>
-      <span class="provider-option__bio">{{ provider.bio || provider.account }}</span>
-    </span>
-    <span class="provider-option__availability" :class="availabilityClass">
-      {{ availabilityText }}
-    </span>
-  </button>
+      <span class="provider-option__availability" :class="availabilityClass">
+        {{ availabilityText }}
+      </span>
+    </button>
+    <div class="provider-choice__portfolio">
+      <ProviderPortfolio :provider="provider" />
+    </div>
+    <details class="provider-detail">
+      <summary @click="emit('view')">查看当日档期</summary>
+      <BookingAvailabilityPanel
+        :date="date"
+        :loading="!availabilitySummary || availabilitySummary.loading"
+        :error="availabilitySummary?.error"
+        :busy-ranges="availabilitySummary?.busyRanges || []"
+        :free-ranges="availabilitySummary?.freeRanges || []"
+        @retry="emit('view')"
+      />
+    </details>
+  </article>
 </template>
 
 <style scoped>
+.provider-choice {
+  border: 1px solid var(--theme-form-border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+}
+.provider-choice__portfolio {
+  padding: 10px 12px 0;
+}
+.provider-detail {
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--theme-muted);
+}
+.provider-detail summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--theme-accent-strong);
+  cursor: pointer;
+}
+
 .provider-option {
   display: grid;
   width: 100%;
@@ -81,6 +127,7 @@ const emit = defineEmits<{
   display: flex;
   min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
@@ -89,6 +136,7 @@ const emit = defineEmits<{
   color: var(--ink);
   font-size: 12px;
   font-weight: 800;
+  max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

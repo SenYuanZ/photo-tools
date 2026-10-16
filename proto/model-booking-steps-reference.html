@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fff0f6" />
+    <title>预约拍摄 · 分步设计稿</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        --accent: #e94383;
+        --soft: #fff0f6;
+        --ink: #302638;
+        --muted: #776d7f;
+        --line: #eee8ef;
+        --bg: #f8f8fb;
+        --white: #fff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: #eeeef3;
+        color: var(--ink);
+        font:
+          14px/1.6 "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+      }
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+        color: inherit;
+      }
+      button:disabled {
+        cursor: not-allowed;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid #9154d3;
+        outline-offset: 3px;
+      }
+      button {
+        border: 0;
+        background: none;
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 26px;
+        line-height: 1.4;
+        letter-spacing: -0.8px;
+      }
+      h2 {
+        font-size: 17px;
+      }
+      h3 {
+        font-size: 14px;
+      }
+      small,
+      .muted {
+        color: var(--muted);
+      }
+      small {
+        font-size: 12px;
+      }
+      .workspace {
+        max-width: 1220px;
+        margin: 42px auto;
+        display: grid;
+        grid-template-columns: 240px 420px 260px;
+        gap: 52px;
+        align-items: start;
+        padding: 0 24px;
+      }
+      .rail {
+        padding-top: 24px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .mark {
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: #fff;
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
+        font-size: 21px;
+      }
+      .rail h2 {
+        margin: 42px 0 12px;
+        font-size: 28px;
+        line-height: 1.5;
+      }
+      .rail p {
+        color: var(--muted);
+        line-height: 1.9;
+      }
+      .railnav {
+        display: grid;
+        gap: 10px;
+        margin-top: 32px;
+      }
+      .railnav button {
+        display: flex;
+        text-align: left;
+        gap: 14px;
+        padding: 12px;
+        border-radius: 12px;
+        align-items: center;
+      }
+      .railnav button.active {
+        background: #fff;
+        color: var(--accent);
+      }
+      .railnav b {
+        font-size: 19px;
+      }
+      .railnav span {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .version {
+        margin-top: 40px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .phone {
+        background: var(--white);
+        border-radius: 30px;
+        overflow: hidden;
+        box-shadow: 0 16px 64px #30263812;
+        border: 1px solid #fff;
+        position: relative;
+      }
+      .top {
+        padding: 20px 22px 0;
+        background: var(--white);
+      }
+      .topline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .wordmark {
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .topline a {
+        font-size: 12px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .progress {
+        display: flex;
+        justify-content: space-between;
+        margin: 23px 0 0;
+        position: relative;
+      }
+      .progress:before {
+        content: "";
+        position: absolute;
+        top: 14px;
+        left: 24px;
+        right: 24px;
+        height: 1px;
+        background: var(--line);
+      }
+      .progress button {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        padding: 0 3px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .progress b {
+        display: grid;
+        place-items: center;
+        width: 29px;
+        height: 29px;
+        background: #f3f0f4;
+        border: 4px solid #fff;
+        border-radius: 50%;
+        font-size: 11px;
+      }
+      .progress .active {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .progress .active b {
+        background: var(--accent);
+        color: #fff;
+      }
+      .progress .done b {
+        background: #fce0ec;
+        color: var(--accent);
+      }
+      main {
+        padding: 27px 22px 22px;
+        min-height: 640px;
+      }
+      .step[hidden] {
+        display: none;
+      }
+      .intro {
+        margin-bottom: 26px;
+      }
+      .intro p {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .count {
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .group {
+        margin-bottom: 24px;
+      }
+      .label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 11px;
+        font-weight: 600;
+      }
+      .label small {
+        font-weight: 400;
+      }
+      .choices {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 9px 13px;
+        min-height: 42px;
+        font-size: 13px;
+        transition: background 0.15s;
+      }
+      .chip.selected {
+        color: #bd245f;
+        background: var(--soft);
+        border-color: #ee90b3;
+        font-weight: 600;
+      }
+      .chip[disabled] {
+        background: #f6f5f7;
+        color: #b3adb7;
+        text-decoration: line-through;
+      }
+      .choice-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 9px;
+      }
+      .choice-grid .chip {
+        padding: 12px 5px;
+      }
+      .choice-grid .glyph {
+        font-size: 21px;
+        display: block;
+        margin-bottom: 3px;
+        font-weight: 400;
+      }
+      .calendar {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+      }
+      .cal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 7px;
+      }
+      .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        font-size: 20px;
+      }
+      .icon-btn:hover {
+        background: var(--soft);
+      }
+      .week,
+      .days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        gap: 2px;
+      }
+      .week {
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+      .day {
+        min-height: 37px;
+        padding: 5px 0;
+        border-radius: 9px;
+        font-size: 13px;
+      }
+      .day:disabled {
+        color: #c7c0ca;
+      }
+      .day.selected {
+        background: var(--accent);
+        color: white;
+        font-weight: 700;
+      }
+      .day.today:not(.selected) {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .cal-note {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .location-note,
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 9px;
+      }
+      .field {
+        display: block;
+        width: 100%;
+        background: #faf9fb;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 13px;
+        color: var(--ink);
+        margin-top: 10px;
+        min-height: 46px;
+      }
+      .field::placeholder {
+        color: #a29aa8;
+      }
+      textarea.field {
+        resize: vertical;
+        min-height: 82px;
+      }
+      details {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        margin-top: 14px;
+      }
+      summary {
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--muted);
+        min-height: 36px;
+      }
+      .dock {
+        position: sticky;
+        bottom: 0;
+        background: #fffffff5;
+        border-top: 1px solid var(--line);
+        padding: 14px 22px 20px;
+        backdrop-filter: blur(12px);
+        z-index: 5;
+      }
+      .dock-caption {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 9px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .dock-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        border-radius: 11px;
+        min-height: 48px;
+        padding: 10px 20px;
+        font-weight: 600;
+        flex: 1;
+      }
+      .secondary {
+        background: #f4f1f6;
+        border-radius: 11px;
+        min-height: 48px;
+        padding: 10px 17px;
+      }
+      .error {
+        color: #b52c4c;
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .provider {
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        margin-bottom: 13px;
+        overflow: hidden;
+      }
+      .provider-head {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 15px;
+        background: #fcfafd;
+      }
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #f9e1ec;
+        color: #b42c61;
+        font-size: 15px;
+      }
+      .provider-head .grow {
+        flex: 1;
+      }
+      .provider-head small {
+        display: block;
+      }
+      .text-button {
+        color: var(--accent);
+        font-size: 12px;
+        min-height: 36px;
+      }
+      .provider-body {
+        padding: 15px;
+      }
+      .sub-label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 9px;
+      }
+      .time-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+        padding: 10px 12px;
+        background: var(--soft);
+        border-radius: 8px;
+        font-size: 12px;
+      }
+      .time-summary b {
+        font-size: 16px;
+      }
+      .add {
+        width: 100%;
+        min-height: 45px;
+        border: 1px dashed #e2b5c9;
+        border-radius: 10px;
+        color: #bc3468;
+        font-size: 13px;
+      }
+      .mini-note {
+        padding: 11px 13px;
+        background: #f6f5f8;
+        border-radius: 9px;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 21px;
+      }
+      .optional {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 7px;
+      }
+      .review {
+        background: #faf8fb;
+        padding: 17px;
+        border-radius: 13px;
+        margin-bottom: 23px;
+      }
+      .review-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .review dl {
+        margin: 0;
+      }
+      .review dl > div {
+        display: flex;
+        gap: 17px;
+        padding: 7px 0;
+        align-items: start;
+      }
+      .review dt {
+        color: var(--muted);
+        font-size: 12px;
+        min-width: 48px;
+      }
+      .review dd {
+        margin: 0;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
+      .contact label {
+        display: block;
+        margin-bottom: 18px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .contact label .field {
+        font-weight: 400;
+        margin-top: 7px;
+      }
+      .success {
+        text-align: center;
+        padding: 68px 5px;
+      }
+      .success .seal {
+        width: 72px;
+        height: 72px;
+        background: var(--soft);
+        border-radius: 50%;
+        margin: 0 auto 22px;
+        display: grid;
+        place-items: center;
+        font-size: 33px;
+        color: var(--accent);
+      }
+      .success p {
+        color: var(--muted);
+        margin: 12px 0 25px;
+      }
+      .aside {
+        padding-top: 34px;
+      }
+      .aside h3 {
+        margin-bottom: 20px;
+        font-size: 15px;
+      }
+      .annotation {
+        padding: 18px 0;
+        border-top: 1px solid #dcd8e1;
+      }
+      .annotation b {
+        font-size: 13px;
+      }
+      .annotation p {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 7px;
+        line-height: 1.9;
+      }
+      .tag {
+        display: inline-block;
+        background: #e7e2ed;
+        color: #655373;
+        border-radius: 5px;
+        padding: 3px 8px;
+        font-size: 11px;
+        margin-bottom: 15px;
+      }
+      .preview-note {
+        margin-top: 22px;
+        font-size: 11px;
+        color: #877c90;
+        line-height: 1.9;
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 100px;
+        background: #302638;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 10px;
+        z-index: 20;
+        max-width: 90%;
+        font-size: 13px;
+      }
+      dialog {
+        border: 0;
+        border-radius: 18px;
+        padding: 22px;
+        width: 360px;
+        max-width: calc(100% - 32px);
+        color: var(--ink);
+      }
+      dialog::backdrop {
+        background: #30263866;
+      }
+      dialog h2 {
+        margin-bottom: 7px;
+      }
+      .person-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        border: 1px solid var(--line);
+        padding: 12px;
+        margin: 12px 0;
+        border-radius: 10px;
+        text-align: left;
+      }
+      .person-option small {
+        display: block;
+      }
+      .modal-close {
+        width: 100%;
+        margin-top: 8px;
+      }
+      .topline svg {
+        width: 22px;
+        height: 22px;
+        vertical-align: middle;
+        margin-right: 5px;
+        color: var(--accent);
+      }
+      @media (max-width: 1100px) {
+        .workspace {
+          grid-template-columns: 210px 420px;
+          justify-content: center;
+          gap: 35px;
+        }
+        .aside {
+          display: none;
+        }
+      }
+      @media (max-width: 720px) {
+        body {
+          background: #fff;
+        }
+        .workspace {
+          display: block;
+          margin: 0;
+          padding: 0;
+        }
+        .rail,
+        .aside {
+          display: none;
+        }
+        .phone {
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+          max-width: 480px;
+          margin: auto;
+          min-height: 100dvh;
+          display: flex;
+          flex-direction: column;
+        }
+        .top {
+          padding-top: 18px;
+        }
+        main {
+          min-height: 0;
+          flex: 1;
+        }
+        .dock {
+          margin-top: auto;
+          padding-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+        .intro {
+          margin-bottom: 23px;
+        }
+        .day {
+          min-height: 38px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
+      .availability {
+        margin: 16px 0;
+      }
+      .availability h3 {
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      .schedule-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        border-bottom: 1px solid white;
+        background: #f0f8f4;
+        color: #39735b;
+      }
+      .schedule-row.busy {
+        background: repeating-linear-gradient(
+          135deg,
+          #f5edf0,
+          #f5edf0 6px,
+          #eee4e9 6px,
+          #eee4e9 7px
+        );
+        color: #88606e;
+      }
+      .schedule-row.rest {
+        background: #f2f1f5;
+        color: var(--muted);
+      }
+      .schedule-row:first-of-type {
+        border-radius: 8px 8px 0 0;
+      }
+      .schedule-row:last-child {
+        border-radius: 0 0 8px 8px;
+      }
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+      }
+      .slots .chip {
+        padding: 8px 2px;
+        font-size: 12px;
+      }
+      .slots small {
+        display: block;
+        font-size: 10px;
+        color: inherit;
+        font-weight: 400;
+      }
+      .slots .chip:disabled {
+        text-decoration: none;
+      }
+      .slots .chip.busy {
+        background: #f5edf0;
+        color: #967380;
+        border-style: dashed;
+      }
+      .slots .chip.insufficient {
+        color: #a7a0aa;
+        background: #f8f7fa;
+      }
+      .provider-result {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin: 12px 0;
+        padding: 12px;
+      }
+      .provider-result-head {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .provider-result-head .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .provider-result-head small {
+        display: block;
+      }
+      .provider-result-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        gap: 8px;
+      }
+      .provider-result .primary {
+        flex: 0 0 auto;
+        min-height: 38px;
+        padding: 7px 14px;
+        font-size: 12px;
+      }
+      .provider-result .primary:disabled {
+        background: #eeeaf0;
+        color: var(--muted);
+      }
+      .empty-result {
+        padding: 24px 4px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      #provider-dialog {
+        max-height: 85dvh;
+        overflow-y: auto;
+      }
+      .time-picker-row {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 14px;
+        margin: 18px 0;
+        align-items: start;
+      }
+      .primary:disabled {
+        background: #eeeaf0;
+        color: var(--muted);
+      }
+      .time-picker-row select {
+        width: 100%;
+        margin-top: 0;
+      }
+      .time-picker-row .choices {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .time-picker-row .chip {
+        padding: 9px 2px;
+      }
+      .time-picker-row .chip:disabled {
+        text-decoration: none;
+        font-size: 12px;
+      }
+      .other-time {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        margin-top: 10px;
+      }
+      .picker-preview {
+        padding: 13px;
+        background: var(--soft);
+        border-radius: 9px;
+        font-size: 13px;
+        margin: 14px 0;
+      }
+      .duration-unit {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        margin: 18px 0 8px;
+      }
+      .duration-unit input {
+        margin: 0;
+      }
+      select {
+        font: inherit;
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="workspace">
+      <aside class="rail">
+        <div class="brand"><span class="mark">◎</span> 预约拍摄</div>
+        <h2>一步一件事，<br />轻松约好拍摄。</h2>
+        <p>先选想拍的内容，<br />把打字留给真正想说的话。</p>
+        <nav class="railnav" aria-label="设计稿页面"></nav>
+        <div class="version">
+          分步预约 / 新版交互设计稿<br />2026.10 · 移动端优先
+        </div>
+      </aside>
+      <div class="phone">
+        <header class="top">
+          <div class="topline">
+            <div class="wordmark">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <path d="M3 7h4l2-3h6l2 3h4v13H3z" />
+                <circle cx="12" cy="13" r="4" /></svg
+              >预约拍摄
+            </div>
+            <a href="#" id="help">预约说明</a>
+          </div>
+          <nav class="progress" aria-label="预约步骤"></nav>
+        </header>
+        <main>
+          <section class="step" data-step="0">
+            <div class="intro">
+              <span class="count">第 1 步 / 共 4 步</span>
+              <h1>这次想拍什么？</h1>
+              <p>选好类型和日期，我们开始安排。</p>
+            </div>
+            <div class="group">
+              <div class="label">拍摄类型 <small>单选</small></div>
+              <div class="choice-grid" id="types"></div>
+            </div>
+            <div class="group">
+              <div class="label">拍摄日期 <small id="date-label"></small></div>
+              <div class="calendar">
+                <div class="cal-head">
+                  <button class="icon-btn" id="prev-month" aria-label="上个月">
+                    ‹</button
+                  ><b id="month-label"></b
+                  ><button class="icon-btn" id="next-month" aria-label="下个月">
+                    ›
+                  </button>
+                </div>
+                <div class="week">
+                  <span>一</span><span>二</span><span>三</span><span>四</span
+                  ><span>五</span><span>六</span><span>日</span>
+                </div>
+                <div class="days" id="days"></div>
+              </div>
+            </div>
+            <div class="group">
+              <div class="label">
+                在哪里拍？ <small>暂时没想好也没关系</small>
+              </div>
+              <div class="choices" id="locations"></div>
+              <input
+                class="field"
+                id="address"
+                aria-label="自定拍摄地点"
+                placeholder="输入已约定的工作室或集合地址"
+                hidden
+              />
+              <p class="location-note" id="location-note">
+                提交后可与服务者商议具体地点。
+              </p>
+            </div>
+            <details>
+              <summary>更多资料（选填）</summary>
+              <div class="sub-label">客户类型</div>
+              <div class="choices" id="customers"></div>
+              <input
+                class="field"
+                id="companion"
+                aria-label="同行备注"
+                placeholder="同行人数或其他备注（选填）"
+              />
+            </details>
+          </section>
+          <section class="step" data-step="1" hidden>
+            <div class="intro">
+              <span class="count">第 2 步 / 共 4 步</span>
+              <h1>和谁一起完成？</h1>
+              <p>选服务者和可用时间，结束时间自动算好。</p>
+            </div>
+            <div class="mini-note" id="arrangement-date"></div>
+            <div id="providers"></div>
+            <button class="add" id="add-provider">＋ 再约一位服务者</button>
+            <p class="hint">摄影、妆造可分别安排，不用重复填资料。</p>
+          </section>
+          <section class="step" data-step="2" hidden>
+            <div class="intro">
+              <span class="count">第 3 步 / 共 4 步 · 选填</span>
+              <h1>拍出你喜欢的感觉</h1>
+              <p>点选偏好就好，有特别想法再补充。</p>
+            </div>
+            <div class="group">
+              <div class="label">画面风格 <small>可多选</small></div>
+              <div class="choices" id="styles"></div>
+            </div>
+            <div class="group">
+              <div class="label">服装与造型 <small>可多选</small></div>
+              <div class="choices" id="outfits"></div>
+            </div>
+            <div class="group">
+              <div class="label">画面与动作 <small>可多选</small></div>
+              <div class="choices" id="poses"></div>
+            </div>
+            <div class="group">
+              <div class="label">不希望出现 <small>可多选</small></div>
+              <div class="choices" id="avoids"></div>
+            </div>
+            <details>
+              <summary>补充作品、角色或其他想法</summary>
+              <label for="work" class="sub-label">作品 / 角色</label
+              ><input
+                id="work"
+                class="field"
+                placeholder="例如：原神 / 芙宁娜（选填）"
+              /><label for="notes" class="sub-label">其他拍摄想法</label
+              ><textarea
+                id="notes"
+                class="field"
+                placeholder="例如：想拍撑伞回头的画面（选填）"
+              ></textarea>
+            </details>
+            <p class="hint">偏好会以文字随预约保存，方便服务者了解你的想法。</p>
+            <button class="text-button" id="skip">
+              暂时没有特别偏好，跳过这一步
+            </button>
+          </section>
+          <section class="step" data-step="3" hidden>
+            <div class="intro">
+              <span class="count">第 4 步 / 共 4 步</span>
+              <h1>最后，留个联系方式</h1>
+              <p>核对一下安排，就可以完成预约了。</p>
+            </div>
+            <div class="review">
+              <div class="review-head">
+                <h3>本次拍摄</h3>
+                <button class="text-button" id="edit-review">修改安排</button>
+              </div>
+              <dl id="review"></dl>
+            </div>
+            <div class="contact">
+              <label for="nickname"
+                >怎么称呼你
+                <input
+                  class="field"
+                  id="nickname"
+                  autocomplete="nickname"
+                  maxlength="30"
+                  placeholder="输入昵称或称呼"
+                  required /></label
+              ><label for="phone"
+                >联系手机
+                <input
+                  class="field"
+                  id="phone"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  maxlength="11"
+                  placeholder="输入 11 位手机号"
+                  required
+              /></label>
+            </div>
+            <p class="hint">仅用于本次预约沟通与安排联系。</p>
+          </section>
+          <section class="step success" data-step="4" hidden>
+            <div class="seal">✓</div>
+            <h1>预约已完成</h1>
+            <p>这是设计稿中的完成效果。<br />没有提交真实订单。</p>
+            <div class="review" id="receipt"></div>
+            <button class="secondary" id="restart">返回查看设计稿</button>
+          </section>
+        </main>
+        <footer class="dock">
+          <div class="error" id="error" role="alert" hidden></div>
+          <div class="dock-caption" id="dock-caption"></div>
+          <div class="dock-actions">
+            <button class="secondary" id="back" hidden>上一步</button
+            ><button class="primary" id="next">下一步 · 约服务</button>
+          </div>
+        </footer>
+      </div>
+      <aside class="aside">
+        <span class="tag">交互设计 · 可点击体验</span>
+        <h3>让选择代替填写</h3>
+        <div class="annotation">
+          <b>01 / 看得见的日期</b>
+          <p>月历直接展开，一眼看到整月。地点允许待商议，明确地址时再填写。</p>
+        </div>
+        <div class="annotation">
+          <b>02 / 一张卡，只安排一位</b>
+          <p>
+            选择预约时长后自动匹配最早的连续空档；保留修改时间入口，并展示当日占用状态。
+          </p>
+        </div>
+        <div class="annotation">
+          <b>03 / 用文字表达偏好</b>
+          <p>风格、造型、动作与避雷项直接点选。作品角色等个性内容按需补充。</p>
+        </div>
+        <div class="annotation">
+          <b>04 / 联系方式放最后</b>
+          <p>
+            先完成安排，再填写昵称与手机。提交前可回看摘要，返回也保留选择。
+          </p>
+        </div>
+        <p class="preview-note">
+          本页为独立设计稿；服务者、地点与档期均为示例。地点待商议、时长联动等交互需正式开发时对接服务端规则。
+        </p>
+      </aside>
+    </div>
+    <dialog id="time-dialog" aria-labelledby="time-title">
+      <h2 id="time-title">选择开始时间</h2>
+      <p class="hint" id="time-context"></p>
+      <div class="time-picker-row">
+        <div>
+          <label for="time-hour" class="sub-label">小时</label
+          ><select id="time-hour" class="field"></select>
+        </div>
+        <div>
+          <div class="sub-label">分钟 · 每 10 分钟一档</div>
+          <div id="time-minutes" class="choices"></div>
+        </div>
+      </div>
+      <p class="hint">已占用、休息或连续空闲不足的时间不可选。</p>
+      <div class="picker-preview" id="time-preview" role="status"></div>
+      <div class="dock-actions">
+        <button class="secondary" id="cancel-time">取消</button
+        ><button class="primary" id="confirm-time">确认时间</button>
+      </div>
+    </dialog>
+    <dialog id="duration-dialog" aria-labelledby="duration-title">
+      <h2 id="duration-title">自定义预约时长</h2>
+      <p class="hint">按分钟填写，例如 45 分钟或 90 分钟。</p>
+      <label class="duration-unit" for="custom-duration"
+        ><input
+          type="number"
+          id="custom-duration"
+          class="field"
+          inputmode="numeric"
+          min="1"
+          max="900"
+          step="1"
+          aria-describedby="duration-hint"
+        /><span>分钟</span></label
+      >
+      <p class="hint" id="duration-hint">
+        可填写 1–900 的整数，实际可约时长取决于连续空闲档期。
+      </p>
+      <p class="error" id="duration-error" hidden role="alert"></p>
+      <div class="dock-actions" style="margin-top: 18px">
+        <button class="secondary" id="cancel-duration">取消</button
+        ><button class="primary" id="confirm-duration">确认时长</button>
+      </div>
+    </dialog>
+    <dialog id="provider-dialog" aria-labelledby="dialog-title">
+      <h2 id="dialog-title">选择服务者</h2>
+      <p class="hint">设计稿示例 · 非真实档期</p>
+      <input
+        id="provider-search"
+        class="field"
+        type="search"
+        placeholder="搜索昵称、服务类型或擅长风格"
+        aria-label="搜索服务者"
+      />
+      <div id="provider-filters" class="choices" style="margin-top: 12px"></div>
+      <p id="provider-result-count" class="hint" role="status"></p>
+      <div id="provider-options"></div>
+      <button class="secondary modal-close" id="close-dialog">取消</button>
+    </dialog>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <h2 id="help-title">预约说明</h2>
+      <p style="margin: 16px 0">
+        请按已沟通的安排填写预约。拍摄偏好可以跳过；地点尚未确定时，可选择待商议。
+      </p>
+      <p class="hint">
+        当前为设计稿，所有服务者和时间仅作演示，点击完成预约不会写入真实订单。
+      </p>
+      <button class="primary modal-close" id="close-help">知道了</button>
+    </dialog>
+    <div class="toast" role="status" hidden></div>
+    <script>
+      const $ = (s) => document.querySelector(s),
+        $$ = (s) => [...document.querySelectorAll(s)];
+      const titles = ["拍什么", "约服务", "拍摄偏好", "联系确认"],
+        subtitles = [
+          "类型、日期与地点",
+          "服务者和可用时间",
+          "点选你的喜欢",
+          "核对后完成预约",
+        ];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dateKey = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      let month = new Date(today.getFullYear(), today.getMonth(), 1),
+        step = 0,
+        editing = 0;
+      const state = {
+        type: "Cosplay",
+        date: dateKey(today),
+        location: "待商议",
+        customer: "个人写真",
+        styles: [],
+        outfits: [],
+        poses: [],
+        avoids: [],
+        providers: [
+          {
+            name: "小鹿",
+            role: "摄影",
+            duration: 60,
+            start: "07:00",
+            timeSource: "auto",
+          },
+        ],
+      };
+      const people = [
+        { name: "小鹿", role: "摄影", note: "人像 / Cosplay" },
+        { name: "阿澈", role: "摄影", note: "日常 / 情绪写真" },
+        { name: "桃子", role: "妆造", note: "角色妆 / 日常妆" },
+      ];
+      function escapeHtml(v) {
+        return String(v).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+      function chips(id, items, key, multi = false) {
+        const host = $("#" + id);
+        host.innerHTML = "";
+        items.forEach((item) => {
+          const b = document.createElement("button");
+          b.className = "chip";
+          b.textContent = item;
+          b.type = "button";
+          const selected = multi
+            ? state[key].includes(item)
+            : state[key] === item;
+          b.classList.toggle("selected", selected);
+          b.setAttribute("aria-pressed", selected);
+          b.onclick = () => {
+            if (multi) {
+              state[key] = state[key].includes(item)
+                ? state[key].filter((x) => x !== item)
+                : [...state[key], item];
+            } else state[key] = item;
+            chips(id, items, key, multi);
+            if (key === "location") updateLocation();
+            updateDock();
+          };
+          host.append(b);
+        });
+      }
+      function updateLocation() {
+        const custom = state.location === "自己选地点";
+        $("#address").hidden = !custom;
+        $("#location-note").textContent = custom
+          ? "填写你们已约定的地址。"
+          : state.location === "待商议"
+            ? "提交后可与服务者商议具体地点。"
+            : "示例地点：拾光摄影空间 · 以沟通为准。";
+      }
+      function calendar() {
+        $("#month-label").textContent =
+          `${month.getFullYear()} 年 ${month.getMonth() + 1} 月`;
+        $("#date-label").textContent = state.date;
+        const host = $("#days");
+        host.innerHTML = "";
+        const offset = (month.getDay() + 6) % 7;
+        for (let i = 0; i < offset; i++)
+          host.append(document.createElement("span"));
+        const last = new Date(
+          month.getFullYear(),
+          month.getMonth() + 1,
+          0,
+        ).getDate();
+        for (let n = 1; n <= last; n++) {
+          const d = new Date(month.getFullYear(), month.getMonth(), n),
+            key = dateKey(d),
+            b = document.createElement("button");
+          b.className = "day";
+          b.textContent = n;
+          b.disabled = d < today;
+          b.classList.toggle("selected", key === state.date);
+          b.classList.toggle("today", key === dateKey(today));
+          b.setAttribute("aria-label", key);
+          b.setAttribute("aria-pressed", key === state.date);
+          b.onclick = () => {
+            state.date = key;
+            state.providers.forEach(assignEarliest);
+            calendar();
+            updateDock();
+          };
+          host.append(b);
+        }
+        $("#prev-month").disabled =
+          month <= new Date(today.getFullYear(), today.getMonth(), 1);
+      }
+      $("#prev-month").onclick = () => {
+        month = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+        calendar();
+      };
+      $("#next-month").onclick = () => {
+        month = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+        calendar();
+      };
+      function endTime(p) {
+        if (!p.start) return "待选";
+        const [h, m] = p.start.split(":").map(Number),
+          n = h * 60 + m + p.duration;
+        return `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+      }
+      const toMinutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+      const toTime = (n) =>
+        `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+      function daySchedule(p) {
+        // Explicitly simulated public availability, never customer/order details.
+        const index = people.findIndex((x) => x.name === p.name);
+        const shift = ((Number(state.date.slice(-2)) + index) % 2) * 30;
+        return [
+          { start: 420, end: 660 + shift, status: "free" },
+          { start: 660 + shift, end: 750, status: "busy" },
+          { start: 750, end: 810, status: "rest" },
+          { start: 810, end: 900 + shift, status: "free" },
+          { start: 900 + shift, end: 960, status: "busy" },
+          { start: 960, end: 1320, status: "free" },
+        ];
+      }
+      function slotState(p, t) {
+        const start = toMinutes(t),
+          end = start + p.duration;
+        const current = daySchedule(p).find(
+          (r) => start >= r.start && start < r.end,
+        );
+        if (!current) return "rest";
+        if (current.status === "busy") return "busy";
+        if (current.status === "rest") return "rest";
+        return end <= current.end ? "free" : "insufficient";
+      }
+      function slots(p) {
+        return Array.from({ length: 90 }, (_, i) =>
+          toTime(420 + i * 10),
+        ).filter((t) => slotState(p, t) === "free");
+      }
+      function scheduleMarkup(p) {
+        const names = { free: "空闲", busy: "已占用", rest: "休息 · 不可约" };
+        return `<div class="availability"><h3>${escapeHtml(state.date)} 当日档期 <small>示例</small></h3>${daySchedule(
+          p,
+        )
+          .map(
+            (r) =>
+              `<div class="schedule-row ${r.status}"><span>${toTime(r.start)} — ${toTime(r.end)}</span><span>${names[r.status]}</span></div>`,
+          )
+          .join("")}</div>`;
+      }
+      const durationLabel = (n) =>
+        n < 60
+          ? `${n} 分钟`
+          : n % 60 === 0
+            ? `${n / 60} 小时`
+            : `${Math.floor(n / 60)} 小时 ${n % 60} 分钟`;
+      function setDuration(p, n, custom = false) {
+        p.duration = n;
+        p.customDuration = custom;
+        assignEarliest(p);
+        renderProviders();
+        updateDock();
+      }
+      function assignEarliest(p) {
+        p.start = slots(p)[0] || "";
+        p.timeSource = "auto";
+      }
+      function renderProviders() {
+        const host = $("#providers");
+        host.innerHTML = "";
+        state.providers.forEach((p, i) => {
+          const card = document.createElement("article");
+          card.className = "provider";
+          card.innerHTML = `<div class="provider-head"><span class="avatar">${escapeHtml(p.name.slice(0, 1))}</span><div class="grow"><b>${escapeHtml(p.name)}</b><small>${p.role}服务 · 示例服务者</small></div><button class="text-button change">更换</button>${i ? '<button class="text-button remove">移除</button>' : ""}</div><div class="provider-body"><div class="sub-label">预约时长</div><div class="choices durations"></div><div class="time-summary"><span>${p.start ? (p.timeSource === "manual" ? "已手动选择" : "已匹配最早时间") : "暂无可约时间"}</span><b>${p.start ? `${p.start} — ${endTime(p)}` : "请调整时长或日期"}</b></div><button class="text-button other-time" ${!slots(p).length ? "disabled" : ""}>修改时间</button><p class="hint">${!p.start ? "当天没有能容纳该时长的连续空档，请缩短时长或更换日期。" : p.timeSource === "manual" ? "已保留你的手动选择；重新选择时长会匹配最早可约时间。" : "已根据时长自动选择最早的连续空档，你也可以手动修改。"}</p>${scheduleMarkup(p)}</div></div>`;
+          card.querySelector(".change").onclick = () => openPeople(i);
+          if (i)
+            card.querySelector(".remove").onclick = () => {
+              state.providers.splice(i, 1);
+              renderProviders();
+              updateDock();
+            };
+          [10, 30, 60, 120].forEach((n) => {
+            const b = document.createElement("button");
+            b.className =
+              "chip" +
+              (p.duration === n && !p.customDuration ? " selected" : "");
+            b.textContent = durationLabel(n);
+            b.setAttribute(
+              "aria-pressed",
+              p.duration === n && !p.customDuration,
+            );
+            b.onclick = () => setDuration(p, n);
+            card.querySelector(".durations").append(b);
+          });
+          const custom = document.createElement("button");
+          custom.className = "chip" + (p.customDuration ? " selected" : "");
+          custom.textContent = p.customDuration
+            ? `自定义 · ${durationLabel(p.duration)}`
+            : "自定义";
+          custom.setAttribute("aria-pressed", !!p.customDuration);
+          custom.onclick = () => openDuration(i);
+          card.querySelector(".durations").append(custom);
+          card.querySelector(".other-time").onclick = () => openTime(i);
+          host.append(card);
+        });
+        $("#arrangement-date").textContent =
+          `${state.date} · ${state.type} · ${locationText()}`;
+        $("#add-provider").hidden = state.providers.length >= 3;
+      }
+      let durationEditing = 0,
+        timeEditing = 0,
+        pickerStart = "";
+      function openDuration(i) {
+        durationEditing = i;
+        $("#custom-duration").value = state.providers[i].duration;
+        $("#duration-error").hidden = true;
+        $("#duration-dialog").showModal();
+        $("#custom-duration").focus();
+      }
+      $("#cancel-duration").onclick = () => $("#duration-dialog").close();
+      $("#confirm-duration").onclick = () => {
+        const n = Number($("#custom-duration").value);
+        if (!Number.isInteger(n) || n < 1 || n > 900) {
+          $("#duration-error").textContent = "请输入 1–900 的整数分钟。";
+          $("#duration-error").hidden = false;
+          return;
+        }
+        setDuration(state.providers[durationEditing], n, true);
+        $("#duration-dialog").close();
+      };
+      function renderTimeMinutes() {
+        const p = state.providers[timeEditing],
+          hour = $("#time-hour").value,
+          host = $("#time-minutes");
+        host.innerHTML = "";
+        const names = {
+          free: "可约",
+          busy: "已占用",
+          rest: "休息",
+          insufficient: "时长不足",
+        };
+        [0, 10, 20, 30, 40, 50].forEach((m) => {
+          const t = `${hour}:${String(m).padStart(2, "0")}`,
+            status = slotState(p, t),
+            b = document.createElement("button");
+          b.className = "chip" + (pickerStart === t ? " selected" : "");
+          b.disabled = status !== "free";
+          b.innerHTML = `${String(m).padStart(2, "0")} 分<small style="display:block;font-size:10px">${names[status]}</small>`;
+          b.setAttribute("aria-label", `${t} ${names[status]}`);
+          b.setAttribute("aria-pressed", pickerStart === t);
+          b.onclick = () => {
+            pickerStart = t;
+            renderTimeMinutes();
+          };
+          host.append(b);
+        });
+        $("#time-preview").textContent = pickerStart
+          ? `${pickerStart} — ${endTime({ ...p, start: pickerStart })} · ${durationLabel(p.duration)}`
+          : "请选择一个可约的开始时间";
+        $("#confirm-time").disabled = !pickerStart;
+      }
+      function openTime(i) {
+        timeEditing = i;
+        const p = state.providers[i];
+        pickerStart = p.start;
+        $("#time-context").textContent =
+          `${state.date} · ${p.name} · ${durationLabel(p.duration)} · 示例档期`;
+        $("#time-hour").innerHTML = Array.from({ length: 15 }, (_, j) => {
+          const h = String(j + 7).padStart(2, "0");
+          return `<option value="${h}">${h} 时</option>`;
+        }).join("");
+        $("#time-hour").value = (p.start || slots(p)[0] || "07:00").slice(0, 2);
+        renderTimeMinutes();
+        $("#time-dialog").showModal();
+      }
+      $("#time-hour").onchange = () => {
+        pickerStart = "";
+        renderTimeMinutes();
+      };
+      $("#cancel-time").onclick = () => $("#time-dialog").close();
+      $("#confirm-time").onclick = () => {
+        const p = state.providers[timeEditing];
+        if (!pickerStart || slotState(p, pickerStart) !== "free") return;
+        p.start = pickerStart;
+        p.timeSource = "manual";
+        renderProviders();
+        updateDock();
+        $("#time-dialog").close();
+      };
+      let providerFilter = "全部";
+      let expandedProvider = "";
+      function renderPeople() {
+        const query = $("#provider-search").value.trim().toLowerCase();
+        const filtered = people.filter(
+          (p) =>
+            (providerFilter === "全部" || p.role === providerFilter) &&
+            `${p.name} ${p.role} ${p.note}`.toLowerCase().includes(query),
+        );
+        $("#provider-filters").innerHTML = "";
+        ["全部", "摄影", "妆造"].forEach((role) => {
+          const b = document.createElement("button");
+          b.className = "chip" + (role === providerFilter ? " selected" : "");
+          b.textContent = role;
+          b.setAttribute("aria-pressed", role === providerFilter);
+          b.onclick = () => {
+            providerFilter = role;
+            renderPeople();
+          };
+          $("#provider-filters").append(b);
+        });
+        $("#provider-result-count").textContent =
+          `${state.date} · 找到 ${filtered.length} 位服务者`;
+        const host = $("#provider-options");
+        host.innerHTML = "";
+        if (!filtered.length) {
+          host.innerHTML =
+            '<p class="empty-result">没有找到匹配的服务者<br>试试其他昵称，或切换服务类型。</p>';
+          return;
+        }
+        filtered.forEach((p) => {
+          const used = state.providers.some(
+            (x, j) => x.name === p.name && j !== editing,
+          );
+          const item = document.createElement("article");
+          item.className = "provider-result";
+          item.innerHTML = `<div class="provider-result-head"><span class="avatar">${escapeHtml(p.name.slice(0, 1))}</span><div class="grow"><b>${escapeHtml(p.name)} · ${p.role}</b><small>${p.note}</small></div></div><div class="provider-result-actions"><button class="text-button view-schedule" aria-expanded="${expandedProvider === p.name}">${expandedProvider === p.name ? "收起档期" : "查看当日档期"}</button><button class="primary choose" ${used ? "disabled" : ""}>${used ? "已添加" : "选择此服务者"}</button></div>${expandedProvider === p.name ? scheduleMarkup(p) : ""}`;
+          item.querySelector(".view-schedule").onclick = () => {
+            expandedProvider = expandedProvider === p.name ? "" : p.name;
+            renderPeople();
+          };
+          item.querySelector(".choose").onclick = () => {
+            const selected = {
+              name: p.name,
+              role: p.role,
+              duration: 60,
+              start: "",
+            };
+            assignEarliest(selected);
+            if (editing === state.providers.length)
+              state.providers.push(selected);
+            else state.providers[editing] = selected;
+            $("#provider-dialog").close();
+            renderProviders();
+            updateDock();
+          };
+          host.append(item);
+        });
+      }
+      function openPeople(i) {
+        editing = i;
+        providerFilter = "全部";
+        expandedProvider = "";
+        $("#provider-search").value = "";
+        renderPeople();
+        $("#provider-dialog").showModal();
+        $("#provider-search").focus();
+      }
+      $("#provider-search").oninput = renderPeople;
+      $("#add-provider").onclick = () => openPeople(state.providers.length);
+      $("#close-dialog").onclick = () => $("#provider-dialog").close();
+      function locationText() {
+        return state.location === "自己选地点"
+          ? $("#address").value.trim() || "自定地点"
+          : state.location === "工作室"
+            ? "拾光摄影空间"
+            : state.location;
+      }
+      function preferences() {
+        return (
+          [
+            ...state.styles,
+            ...state.outfits,
+            ...state.poses,
+            ...state.avoids.map((x) => "不希望" + x),
+            $("#work").value.trim(),
+            $("#notes").value.trim(),
+          ]
+            .filter(Boolean)
+            .join("、") || "暂无特别偏好"
+        );
+      }
+      function review() {
+        const rows = [
+          ["类型", state.type],
+          ["日期", state.date],
+          ["地点", locationText()],
+          ...state.providers.map((p) => [
+            p.role,
+            `${p.name}　${p.start}–${endTime(p)}`,
+          ]),
+          ["偏好", preferences()],
+        ];
+        $("#review").innerHTML = rows
+          .map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`)
+          .join("");
+      }
+      function validate(target) {
+        if (
+          target > 0 &&
+          state.location === "自己选地点" &&
+          !$("#address").value.trim()
+        ) {
+          go(0);
+          return "请填写已约定的地点，或选择待商议。";
+        }
+        if (
+          target > 1 &&
+          state.providers.some((p) => !p.start || !slots(p).includes(p.start))
+        ) {
+          go(1);
+          return "请为每位服务者选择可用开始时间。";
+        }
+        return "";
+      }
+      function go(n) {
+        step = n;
+        $$(".step").forEach(
+          (el) => (el.hidden = Number(el.dataset.step) !== n),
+        );
+        $("#error").hidden = true;
+        $$(".progress button,.railnav button").forEach((el) => {
+          const index = Number(el.dataset.index);
+          el.classList.toggle("active", index === n);
+          el.classList.toggle("done", index < n);
+          if (index === n) el.setAttribute("aria-current", "step");
+          else el.removeAttribute("aria-current");
+        });
+        if (n === 1) renderProviders();
+        if (n === 3) review();
+        $(".dock").hidden = n === 4;
+        $(".progress").hidden = n === 4;
+        $("#back").hidden = n === 0;
+        $("#next").textContent =
+          [
+            "下一步 · 约服务",
+            "下一步 · 拍摄偏好",
+            "下一步 · 联系确认",
+            "完成预约",
+          ][n] || "";
+        updateDock();
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+      function navigate(n) {
+        const err = validate(n);
+        if (err) {
+          $("#error").textContent = err;
+          $("#error").hidden = false;
+        } else go(n);
+      }
+      function updateDock() {
+        const minutes = state.providers.reduce((n, p) => n + p.duration, 0);
+        $("#dock-caption").textContent =
+          step === 0
+            ? `已选 ${state.type} · ${state.date}`
+            : step === 1
+              ? `${state.providers.length} 位服务者 · 服务总时长 ${durationLabel(minutes)}`
+              : step === 2
+                ? "全部选填，可直接进入下一步"
+                : `${state.date} · ${state.providers.length} 位服务者`;
+      }
+      titles.forEach((title, i) => {
+        const b = document.createElement("button");
+        b.dataset.index = i;
+        b.innerHTML = `<b>${i + 1}</b>${title}`;
+        b.onclick = () => navigate(i);
+        $(".progress").append(b);
+        const r = document.createElement("button");
+        r.dataset.index = i;
+        r.innerHTML = `<b>0${i + 1}</b><div>${title}<span>${subtitles[i]}</span></div>`;
+        r.onclick = () => navigate(i);
+        $(".railnav").append(r);
+      });
+      $("#next").onclick = () => {
+        if (step < 3) return navigate(step + 1);
+        const err = validate(3);
+        if (err) {
+          $("#error").textContent = err;
+          $("#error").hidden = false;
+          return;
+        }
+        const name = $("#nickname"),
+          phone = $("#phone");
+        if (!name.value.trim() || !/^1[3-9]\d{9}$/.test(phone.value.trim())) {
+          $("#error").textContent = !name.value.trim()
+            ? "请填写昵称或称呼。"
+            : "请填写有效的 11 位手机号。";
+          $("#error").hidden = false;
+          (!name.value.trim() ? name : phone).focus();
+          return;
+        }
+        $("#receipt").textContent =
+          `${state.date} · ${state.type} · ${locationText()}`;
+        go(4);
+      };
+      $("#back").onclick = () => go(step - 1);
+      $("#skip").onclick = () => navigate(3);
+      $("#edit-review").onclick = () => go(1);
+      $("#restart").onclick = () => go(0);
+      $("#help").onclick = (e) => {
+        e.preventDefault();
+        $("#help-dialog").showModal();
+      };
+      $("#close-help").onclick = () => $("#help-dialog").close();
+      chips(
+        "types",
+        ["Cosplay", "日常写真", "JK", "汉服", "洛丽塔", "其他"],
+        "type",
+      );
+      chips("locations", ["待商议", "工作室", "自己选地点"], "location");
+      chips("customers", ["个人写真", "约拍创作", "商业拍摄"], "customer");
+      chips(
+        "styles",
+        [
+          "清新自然",
+          "电影氛围",
+          "甜酷个性",
+          "复古胶片",
+          "角色还原",
+          "由摄影师建议",
+        ],
+        "styles",
+        true,
+      );
+      chips(
+        "outfits",
+        ["自备服装", "需要妆造", "自带道具", "需要造型建议"],
+        "outfits",
+        true,
+      );
+      chips(
+        "poses",
+        ["自然抓拍", "半身特写", "全身构图", "动态画面", "需要动作引导"],
+        "poses",
+        true,
+      );
+      chips(
+        "avoids",
+        ["过度磨皮", "夸张动作", "亲密互动", "过度曝光"],
+        "avoids",
+        true,
+      );
+      calendar();
+      go(0);
+    </script>
+  </body>
+</html>

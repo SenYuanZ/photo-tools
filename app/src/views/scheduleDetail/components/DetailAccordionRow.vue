@@ -1,22 +1,20 @@
 <script setup lang="ts">
 defineProps<{
-  icon: string
   title: string
-  summary: string
+  summary?: string
 }>()
 </script>
 
 <template>
   <details class="accordion-row">
-    <summary>
-      <i :class="icon" class="summary-icon" aria-hidden="true" />
+    <summary class="accordion-summary">
       <strong>{{ title }}</strong>
-      <span>{{ summary }}</span>
+      <span class="summary-value"
+        ><slot name="summary">{{ summary }}</slot></span
+      >
       <i class="fa-solid fa-chevron-right summary-arrow" aria-hidden="true" />
     </summary>
-    <div class="accordion-content">
-      <slot />
-    </div>
+    <div class="accordion-content"><slot /></div>
   </details>
 </template>
 
@@ -24,84 +22,60 @@ defineProps<{
 .accordion-row + .accordion-row {
   border-top: 1px solid var(--line);
 }
-
-.accordion-row summary {
+.accordion-summary {
   display: grid;
-  min-height: 56px;
-  grid-template-columns: 32px minmax(0, 1fr) auto 14px;
+  min-height: 62px;
+  grid-template-columns: 88px minmax(0, 1fr) 16px;
   align-items: center;
-  gap: 9px;
-  padding: 0 13px;
   list-style: none;
-  color: var(--ink);
   cursor: pointer;
 }
-
-.accordion-row summary::-webkit-details-marker {
+.accordion-summary::-webkit-details-marker {
   display: none;
 }
-
-.summary-icon {
-  display: inline-flex;
-  width: 32px;
-  height: 32px;
+.accordion-summary strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+.summary-value {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: var(--theme-accent-bg);
-  color: var(--theme-accent-strong);
+  gap: 6px;
+  padding: 10px 8px 10px 0;
+  color: var(--theme-muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
-
-.accordion-row summary strong {
-  overflow: hidden;
-  font-size: 12px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.accordion-row summary span {
-  overflow: hidden;
-  max-width: 128px;
-  color: var(--theme-muted-soft);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .summary-arrow {
   color: var(--theme-muted-soft);
-  font-size: 10px;
+  font-size: 12px;
   transition: transform 180ms ease;
 }
-
 .accordion-row[open] .summary-arrow {
   transform: rotate(90deg);
 }
-
 .accordion-content {
-  margin: 0 13px 13px 54px;
-  border-top: 1px solid var(--line);
-  padding-top: 11px;
+  padding: 0 0 20px 88px;
   color: var(--theme-muted);
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.7;
 }
-
-@media (max-width: 350px) {
-  .accordion-row summary {
-    grid-template-columns: 32px minmax(0, 1fr) minmax(0, auto) 12px;
-    gap: 7px;
-    padding: 0 10px;
-  }
-
-  .accordion-row summary span {
-    max-width: 86px;
-  }
-
+@media (max-width: 600px) {
   .accordion-content {
-    margin-right: 10px;
-    margin-left: 49px;
+    padding-left: 0;
+  }
+}
+@media (max-width: 350px) {
+  .accordion-summary {
+    grid-template-columns: 76px minmax(0, 1fr) 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary-arrow {
+    transition: none;
   }
 }
 </style>

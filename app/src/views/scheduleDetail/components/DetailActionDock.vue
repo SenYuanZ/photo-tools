@@ -1,7 +1,6 @@
 <script setup lang="ts">
 defineProps<{
   primaryLabel: string
-  primaryIcon: string
   primaryDisabled?: boolean
   showMore?: boolean
 }>()
@@ -20,7 +19,6 @@ const emit = defineEmits<{
       :disabled="primaryDisabled"
       @click="emit('primary')"
     >
-      <i :class="primaryIcon" aria-hidden="true" />
       {{ primaryLabel }}
     </button>
     <button
@@ -29,6 +27,7 @@ const emit = defineEmits<{
       type="button"
       aria-label="更多操作"
       title="更多操作"
+      aria-haspopup="dialog"
       @click="emit('more')"
     >
       <i class="fa-solid fa-ellipsis" aria-hidden="true" />
@@ -46,11 +45,11 @@ const emit = defineEmits<{
   display: grid;
   width: 100%;
   max-width: 760px;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 10px;
   margin: 0 auto;
   border-top: 1px solid var(--line);
-  padding: 10px 16px;
+  padding: 12px 16px 16px;
   background: color-mix(in srgb, var(--theme-surface) 94%, transparent);
   backdrop-filter: blur(14px);
 }
@@ -62,17 +61,16 @@ const emit = defineEmits<{
 .primary-button {
   display: inline-flex;
   min-width: 0;
-  min-height: 44px;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
   gap: 7px;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong));
-  color: var(--theme-on-accent);
-  box-shadow: 0 8px 18px rgba(var(--theme-accent-rgb), 0.28);
-  font-size: 13px;
-  font-weight: 800;
+  background: var(--theme-accent);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .primary-button:disabled {
@@ -82,13 +80,13 @@ const emit = defineEmits<{
 
 .more-button {
   display: inline-flex;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 48px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 12px;
-  background: var(--theme-surface);
+  background: var(--theme-accent-bg);
   color: var(--theme-muted);
 }
 </style>

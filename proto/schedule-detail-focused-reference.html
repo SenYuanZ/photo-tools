@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>排单详情 · 聚焦版</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #3f3b4f;
+        --muted: #756d86;
+        --accent: #ff7fae;
+        --accent-strong: #ff5f98;
+        --accent-text: #ae3867;
+        --accent-soft: #ffd9e9;
+        --accent-bg: #fff6fb;
+        --line: #f1d6e7;
+        --canvas: #fff9fc;
+        --hero: #ffe4ef;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #eef2f7;
+        color: var(--ink);
+        font:
+          15px/1.6 "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+      }
+      button,
+      a,
+      summary {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button,
+      a {
+        touch-action: manipulation;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid var(--accent-strong);
+        outline-offset: 4px;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      button {
+        border: 0;
+      }
+      svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: 0 0 auto;
+      }
+      .symbols {
+        display: none;
+      }
+      .preview-label {
+        width: min(430px, 100%);
+        margin: 22px auto 10px;
+        color: #6c6570;
+        font-size: 13px;
+        padding: 0 6px;
+      }
+      .app {
+        width: min(430px, 100%);
+        margin: 0 auto 28px;
+        min-height: 900px;
+        background: var(--canvas);
+        border-radius: 24px;
+        overflow: clip;
+        box-shadow: 0 16px 60px #ff7fae1f;
+      }
+      .header {
+        height: 60px;
+        display: grid;
+        grid-template-columns: 64px 1fr 64px;
+        align-items: center;
+        background: #fff;
+        padding: 0 16px;
+      }
+      .header h1 {
+        margin: 0;
+        text-align: center;
+        font-size: 17px;
+        font-weight: 600;
+      }
+      .header button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        background: transparent;
+        color: var(--accent-text);
+      }
+      .header button:first-child {
+        justify-content: flex-start;
+        color: var(--ink);
+      }
+      main {
+        padding: 16px 16px 24px;
+      }
+      .hero {
+        border-radius: 20px;
+        padding: 24px;
+        background: var(--hero);
+        color: var(--ink);
+        border: 1px solid var(--accent-soft);
+      }
+      .hero-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .hero-top h2 {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--accent-text);
+        padding: 4px 10px;
+        border: 1px solid var(--accent-soft);
+        border-radius: 999px;
+        background: var(--accent-bg);
+      }
+      .status::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent-strong);
+      }
+      .date {
+        margin: 22px 0 0;
+        font-size: 19px;
+        font-weight: 500;
+      }
+      .date-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 22px;
+      }
+      .date-line .date {
+        margin: 0;
+      }
+      .duration {
+        padding: 2px 9px;
+        border-radius: 999px;
+        background: var(--accent-bg);
+        color: var(--accent-text);
+        font-size: 13px;
+      }
+      .time {
+        color: var(--accent-text);
+        margin: 2px 0 22px;
+        font-size: clamp(29px, 8vw, 38px);
+        font-weight: 650;
+        line-height: 1.3;
+        letter-spacing: -1.3px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .location {
+        border-top: 1px solid #f2bfd4;
+        padding-top: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .location p {
+        flex: 1;
+        margin: 0;
+        min-width: 0;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+      .location a {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 44px;
+        font-size: 14px;
+        color: var(--accent-text);
+      }
+      .location a svg {
+        width: 16px;
+        height: 16px;
+      }
+      .information {
+        margin-top: 16px;
+        background: #fff;
+        border-radius: 18px;
+        padding: 0 20px;
+      }
+      .section {
+        padding: 22px 0;
+      }
+      .section + .section {
+        border-top: 1px solid var(--line);
+      }
+      .section h2 {
+        margin: 0 0 16px;
+        font-size: 17px;
+        font-weight: 650;
+      }
+      .customer-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .customer-heading h2 {
+        margin: 0;
+        font-size: 23px;
+      }
+      .contact {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 44px;
+        padding: 0 12px;
+        border-radius: 10px;
+        background: var(--accent-bg);
+        color: var(--accent-text);
+        font-size: 14px;
+      }
+      .contact svg {
+        width: 17px;
+        height: 17px;
+      }
+      dl {
+        margin: 0;
+      }
+      .field {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        column-gap: 16px;
+        align-items: center;
+      }
+      .field + .field {
+        margin-top: 14px;
+      }
+      dt {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+      }
+      .customer-tags {
+        margin: -2px 0 20px;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: var(--accent-bg);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .pill {
+        border-radius: 999px;
+      }
+      .tag-pink {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+      }
+      .tag-amber {
+        background: #fff6e8;
+        color: #98601d;
+      }
+      .needs-fields .field {
+        align-items: start;
+      }
+      dt .tag {
+        padding: 2px 6px;
+        white-space: nowrap;
+      }
+      .needs-fields dd {
+        padding-top: 1px;
+      }
+      .phone {
+        font-variant-numeric: tabular-nums;
+      }
+      .copy {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        margin: -10px 0;
+        padding: 0;
+        background: none;
+        color: inherit;
+        gap: 8px;
+        text-align: left;
+      }
+      .copy svg {
+        width: 16px;
+        height: 16px;
+        color: var(--muted);
+      }
+      .assistant {
+        width: 100%;
+        padding: 17px 20px;
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-radius: 14px;
+        background: var(--accent-bg);
+        color: var(--accent-text);
+        border: 1px solid var(--line);
+        text-align: left;
+      }
+      .assistant span {
+        flex: 1;
+        font-weight: 550;
+      }
+      .assistant .chevron {
+        width: 16px;
+      }
+      .secondary {
+        margin-top: 20px;
+        padding: 0 20px;
+        border-radius: 18px;
+        background: #fff;
+      }
+      details + details {
+        border-top: 1px solid var(--line);
+      }
+      summary {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr) 16px;
+        gap: 0;
+        align-items: center;
+        min-height: 62px;
+        cursor: pointer;
+        list-style: none;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary strong {
+        font-size: 15px;
+        font-weight: 500;
+      }
+      summary span {
+        font-size: 14px;
+        color: var(--muted);
+        padding-right: 8px;
+      }
+      summary .tags {
+        padding: 10px 8px 10px 0;
+      }
+      summary .tag {
+        padding: 3px 9px;
+        font-size: 13px;
+      }
+      summary svg {
+        width: 16px;
+        height: 16px;
+        color: #928793;
+      }
+      details[open] summary svg {
+        transform: rotate(90deg);
+      }
+      .expanded {
+        padding: 0 0 20px 88px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .expanded p {
+        margin: 0;
+      }
+      .reference {
+        display: grid;
+        place-items: center;
+        width: 100%;
+        max-width: 170px;
+        aspect-ratio: 4 / 3;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        background: var(--accent-bg);
+      }
+      .reference svg {
+        width: 28px;
+        height: 28px;
+      }
+      .footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: 1fr 52px;
+        gap: 10px;
+        padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+        border-top: 1px solid var(--line);
+        background: #fffffff5;
+      }
+      .primary {
+        min-height: 48px;
+        border-radius: 12px;
+        color: var(--ink);
+        background: var(--accent);
+        font-weight: 600;
+      }
+      .more {
+        border-radius: 12px;
+        background: var(--accent-bg);
+        color: var(--muted);
+        font-size: 22px;
+      }
+      dialog {
+        width: min(360px, calc(100% - 32px));
+        border: 0;
+        padding: 24px;
+        border-radius: 20px;
+        color: var(--ink);
+        box-shadow: 0 16px 60px #302a3224;
+      }
+      dialog::backdrop {
+        background: #302a3266;
+      }
+      dialog h2 {
+        font-size: 20px;
+        margin: 0 0 12px;
+      }
+      dialog p {
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+      dialog button {
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        border-radius: 10px;
+        margin-top: 10px;
+        background: var(--accent-bg);
+        color: var(--ink);
+      }
+      dialog .primary {
+        background: var(--accent);
+        color: var(--ink);
+      }
+      .toast {
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 18px;
+        background: #302a32;
+        color: white;
+        border-radius: 12px;
+        font-size: 14px;
+        z-index: 20;
+        max-width: calc(100% - 32px);
+        text-align: center;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      @media (max-width: 460px) {
+        body {
+          background: var(--canvas);
+        }
+        .preview-label {
+          display: none;
+        }
+        .app {
+          border-radius: 0;
+          margin: 0 auto;
+          min-height: 100dvh;
+          box-shadow: none;
+        }
+      }
+      @media (max-width: 350px) {
+        main {
+          padding: 12px 12px 20px;
+        }
+        .hero {
+          padding: 20px;
+        }
+        .information,
+        .secondary {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+        .field {
+          grid-template-columns: 64px minmax(0, 1fr);
+          gap: 12px;
+        }
+        summary {
+          grid-template-columns: 76px minmax(0, 1fr) 16px;
+        }
+        .expanded {
+          padding-left: 76px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6" /></symbol>
+      <symbol id="next" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></symbol>
+      <symbol id="pin" viewBox="0 0 24 24">
+        <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+        <circle cx="12" cy="10" r="2.5" />
+      </symbol>
+      <symbol id="phone" viewBox="0 0 24 24">
+        <path
+          d="m5 3 4 1 1 5-2 2a15 15 0 0 0 5 5l2-2 5 1 1 4c-1 5-9 1-13-3S0 4 5 3Z"
+        />
+      </symbol>
+      <symbol id="copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="12" height="13" rx="2" />
+        <path d="M15 8V3H3v13h5" />
+      </symbol>
+      <symbol id="spark" viewBox="0 0 24 24">
+        <path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" />
+      </symbol>
+      <symbol id="image" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <circle cx="8" cy="8" r="1.5" />
+        <path d="m3 17 5-5 4 4 4-6 5 7" />
+      </symbol>
+    </svg>
+    <div class="preview-label">排单详情 · 聚焦版</div>
+    <div class="app">
+      <header class="header">
+        <button type="button" aria-label="返回" data-demo="返回上一页">
+          <svg><use href="#back" /></svg>
+        </button>
+        <h1>排单详情</h1>
+        <button type="button" data-demo="编辑排单">编辑</button>
+      </header>
+      <main>
+        <section class="hero" aria-labelledby="schedule-title">
+          <div class="hero-top">
+            <h2 id="schedule-title">拍摄安排</h2>
+            <span class="status" id="schedule-status">正常排单</span>
+          </div>
+          <div class="date-line">
+            <p class="date">9月29日 · 周二</p>
+            <span class="duration">1 小时</span>
+          </div>
+          <p class="time">10:00–11:00</p>
+          <div class="location">
+            <p>萤火虫漫展<br />A馆东入口</p>
+            <a
+              href="https://www.amap.com/search?query=%E8%90%A4%E7%81%AB%E8%99%AB%E6%BC%AB%E5%B1%95"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="在地图中搜索萤火虫漫展"
+              >导航<svg><use href="#next" /></svg
+            ></a>
+          </div>
+        </section>
+        <div class="information">
+          <section class="section" aria-labelledby="customer-title">
+            <div class="customer-heading">
+              <h2 id="customer-title">天天</h2>
+              <a class="contact" href="tel:18070256005"
+                ><svg><use href="#phone" /></svg>联系客户</a
+              >
+            </div>
+            <div class="tags customer-tags" aria-label="客户标签">
+              <span class="tag pill tag-pink">自助预约</span>
+              <span class="tag pill">首次合作</span>
+            </div>
+            <dl>
+              <div class="field">
+                <dt><span class="tag">联系电话</span></dt>
+                <dd>
+                  <button
+                    class="copy phone"
+                    id="copy-phone"
+                    type="button"
+                    aria-label="复制联系电话 180 7025 6005"
+                  >
+                    180 7025 6005<svg><use href="#copy" /></svg>
+                  </button>
+                </dd>
+              </div>
+              <div class="field">
+                <dt><span class="tag">拍摄服务</span></dt>
+                <dd class="tags">
+                  <span class="tag tag-pink">个人写真</span
+                  ><span class="tag">约拍摄影</span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+          <section class="section" aria-labelledby="needs-title">
+            <h2 id="needs-title">拍摄需求</h2>
+            <dl class="needs-fields">
+              <div class="field">
+                <dt><span class="tag">特殊需求</span></dt>
+                <dd>以自然抓拍为主，保留互动感</dd>
+              </div>
+              <div class="field">
+                <dt><span class="tag">现场备注</span></dt>
+                <dd>多拍半身与动态画面</dd>
+              </div>
+              <div class="field companions">
+                <dt><span class="tag">陪同人员</span></dt>
+                <dd class="tags"><span class="tag pill">闺蜜 3 人</span></dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+        <button class="assistant" id="ai-open" type="button">
+          <svg><use href="#spark" /></svg><span>查看 AI 拍摄方案</span
+          ><svg class="chevron"><use href="#next" /></svg>
+        </button>
+        <section class="secondary" aria-label="其他排单信息">
+          <details>
+            <summary>
+              <strong>收款详情</strong
+              ><span class="tags"
+                ><span class="tag pill tag-amber">未支付</span
+                ><span>¥0</span></span
+              ><svg><use href="#next" /></svg>
+            </summary>
+            <div class="expanded"><p>实收金额 ¥0</p></div>
+          </details>
+          <details>
+            <summary>
+              <strong>提醒设置</strong
+              ><span class="tags"
+                ><span class="tag pill">提前1天</span
+                ><span class="tag pill">提前1小时</span></span
+              ><svg><use href="#next" /></svg>
+            </summary>
+            <div class="expanded"><p>拍摄开始前1天、1小时提醒</p></div>
+          </details>
+          <details>
+            <summary>
+              <strong>参考图</strong
+              ><span class="tags"><span class="tag pill">1 张</span></span
+              ><svg><use href="#next" /></svg>
+            </summary>
+            <div class="expanded">
+              <div class="reference" role="img" aria-label="原型参考图占位">
+                <svg><use href="#image" /></svg>
+              </div>
+            </div>
+          </details>
+          <details>
+            <summary>
+              <strong>预约信息</strong
+              ><span class="tags"
+                ><span class="tag pill tag-pink">自助预约</span></span
+              ><svg><use href="#next" /></svg>
+            </summary>
+            <div class="expanded">
+              <p>首次合作<br />拍摄日期：2026年9月29日</p>
+            </div>
+          </details>
+        </section>
+      </main>
+      <footer class="footer">
+        <button class="primary" id="complete" type="button">完成订单</button
+        ><button
+          class="more"
+          id="more"
+          type="button"
+          aria-label="更多操作"
+          aria-haspopup="dialog"
+        >
+          ···
+        </button>
+      </footer>
+    </div>
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+      <h2 id="confirm-title">完成这次拍摄？</h2>
+      <p>确认后，排单状态将变为已完成。</p>
+      <button class="primary" id="confirm-complete" type="button">
+        确认完成</button
+      ><button type="button" data-close>取消</button>
+    </dialog>
+    <dialog id="more-dialog" aria-labelledby="more-title">
+      <h2 id="more-title">更多操作</h2>
+      <button type="button" data-demo="原型演示：暂存订单">暂存订单</button
+      ><button type="button" data-demo="原型演示：删除前需二次确认">
+        删除排单</button
+      ><button type="button" data-close>取消</button>
+    </dialog>
+    <dialog id="ai-dialog" aria-labelledby="ai-title">
+      <h2 id="ai-title">AI 拍摄方案</h2>
+      <p>原型演示入口，实际使用时在这里查看已保存的拍摄方案。</p>
+      <button type="button" data-close>关闭</button>
+    </dialog>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <script>
+      const toast = document.getElementById("toast");
+      let toastTimer;
+      function notify(message) {
+        clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.hidden = false;
+        toastTimer = setTimeout(() => {
+          toast.hidden = true;
+        }, 2200);
+      }
+      document
+        .querySelectorAll("[data-demo]")
+        .forEach((button) =>
+          button.addEventListener("click", () =>
+            notify(
+              "原型演示：" + button.dataset.demo.replace("原型演示：", ""),
+            ),
+          ),
+        );
+      document
+        .querySelectorAll("[data-close]")
+        .forEach((button) =>
+          button.addEventListener("click", () =>
+            button.closest("dialog").close(),
+          ),
+        );
+      document
+        .getElementById("complete")
+        .addEventListener("click", () =>
+          document.getElementById("confirm-dialog").showModal(),
+        );
+      document
+        .getElementById("more")
+        .addEventListener("click", () =>
+          document.getElementById("more-dialog").showModal(),
+        );
+      document
+        .getElementById("ai-open")
+        .addEventListener("click", () =>
+          document.getElementById("ai-dialog").showModal(),
+        );
+      document
+        .getElementById("confirm-complete")
+        .addEventListener("click", () => {
+          document.getElementById("confirm-dialog").close();
+          document.getElementById("schedule-status").textContent = "已完成";
+          const button = document.getElementById("complete");
+          button.textContent = "已完成";
+          button.disabled = true;
+          notify("原型演示：订单已完成");
+        });
+      document
+        .getElementById("copy-phone")
+        .addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText("18070256005");
+            notify("电话已复制");
+          } catch {
+            notify("请长按号码复制：18070256005");
+          }
+        });
+    </script>
+  </body>
+</html>

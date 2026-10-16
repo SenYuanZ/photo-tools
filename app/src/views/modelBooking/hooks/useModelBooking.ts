@@ -2,22 +2,25 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showImagePreview, showToast } from 'vant'
-import type { UploaderFileListItem } from 'vant'
 import { publicBookingApi } from '@/api/public-booking'
 import type { CustomerTypeItem, PublicProvider } from '@/api/public-booking/types'
 import { rolesApi } from '@/api/roles'
-import { timeOptions } from '@/constants/options'
-import { normalizeDatePickerValue } from '@/hooks/useDateTimePicker'
 import { useKeyedLatestRequest } from '@/hooks/useLatestRequest'
-import { uploadQueueItem, type UploadItem } from '@/hooks/useUploadQueue'
 import { isAfterTime } from '@/utils/time'
+import {
+  availableStarts,
+  fitsRange,
+  freeRangesFromBusy,
+  toMinutes,
+  toTime,
+} from '@/views/modelBooking/utils/availability'
 import type {
   AvailabilityState,
   ProviderAvailabilitySummary,
   ServiceDraft,
-  TimeRange,
 } from '@/views/modelBooking/types'
 import { resolvePublicErrorMessage } from '@/views/modelBooking/utils/errors'
+import { useBookingSteps } from '@/views/modelBooking/hooks/useBookingSteps'
 import { useRecentProviders } from '@/views/modelBooking/hooks/useRecentProviders'
 import type { PublicBookingAiBrief } from '@/api/public-booking/types'
 import {
@@ -26,7 +29,7 @@ import {
 } from '@/views/modelBooking/types'
 
 const createAiBriefForm = (): ModelBookingAiBriefForm => ({
-  themeType: '',
+  themeType: 'cosplay',
   workName: '',
   outfit: '',
   visualGoal: '',
@@ -42,7 +45,7 @@ export function useModelBooking() {
     date: dayjs().format('YYYY-MM-DD'),
     customerTypeCode: '',
     companions: '',
-    location: '',
+    location: '待商议',
     note: '',
     aiBrief: createAiBriefForm(),
   })
@@ -66,26 +69,21 @@ export function useModelBooking() {
   const serviceDrafts = reactive<Record<string, ServiceDraft>>({
     'slot-1': {
       providerId: '',
-      startTime: '10:00',
-      endTime: '11:00',
+      durationMinutes: 60,
+      customDuration: false,
+      timeSource: 'auto',
+      startTime: '',
+      endTime: '',
       requirement: '',
       selectedRoleCode: '',
-      referenceFileList: [],
     },
   })
 
-  const selectedDateValues = ref(form.date.split('-'))
-
-  const showDatePicker = ref(false)
-  const showCustomerTypePicker = ref(false)
   const showProviderPicker = ref(false)
   const showStartTimePicker = ref(false)
-  const showEndTimePicker = ref(false)
-  const showRolePicker = ref(false)
 
   const pickerServiceCode = ref('slot-1')
 
-  const uploading = ref(false)
   const submitting = ref(false)
 
   const error = ref('')
@@ -108,11 +106,13 @@ export function useModelBooking() {
 
   const filterProviderWithKeyword = (provider: PublicProvider) => {
     const keyword = providerKeyword.value.trim().toLowerCase()
-    if (!keyword) {
-      return true
-    }
-
-    return [provider.nickname, provider.account, provider.bio]
+    if (
+      selectedRoleCode.value !== 'all' &&
+      !providerRoleCodes(provider).includes(selectedRoleCode.value)
+    )
+      return false
+    if (!keyword) return true
+    return [provider.nickname, provider.account, provider.bio, ...providerRoleLabels(provider)]
       .join(' ')
       .toLowerCase()
       .includes(keyword)
@@ -129,6 +129,9 @@ export function useModelBooking() {
         key: '',
         freeRangeCount: null,
         availableSlotCount: null,
+        busyRanges: [],
+        freeRanges: [],
+        error: '',
       }
     }
 
@@ -160,6 +163,7 @@ export function useModelBooking() {
     if (summary.loading) {
       return '统计中'
     }
+    if (summary.error) return '加载失败，可重试'
     if ((summary.freeRangeCount ?? 0) <= 0) {
       return '无可约'
     }
@@ -219,7 +223,22 @@ export function useModelBooking() {
 
   const chooseProvider = (serviceCode: string, providerId: string) => {
     const draft = ensureDraft(serviceCode)
+    if (
+      selectedServiceCodes.value.some(
+        (code) => code !== serviceCode && serviceDrafts[code]?.providerId === providerId,
+      )
+    ) {
+      showToast('该服务者已添加，请在原安排中修改')
+      return
+    }
+    if (draft.providerId === providerId) {
+      showProviderPicker.value = false
+      return
+    }
     draft.providerId = providerId
+    draft.startTime = ''
+    draft.endTime = ''
+    draft.timeSource = 'auto'
     const provider = (providersByService[serviceCode] || []).find((item) => item.id === providerId)
     const roleCodes = provider ? providerRoleCodes(provider) : []
     if (!roleCodes.includes(draft.selectedRoleCode)) {
@@ -250,8 +269,6 @@ export function useModelBooking() {
     () =>
       roleOptions.value.find((item) => item.code === selectedRoleCode.value)?.name || '全部角色',
   )
-
-  const availabilityStateOfPicker = computed(() => ensureAvailabilityState(pickerServiceCode.value))
 
   const selectedProviderLabel = (serviceCode: string) => {
     const providerId = serviceDrafts[serviceCode]?.providerId
@@ -313,30 +330,6 @@ export function useModelBooking() {
     })
   }
 
-  const startColumns = computed(() =>
-    timeOptions.map((value) => ({
-      text: value,
-      value,
-      disabled:
-        availabilityStateOfPicker.value.availableSlots.length > 0
-          ? !availabilityStateOfPicker.value.availableSlots.includes(value)
-          : false,
-    })),
-  )
-
-  const endColumns = computed(() => {
-    const draft = ensureDraft(pickerServiceCode.value)
-    const validEndSlots = getValidEndSlots(pickerServiceCode.value, draft.startTime)
-
-    return timeOptions.map((value) => ({
-      text: value,
-      value,
-      disabled: validEndSlots.length ? !validEndSlots.includes(value) : false,
-    }))
-  })
-
-  const normalizeDate = normalizeDatePickerValue
-
   const ensureDraft = (serviceCode: string) => {
     if (serviceDrafts[serviceCode]) {
       return serviceDrafts[serviceCode]
@@ -344,11 +337,13 @@ export function useModelBooking() {
 
     serviceDrafts[serviceCode] = {
       providerId: '',
-      startTime: '10:00',
-      endTime: '11:00',
+      durationMinutes: 60,
+      customDuration: false,
+      timeSource: 'auto',
+      startTime: '',
+      endTime: '',
       requirement: '',
       selectedRoleCode: '',
-      referenceFileList: [],
     }
     return serviceDrafts[serviceCode]
   }
@@ -371,44 +366,52 @@ export function useModelBooking() {
     return availabilityByService[serviceCode]
   }
 
-  const getValidEndSlots = (serviceCode: string, startTime: string) => {
-    const availabilityState = ensureAvailabilityState(serviceCode)
-    if (!startTime || !availabilityState.freeRanges.length) {
-      return [] as string[]
-    }
-
-    const range = availabilityState.freeRanges.find(
-      (item) => item.startTime <= startTime && startTime < item.endTime,
-    )
-
-    if (!range) {
-      return []
-    }
-
-    return timeOptions.filter((slot) => slot > startTime && slot <= range.endTime)
-  }
-
-  const normalizeDraftTimeByAvailability = (serviceCode: string) => {
+  const selectEarliestTime = (serviceCode: string) => {
     const draft = ensureDraft(serviceCode)
-    const availabilityState = ensureAvailabilityState(serviceCode)
-
-    if (!availabilityState.availableSlots.length) {
-      return
-    }
-
-    if (!availabilityState.availableSlots.includes(draft.startTime)) {
-      draft.startTime = availabilityState.availableSlots[0]
-    }
-
-    const validEndSlots = getValidEndSlots(serviceCode, draft.startTime)
-    if (!validEndSlots.length) {
-      draft.endTime = ''
-      return
-    }
-
-    if (!validEndSlots.includes(draft.endTime)) {
-      draft.endTime = validEndSlots[0]
-    }
+    const availability = ensureAvailabilityState(serviceCode)
+    const ready =
+      !availability.loading &&
+      !availability.error &&
+      availability.lastKey === `${serviceCode}-${draft.providerId}-${form.date}`
+    draft.startTime = ready
+      ? availableStarts(availability.freeRanges, draft.durationMinutes)[0] || ''
+      : ''
+    draft.endTime = draft.startTime
+      ? toTime(toMinutes(draft.startTime) + draft.durationMinutes)
+      : ''
+    draft.timeSource = 'auto'
+  }
+  const setDuration = (serviceCode: string, minutes: number, custom = false) => {
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 900) return
+    const draft = ensureDraft(serviceCode)
+    draft.durationMinutes = minutes
+    draft.customDuration = custom
+    selectEarliestTime(serviceCode)
+  }
+  const setStartTime = (serviceCode: string, time: string) => {
+    const draft = ensureDraft(serviceCode)
+    const availability = ensureAvailabilityState(serviceCode)
+    if (
+      availability.loading ||
+      availability.error ||
+      availability.lastKey !== `${serviceCode}-${draft.providerId}-${form.date}` ||
+      !fitsRange(availability.freeRanges, time, draft.durationMinutes)
+    )
+      return false
+    draft.startTime = time
+    draft.endTime = toTime(toMinutes(time) + draft.durationMinutes)
+    draft.timeSource = 'manual'
+    return true
+  }
+  const getValidEndSlots = (serviceCode: string, startTime: string) => {
+    const draft = ensureDraft(serviceCode)
+    return fitsRange(
+      ensureAvailabilityState(serviceCode).freeRanges,
+      startTime,
+      draft.durationMinutes,
+    )
+      ? [toTime(toMinutes(startTime) + draft.durationMinutes)]
+      : []
   }
 
   const loadAvailability = async (serviceCode: string) => {
@@ -416,6 +419,9 @@ export function useModelBooking() {
     const availabilityState = ensureAvailabilityState(serviceCode)
 
     if (!draft.providerId || !form.date) {
+      availabilityRequests.invalidate(serviceCode)
+      draft.startTime = ''
+      draft.endTime = ''
       availabilityState.loading = false
       availabilityState.error = ''
       availabilityState.blockedSlots = []
@@ -426,7 +432,9 @@ export function useModelBooking() {
       return
     }
 
-    const requestKey = `${serviceCode}-${draft.providerId}-${form.date}`
+    const requestDate = form.date
+    const requestProviderId = draft.providerId
+    const requestKey = `${serviceCode}-${requestProviderId}-${requestDate}`
     if (availabilityState.lastKey === requestKey) {
       return
     }
@@ -434,28 +442,43 @@ export function useModelBooking() {
     const nextSeq = availabilityRequests.begin(serviceCode)
     availabilityState.loading = true
     availabilityState.error = ''
+    availabilityState.lastKey = ''
+    draft.startTime = ''
+    draft.endTime = ''
 
     try {
-      const result = await publicBookingApi.getAvailability(draft.providerId, form.date)
-      if (!availabilityRequests.isLatest(serviceCode, nextSeq)) {
+      const result = await publicBookingApi.getAvailability(requestProviderId, requestDate)
+      if (
+        !availabilityRequests.isLatest(serviceCode, nextSeq) ||
+        draft.providerId !== requestProviderId ||
+        form.date !== requestDate
+      ) {
         return
       }
 
       availabilityState.blockedSlots = result.blockedSlots || []
       availabilityState.availableSlots = result.availableSlots || []
       availabilityState.busyRanges = result.busyRanges || []
-      availabilityState.freeRanges = result.freeRanges || []
+      availabilityState.freeRanges = freeRangesFromBusy(result.busyRanges || [])
       availabilityState.lastKey = requestKey
 
       const summary = ensureProviderAvailabilitySummary(serviceCode, draft.providerId)
       summary.key = form.date
       summary.loading = false
       summary.availableSlotCount = result.availableSlots?.length ?? 0
-      summary.freeRangeCount = result.freeRanges?.length ?? 0
+      summary.freeRanges = freeRangesFromBusy(result.busyRanges || [])
+      summary.busyRanges = result.busyRanges || []
+      summary.error = ''
+      summary.freeRangeCount = summary.freeRanges.length
 
-      normalizeDraftTimeByAvailability(serviceCode)
+      availabilityState.loading = false
+      selectEarliestTime(serviceCode)
     } catch (requestError) {
-      if (!availabilityRequests.isLatest(serviceCode, nextSeq)) {
+      if (
+        !availabilityRequests.isLatest(serviceCode, nextSeq) ||
+        draft.providerId !== requestProviderId ||
+        form.date !== requestDate
+      ) {
         return
       }
       availabilityState.error = resolvePublicErrorMessage(requestError, '档期加载失败，请稍后重试')
@@ -476,6 +499,7 @@ export function useModelBooking() {
       return
     }
 
+    const requestDate = form.date
     const summary = ensureProviderAvailabilitySummary(serviceCode, providerId)
     if (summary.key === form.date && (summary.loading || summary.freeRangeCount !== null)) {
       return
@@ -488,23 +512,37 @@ export function useModelBooking() {
     summary.key = form.date
 
     try {
-      const result = await publicBookingApi.getAvailability(providerId, form.date)
-      if (!providerAvailabilityRequests.isLatest(seqKey, nextSeq)) {
+      const result = await publicBookingApi.getAvailability(providerId, requestDate)
+      if (
+        !providerAvailabilityRequests.isLatest(seqKey, nextSeq) ||
+        form.date !== requestDate ||
+        !selectedServiceCodes.value.includes(serviceCode)
+      ) {
         return
       }
 
       summary.availableSlotCount = result.availableSlots?.length ?? 0
-      summary.freeRangeCount = result.freeRanges?.length ?? 0
+      summary.freeRanges = freeRangesFromBusy(result.busyRanges || [])
+      summary.busyRanges = result.busyRanges || []
+      summary.error = ''
+      summary.freeRangeCount = summary.freeRanges.length
     } catch {
-      if (!providerAvailabilityRequests.isLatest(seqKey, nextSeq)) {
+      if (
+        !providerAvailabilityRequests.isLatest(seqKey, nextSeq) ||
+        form.date !== requestDate ||
+        !selectedServiceCodes.value.includes(serviceCode)
+      ) {
         return
       }
 
       summary.availableSlotCount = null
       summary.freeRangeCount = null
       summary.key = ''
+      summary.error = '档期加载失败，请重试'
+      summary.busyRanges = []
+      summary.freeRanges = []
     } finally {
-      if (providerAvailabilityRequests.isLatest(seqKey, nextSeq)) {
+      if (providerAvailabilityRequests.isLatest(seqKey, nextSeq) && form.date === requestDate) {
         summary.loading = false
       }
     }
@@ -529,24 +567,6 @@ export function useModelBooking() {
         }
       }),
     )
-  }
-
-  const slotTagClass = (slot: string, serviceCode: string) => {
-    const availabilityState = ensureAvailabilityState(serviceCode)
-    if (availabilityState.blockedSlots.includes(slot)) {
-      return 'chip border border-rose-200 bg-rose-50 text-rose-500'
-    }
-    if (availabilityState.availableSlots.includes(slot)) {
-      return 'chip border border-emerald-200 bg-emerald-50 text-emerald-600'
-    }
-    return 'chip border border-slate-200 bg-slate-50 text-slate-400'
-  }
-
-  const applyFreeRange = (serviceCode: string, range: TimeRange) => {
-    const draft = ensureDraft(serviceCode)
-    draft.startTime = range.startTime
-    draft.endTime = range.endTime
-    showToast(`已填入 ${range.startTime} - ${range.endTime}`)
   }
 
   const refreshAvailabilityByCurrentSelection = () => {
@@ -658,10 +678,7 @@ export function useModelBooking() {
   const loadProvidersForService = async (serviceCode: string) => {
     loadingProvidersByService[serviceCode] = true
     try {
-      const providers = await publicBookingApi.listProviders(
-        undefined,
-        selectedRoleCode.value === 'all' ? undefined : selectedRoleCode.value,
-      )
+      const providers = await publicBookingApi.listProviders()
       providersByService[serviceCode] = providers
       const draft = ensureDraft(serviceCode)
       if (
@@ -709,6 +726,8 @@ export function useModelBooking() {
     () => {
       selectedServiceCodes.value.forEach((code) => {
         ensureAvailabilityState(code).lastKey = ''
+        ensureDraft(code).startTime = ''
+        ensureDraft(code).endTime = ''
         const summaries = providerAvailabilityByService[code]
         if (summaries) {
           Object.values(summaries).forEach((summary) => {
@@ -733,13 +752,6 @@ export function useModelBooking() {
       refreshAvailabilityByCurrentSelection()
     },
   )
-
-  watch(selectedRoleCode, () => {
-    selectedServiceCodes.value.forEach((code) => {
-      providersByService[code] = []
-      void loadProvidersForService(code)
-    })
-  })
 
   watch(providerKeywordInput, (value) => {
     window.clearTimeout(providerKeywordTimer)
@@ -780,11 +792,6 @@ export function useModelBooking() {
     delete providerAvailabilityByService[serviceCode]
   }
 
-  const openDate = () => {
-    selectedDateValues.value = form.date.split('-')
-    showDatePicker.value = true
-  }
-
   const openProviderPicker = (serviceCode: string) => {
     pickerServiceCode.value = serviceCode
     providerKeywordInput.value = ''
@@ -807,89 +814,34 @@ export function useModelBooking() {
     showStartTimePicker.value = true
   }
 
-  const openEndTimePicker = (serviceCode: string) => {
-    pickerServiceCode.value = serviceCode
-    const draft = ensureDraft(serviceCode)
-    if (!draft.providerId) {
-      showToast('请先选择服务者')
-      return
-    }
-    if (!draft.startTime) {
-      showToast('请先选择开始时间')
-      return
-    }
-    showEndTimePicker.value = true
-  }
-
-  const uploadSingle = (item: UploadItem) =>
-    uploadQueueItem(item, publicBookingApi.uploadReferenceImage)
-
-  const onAfterRead = async (
-    serviceCode: string,
-    value: UploaderFileListItem | UploaderFileListItem[],
-  ) => {
-    const uploadTargets = (Array.isArray(value) ? value : [value]) as UploadItem[]
-    const draft = ensureDraft(serviceCode)
-    if (!draft.referenceFileList) {
-      draft.referenceFileList = []
-    }
-
-    uploading.value = true
-    try {
-      await Promise.all(
-        uploadTargets.map(async (item) => {
-          try {
-            await uploadSingle(item)
-          } catch (uploadError) {
-            item.status = 'failed'
-            item.message = resolvePublicErrorMessage(uploadError, '上传失败')
-            error.value = item.message
-          }
-        }),
-      )
-    } finally {
-      uploading.value = false
-    }
-  }
-
-  const retryUpload = async (item: UploadItem) => {
-    uploading.value = true
-    try {
-      await uploadSingle(item)
-    } catch (uploadError) {
-      item.status = 'failed'
-      item.message = resolvePublicErrorMessage(uploadError, '上传失败')
-      error.value = item.message
-    } finally {
-      uploading.value = false
-    }
-  }
-
   const resetFormAfterSuccess = () => {
     form.modelName = ''
     form.modelPhone = ''
     form.date = dayjs().format('YYYY-MM-DD')
     form.companions = ''
-    form.location = ''
+    form.location = '待商议'
     form.note = ''
     Object.assign(form.aiBrief, createAiBriefForm())
+    steps.locationMode.value = '待商议'
+    steps.locationText.value = ''
+    Object.keys(steps.preferenceSelections).forEach((key) => {
+      steps.preferenceSelections[key as keyof typeof steps.preferenceSelections] = []
+    })
 
     selectedServiceCodes.value.forEach((code) => {
       const draft = ensureDraft(code)
       draft.requirement = ''
-      draft.referenceFileList = []
     })
   }
 
   const buildAiBrief = (): PublicBookingAiBrief | undefined => {
-    const normalized = Object.entries(form.aiBrief).reduce<Record<string, string>>(
-      (result, [key, value]) => {
-        const trimmed = value.trim()
-        if (trimmed) result[key] = trimmed
-        return result
-      },
-      {},
-    )
+    const normalized = Object.entries({ ...form.aiBrief, ...steps.preferenceBrief.value }).reduce<
+      Record<string, string>
+    >((result, [key, value]) => {
+      const trimmed = value.trim()
+      if (trimmed) result[key] = trimmed
+      return result
+    }, {})
 
     return Object.keys(normalized).length ? (normalized as PublicBookingAiBrief) : undefined
   }
@@ -898,13 +850,13 @@ export function useModelBooking() {
     error.value = ''
     success.value = ''
 
-    if (uploading.value) {
-      error.value = '参考图仍在上传中，请稍候提交。'
+    if (!form.modelName.trim() || !form.modelPhone.trim() || !form.date || !form.location.trim()) {
+      error.value = '请先补全姓名、手机号、日期和地点。'
       return
     }
 
-    if (!form.modelName || !form.modelPhone || !form.date || !form.location) {
-      error.value = '请先补全姓名、手机号、日期和地点。'
+    if (!/^1[3-9]\d{9}$/.test(form.modelPhone.trim())) {
+      error.value = '请填写有效的 11 位手机号。'
       return
     }
 
@@ -943,6 +895,15 @@ export function useModelBooking() {
         return
       }
 
+      const availability = ensureAvailabilityState(serviceCode)
+      if (
+        availability.loading ||
+        availability.error ||
+        availability.lastKey !== `${serviceCode}-${draft.providerId}-${form.date}`
+      ) {
+        error.value = `${serviceLabel}的档期尚未加载成功，请重试。`
+        return
+      }
       const validEndSlots = getValidEndSlots(serviceCode, draft.startTime)
       if (!validEndSlots.length || !validEndSlots.includes(draft.endTime)) {
         error.value = `${serviceLabel}当前时间不在可约档期，请重新选择。`
@@ -960,9 +921,7 @@ export function useModelBooking() {
         startTime: draft.startTime,
         endTime: draft.endTime,
         requirement: draft.requirement.trim(),
-        referenceImages: draft.referenceFileList
-          .map((item) => item.uploadedUrl || item.url)
-          .filter(Boolean) as string[],
+        referenceImages: [],
         serviceRoleCodes: [selectedRoleCode],
       })
     }
@@ -970,8 +929,8 @@ export function useModelBooking() {
     submitting.value = true
     try {
       const result = await publicBookingApi.create({
-        modelName: form.modelName,
-        modelPhone: form.modelPhone,
+        modelName: form.modelName.trim(),
+        modelPhone: form.modelPhone.trim(),
         date: form.date,
         customerTypeCode: form.customerTypeCode,
         companions: form.companions,
@@ -996,24 +955,34 @@ export function useModelBooking() {
     }
   }
 
+  const steps = useBookingSteps({
+    form,
+    activeServices,
+    serviceDrafts,
+    availabilityByService,
+    error,
+  })
+
   return {
+    ...steps,
     router,
     form,
+    loadProvidersForService,
+    loadAvailability,
+    loadProviderAvailabilitySummary,
+    providerAvailabilityByService,
+    setDuration,
+    setStartTime,
+    customerTypes,
     selectedRoleCode,
     roleOptions,
     providersByService,
     loadingProvidersByService,
     availabilityByService,
     serviceDrafts,
-    selectedDateValues,
-    showDatePicker,
-    showCustomerTypePicker,
     showProviderPicker,
     showStartTimePicker,
-    showEndTimePicker,
-    showRolePicker,
     pickerServiceCode,
-    uploading,
     submitting,
     error,
     success,
@@ -1037,19 +1006,10 @@ export function useModelBooking() {
     selectedDraftRoleLabel,
     setDraftRoleCode,
     previewProviderPortfolio,
-    startColumns,
-    endColumns,
-    normalizeDate,
-    slotTagClass,
-    applyFreeRange,
     addServiceSlot,
     removeServiceSlot,
-    openDate,
     openProviderPicker,
     openStartTimePicker,
-    openEndTimePicker,
-    onAfterRead,
-    retryUpload,
     submit,
   }
 }

@@ -4,6 +4,13 @@ import ProviderPickerOption from '@/views/modelBooking/components/ProviderPicker
 import { useModelBookingContext } from '@/views/modelBooking/hooks/useModelBookingContext'
 
 const {
+  form,
+  selectedRoleCode,
+  roleOptions,
+  providerAvailabilityByService,
+  loadingProvidersByService,
+  loadProviderAvailabilitySummary,
+  loadProvidersForService,
   showProviderPicker,
   pickerServiceCode,
   providerKeywordInput,
@@ -37,7 +44,12 @@ const {
 
       <label class="provider-search">
         <i class="fa-solid fa-magnifying-glass" aria-hidden="true" />
-        <input v-model="providerKeywordInput" type="search" placeholder="搜索昵称 / 账号 / 简介" />
+        <input
+          v-model="providerKeywordInput"
+          type="search"
+          placeholder="搜索昵称 / 服务类型 / 简介"
+          aria-label="搜索服务者"
+        />
         <button
           v-if="providerKeywordInput"
           type="button"
@@ -49,7 +61,24 @@ const {
         </button>
       </label>
 
+      <div class="bk-choices provider-picker-filters">
+        <button
+          v-for="role in roleOptions"
+          :key="role.code"
+          type="button"
+          class="bk-chip"
+          :class="{ selected: selectedRoleCode === role.code }"
+          :aria-pressed="selectedRoleCode === role.code"
+          @click="selectedRoleCode = role.code"
+        >
+          {{ role.name }}
+        </button>
+      </div>
       <div class="provider-picker__list">
+        <p class="bk-hint">{{ form.date }} · 查看服务者当日空闲和已占用时间</p>
+        <p v-if="loadingProvidersByService[pickerServiceCode]" class="bk-hint" role="status">
+          正在加载服务者…
+        </p>
         <section v-if="recentProvidersOfPicker.length" class="provider-group">
           <header class="provider-group__header">
             <h3>最近选择</h3>
@@ -59,6 +88,9 @@ const {
             v-for="provider in recentProvidersOfPicker"
             :key="`recent-${provider.id}`"
             :provider="provider"
+            :date="form.date"
+            :availability-summary="providerAvailabilityByService[pickerServiceCode]?.[provider.id]"
+            @view="loadProviderAvailabilitySummary(pickerServiceCode, provider.id)"
             :selected="selectedProviderIdOfPicker === provider.id"
             :role-labels="providerRoleLabels(provider)"
             :availability-text="getProviderAvailabilityText(pickerServiceCode, provider.id)"
@@ -76,6 +108,9 @@ const {
             v-for="provider in commonProvidersOfPicker"
             :key="provider.id"
             :provider="provider"
+            :date="form.date"
+            :availability-summary="providerAvailabilityByService[pickerServiceCode]?.[provider.id]"
+            @view="loadProviderAvailabilitySummary(pickerServiceCode, provider.id)"
             :selected="selectedProviderIdOfPicker === provider.id"
             :role-labels="providerRoleLabels(provider)"
             :availability-text="getProviderAvailabilityText(pickerServiceCode, provider.id)"
@@ -87,15 +122,26 @@ const {
             v-if="!recentProvidersOfPicker.length && !commonProvidersOfPicker.length"
             class="provider-picker__empty"
           >
-            暂无匹配结果，试试其他关键词
+            暂无匹配结果，试试其他关键词或服务类型
           </p>
         </section>
+        <button type="button" class="bk-link" @click="loadProvidersForService(pickerServiceCode)">
+          重新加载服务者
+        </button>
       </div>
     </section>
   </Popup>
 </template>
 
 <style scoped>
+.provider-picker-filters {
+  padding: 0 14px 12px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.provider-picker-filters .bk-chip {
+  flex-shrink: 0;
+}
 .provider-picker {
   max-height: 82vh;
   overflow: hidden;
@@ -177,7 +223,7 @@ const {
 }
 
 .provider-picker__list {
-  max-height: calc(82vh - 115px);
+  max-height: calc(82vh - 180px);
   overflow-y: auto;
   padding: 0 14px calc(16px + env(safe-area-inset-bottom));
 }

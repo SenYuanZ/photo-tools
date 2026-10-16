@@ -93,15 +93,15 @@ const aiBriefItems = computed(() => {
   const brief = rawBrief as PublicBookingAiBrief
   return [
     { label: '拍摄类型', value: brief.themeType ? aiBriefThemeLabels[brief.themeType] : '' },
-    { label: '作品 / 角色 / 风格', value: brief.workName || '' },
+    { label: '作品风格', value: brief.workName || '' },
     { label: '角色名称', value: brief.characterName || '' },
-    { label: '角色气质 / 设定', value: brief.characterSetting || '' },
-    { label: '服装 / 妆容 / 发型 / 道具', value: brief.outfit || '' },
-    { label: '妆容与发型', value: brief.makeupHair || '' },
-    { label: '道具 / 必留元素', value: brief.props || '' },
-    { label: '画面与动作重点', value: brief.visualGoal || '' },
+    { label: '角色设定', value: brief.characterSetting || '' },
+    { label: '服装妆造', value: brief.outfit || '' },
+    { label: '妆容发型', value: brief.makeupHair || '' },
+    { label: '必留元素', value: brief.props || '' },
+    { label: '画面重点', value: brief.visualGoal || '' },
     { label: '动作偏好', value: brief.posePreference || '' },
-    { label: '禁忌 / 不希望出现', value: brief.avoid || '' },
+    { label: '避免事项', value: brief.avoid || '' },
   ].filter((item) => item.value.trim())
 })
 
@@ -128,6 +128,11 @@ const hasSavedAiPlan = computed(() => {
 })
 
 const customerTagItems = computed(() => customer.value?.tags || [])
+const sourceLabel = computed(() =>
+  schedule.value?.bookingGroupId || schedule.value?.serviceMeta?.source === 'public-model-booking'
+    ? '自助预约'
+    : '手动排单',
+)
 
 const hasReferenceImages = computed(
   () => isEditing.value || Boolean(schedule.value?.referenceImages?.length),
@@ -143,15 +148,12 @@ const statusLabel = computed(() => {
 })
 
 const scheduleDate = computed(() => dayjs(schedule.value?.date))
-const dateDay = computed(() => scheduleDate.value.format('DD'))
 const weekdayLabels = ['日', '一', '二', '三', '四', '五', '六']
-const dateCaption = computed(
-  () => `${scheduleDate.value.month() + 1}月 · 周${weekdayLabels[scheduleDate.value.day()]}`,
-)
-const fullDate = computed(
+const dateLabel = computed(
   () =>
-    `${scheduleDate.value.year()}年${scheduleDate.value.month() + 1}月${scheduleDate.value.date()}日`,
+    `${scheduleDate.value.month() + 1}月${scheduleDate.value.date()}日 · 周${weekdayLabels[scheduleDate.value.day()]}`,
 )
+const fullDate = computed(() => scheduleDate.value.format('YYYY年M月D日'))
 const timeRange = computed(
   () => `${schedule.value?.startTime || '--:--'}–${schedule.value?.endTime || '--:--'}`,
 )
@@ -163,26 +165,9 @@ const durationText = computed(() => {
   const hours = Math.floor(minutes / 60)
   const restMinutes = minutes % 60
   if (!minutes) return '时长待定'
-  if (!hours) return `预计 ${restMinutes} 分钟`
-  return `预计 ${hours} 小时${restMinutes ? ` ${restMinutes} 分钟` : ''}`
+  if (!hours) return `${restMinutes} 分钟`
+  return `${hours} 小时${restMinutes ? ` ${restMinutes} 分钟` : ''}`
 })
-const proximityText = computed(() => {
-  if (!schedule.value) return ''
-  if (isStored.value) return '订单暂存中'
-  if (isCompleted.value) return '拍摄已完成'
-
-  const start = dayjs(`${schedule.value.date} ${schedule.value.startTime}`)
-  const end = dayjs(`${schedule.value.date} ${schedule.value.endTime}`)
-  const now = dayjs()
-  if (now.isAfter(end)) return '拍摄已结束'
-  if (now.isAfter(start)) return '拍摄进行中'
-
-  const minutes = start.diff(now, 'minute')
-  if (minutes < 60) return `距离开始 ${Math.max(1, minutes)} 分钟`
-  if (minutes < 24 * 60) return `距离开始 ${Math.ceil(minutes / 60)} 小时`
-  return `距离开始 ${Math.ceil(minutes / (24 * 60))} 天`
-})
-
 const serviceTypeLabel = computed(() =>
   schedule.value ? catalogStore.getServiceTypeName(schedule.value.serviceTypeCode) : '',
 )
@@ -194,27 +179,24 @@ const paymentLabel = computed(() => {
   return `${depositStatusText[schedule.value.depositStatus]} · ¥${schedule.value.amount}`
 })
 const shootingNeedItems = computed(() => [...aiBriefItems.value, ...customerNeedItems.value])
-const reminderSummary = computed(() => {
-  if (!schedule.value?.reminders.length) return '未设置'
-  return schedule.value.reminders
-    .map((item) => (item === '1d' ? '提前 1 天' : '提前 1 小时'))
-    .join('、')
-})
+const reminderLabels = computed(() =>
+  (schedule.value?.reminders || []).map((item) => (item === '1d' ? '提前1天' : '提前1小时')),
+)
 const visibleReferenceImages = computed(() =>
   isEditing.value ? getReferenceUrls() : schedule.value?.referenceImages || [],
 )
 
 const primaryAction = computed(() => {
   if (isEditing.value) {
-    return { label: '保存修改', icon: 'fa-solid fa-floppy-disk', disabled: false }
+    return { label: '保存修改', disabled: false }
   }
   if (isStored.value) {
-    return { label: '恢复排单', icon: 'fa-solid fa-calendar-check', disabled: false }
+    return { label: '恢复排单', disabled: false }
   }
   if (isCompleted.value) {
-    return { label: '订单已完成', icon: 'fa-solid fa-circle-check', disabled: true }
+    return { label: '订单已完成', disabled: true }
   }
-  return { label: '完成订单', icon: 'fa-solid fa-flag-checkered', disabled: false }
+  return { label: '完成订单', disabled: false }
 })
 
 const handlePrimaryAction = () => {
@@ -241,11 +223,10 @@ const handleRemove = () => {
 </script>
 
 <template>
-  <section v-if="schedule && customer" class="schedule-detail-page bounce-in">
+  <section v-if="schedule && customer" class="schedule-detail-page">
     <header class="detail-header">
       <button type="button" class="header-button" aria-label="返回" @click="router.back()">
         <i class="fa-solid fa-chevron-left" aria-hidden="true" />
-        返回
       </button>
       <h1>排单详情</h1>
       <button
@@ -258,28 +239,14 @@ const handleRemove = () => {
     </header>
 
     <div class="detail-content">
-      <DetailCustomerSummary
-        :customer-name="customer.name"
-        :phone="customer.phone"
-        :customer-type="catalogStore.getCustomerTypeName(customer.type)"
-        :tags="customerTagItems"
-        :status-label="statusLabel"
-        @copy-phone="copyPhone"
-      />
-
       <DetailScheduleOverview
         v-if="!isEditing"
-        :date-day="dateDay"
-        :date-caption="dateCaption"
+        :date-label="dateLabel"
         :full-date="fullDate"
         :time-range="timeRange"
         :duration-text="durationText"
-        :proximity-text="proximityText"
+        :status-label="statusLabel"
         :location="schedule.location"
-        :service-type="serviceTypeLabel"
-        :role-labels="roleLabels"
-        :payment-label="paymentLabel"
-        :tail-payment-date="customer.tailPaymentDate"
         @navigate="navigateToMap"
       />
 
@@ -311,79 +278,60 @@ const handleRemove = () => {
         </CellGroup>
       </article>
 
-      <article class="surface needs-card" aria-labelledby="detail-needs-heading">
-        <div class="section-heading">
-          <h2 id="detail-needs-heading" class="section-title">
-            <i class="fa-solid fa-clipboard-list" aria-hidden="true" />
-            拍摄需求
-          </h2>
-          <span class="section-note">{{
-            isEditing ? '编辑现场备注' : `${shootingNeedItems.length} 项`
-          }}</span>
-        </div>
-        <textarea
-          v-if="isEditing"
-          v-model="editForm.note"
-          class="textarea"
-          rows="4"
-          placeholder="补充客户现场要求"
+      <div class="information-surface">
+        <DetailCustomerSummary
+          :customer-name="customer.name"
+          :phone="customer.phone"
+          :customer-type="catalogStore.getCustomerTypeName(customer.type)"
+          :tags="customerTagItems"
+          :source-label="sourceLabel"
+          :service-type="serviceTypeLabel"
+          :role-labels="roleLabels"
+          @copy-phone="copyPhone"
         />
-        <dl v-else-if="hasShootingNeeds" class="needs-list">
-          <div v-for="item in shootingNeedItems" :key="item.label" class="need-row">
-            <dt>{{ item.label }}</dt>
-            <dd>{{ item.value }}</dd>
+        <section class="needs-section" aria-labelledby="detail-needs-heading">
+          <div class="section-heading">
+            <h2 id="detail-needs-heading" class="section-title">拍摄需求</h2>
+            <span v-if="isEditing" class="section-note">编辑现场备注</span>
           </div>
-        </dl>
-        <p v-else class="empty-copy">暂无补充需求</p>
-      </article>
+          <textarea
+            v-if="isEditing"
+            v-model="editForm.note"
+            class="textarea"
+            rows="4"
+            placeholder="补充客户现场要求"
+          />
+          <dl v-else-if="hasShootingNeeds" class="needs-list">
+            <div v-for="item in shootingNeedItems" :key="item.label" class="need-row">
+              <dt>
+                <span class="detail-tag">{{ item.label }}</span>
+              </dt>
+              <dd>
+                <span :class="{ 'detail-tag': item.label === '陪同人员' }">{{ item.value }}</span>
+              </dd>
+            </div>
+          </dl>
+          <p v-else class="empty-copy">暂无补充需求</p>
+        </section>
+      </div>
 
       <button type="button" class="ai-panel" @click="openAssistant">
-        <span class="ai-panel__icon">
-          <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />
-        </span>
-        <span class="ai-panel__copy">
-          <strong>AI 拍摄助手</strong>
-          <span>{{ hasSavedAiPlan ? '已有拍摄方案，可直接查看' : '生成现场拍摄建议' }}</span>
-        </span>
-        <span class="ai-panel__action">
-          {{ hasSavedAiPlan ? '查看' : '生成' }}
-          <i class="fa-solid fa-chevron-right" aria-hidden="true" />
-        </span>
+        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true" />
+        <span>{{ hasSavedAiPlan ? '查看 AI 拍摄方案' : '生成 AI 拍摄方案' }}</span>
+        <i class="fa-solid fa-chevron-right ai-panel__arrow" aria-hidden="true" />
       </button>
 
       <section class="secondary-list" aria-label="其他排单信息">
-        <DetailAccordionRow icon="fa-regular fa-bell" title="提醒设置" :summary="reminderSummary">
-          <div class="reminder-options">
-            <button
-              type="button"
-              :class="{ 'is-active': schedule.reminders.includes('1d') }"
-              @click="toggleReminder('1d')"
-            >
-              <i
-                :class="
-                  schedule.reminders.includes('1d') ? 'fa-solid fa-check' : 'fa-solid fa-plus'
-                "
-                aria-hidden="true"
-              />
-              提前 1 天
-            </button>
-            <button
-              type="button"
-              :class="{ 'is-active': schedule.reminders.includes('1h') }"
-              @click="toggleReminder('1h')"
-            >
-              <i
-                :class="
-                  schedule.reminders.includes('1h') ? 'fa-solid fa-check' : 'fa-solid fa-plus'
-                "
-                aria-hidden="true"
-              />
-              提前 1 小时
-            </button>
-          </div>
-        </DetailAccordionRow>
-
-        <DetailAccordionRow icon="fa-solid fa-wallet" title="收款详情" :summary="paymentLabel">
+        <DetailAccordionRow title="收款详情" :summary="paymentLabel">
+          <template #summary>
+            <span class="detail-tag detail-tag--status">{{
+              depositStatusText[schedule.depositStatus]
+            }}</span>
+            <span class="payment-amount">¥{{ schedule.amount }}</span>
+          </template>
+          <p v-if="customer.tailPaymentDate" class="tail-payment">
+            尾款日期：{{ customer.tailPaymentDate }}
+          </p>
           <div class="payment-options" role="group" aria-label="收款状态">
             <button
               type="button"
@@ -420,12 +368,49 @@ const handleRemove = () => {
           </Button>
         </DetailAccordionRow>
 
+        <DetailAccordionRow title="提醒设置">
+          <template #summary>
+            <span v-for="label in reminderLabels" :key="label" class="detail-tag">{{ label }}</span>
+            <span v-if="!reminderLabels.length">未设置</span>
+          </template>
+          <div class="reminder-options">
+            <button
+              type="button"
+              :class="{ 'is-active': schedule.reminders.includes('1d') }"
+              @click="toggleReminder('1d')"
+            >
+              <i
+                :class="
+                  schedule.reminders.includes('1d') ? 'fa-solid fa-check' : 'fa-solid fa-plus'
+                "
+                aria-hidden="true"
+              />
+              提前 1 天
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-active': schedule.reminders.includes('1h') }"
+              @click="toggleReminder('1h')"
+            >
+              <i
+                :class="
+                  schedule.reminders.includes('1h') ? 'fa-solid fa-check' : 'fa-solid fa-plus'
+                "
+                aria-hidden="true"
+              />
+              提前 1 小时
+            </button>
+          </div>
+        </DetailAccordionRow>
+
         <DetailAccordionRow
           v-if="hasReferenceImages"
-          icon="fa-regular fa-image"
           title="参考图"
           :summary="`${visibleReferenceImages.length} 张`"
         >
+          <template #summary>
+            <span class="detail-tag">{{ visibleReferenceImages.length }} 张</span>
+          </template>
           <div v-if="isEditing" class="reference-uploader">
             <Uploader
               v-model="referenceFileList"
@@ -471,6 +456,25 @@ const handleRemove = () => {
             </button>
           </div>
         </DetailAccordionRow>
+        <DetailAccordionRow title="预约信息" :summary="sourceLabel">
+          <template #summary
+            ><span class="detail-tag detail-tag--accent">{{ sourceLabel }}</span></template
+          >
+          <dl class="booking-fields">
+            <div>
+              <dt>预约来源</dt>
+              <dd>{{ sourceLabel }}</dd>
+            </div>
+            <div>
+              <dt>拍摄日期</dt>
+              <dd>{{ fullDate }}</dd>
+            </div>
+            <div v-if="schedule.bookingGroupId">
+              <dt>预约单号</dt>
+              <dd>{{ schedule.bookingGroupId }}</dd>
+            </div>
+          </dl>
+        </DetailAccordionRow>
       </section>
 
       <p v-if="feedback" class="feedback" role="status">{{ feedback }}</p>
@@ -478,7 +482,6 @@ const handleRemove = () => {
 
     <DetailActionDock
       :primary-label="primaryAction.label"
-      :primary-icon="primaryAction.icon"
       :primary-disabled="primaryAction.disabled"
       :show-more="!isEditing"
       @primary="handlePrimaryAction"
@@ -687,197 +690,197 @@ const handleRemove = () => {
 
 <style scoped>
 .schedule-detail-page {
-  padding-bottom: 74px;
+  --detail-accent-text: color-mix(in srgb, var(--theme-accent-strong) 62%, var(--ink));
+  padding-bottom: 90px;
+  background: var(--bg-grad-a);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
 }
-
 .detail-header {
   display: grid;
-  min-height: 44px;
-  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  min-height: 60px;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
   align-items: center;
-  margin-bottom: 12px;
+  margin: -16px -16px 16px;
+  padding: 0 16px;
+  background: var(--theme-surface);
 }
-
 .detail-header h1 {
   margin: 0;
   color: var(--ink);
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: 17px;
+  font-weight: 600;
   text-align: center;
 }
-
 .header-button {
   display: inline-flex;
+  min-width: 44px;
   min-height: 44px;
   align-items: center;
-  gap: 6px;
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--ink);
+  font-size: 14px;
 }
-
 .header-button--edit {
   justify-content: flex-end;
-  color: var(--theme-accent-strong);
+  color: var(--detail-accent-text);
 }
-
 .detail-content {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
-
-.surface,
+.information-surface,
 .secondary-list {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  min-width: 0;
+  border-radius: 18px;
+  padding: 0 20px;
   background: var(--theme-surface);
-  box-shadow: 0 8px 20px rgba(var(--theme-accent-rgb), 0.1);
 }
-
-.edit-schedule,
-.needs-card {
-  padding: 14px;
+.needs-section {
+  border-top: 1px solid var(--line);
+  padding: 22px 0;
 }
-
+.surface {
+  border: 1px solid var(--theme-accent-soft);
+  border-radius: 20px;
+  background: var(--theme-surface);
+}
+.edit-schedule {
+  padding: 20px;
+}
+.edit-schedule :deep(.van-cell-group) {
+  box-shadow: none;
+}
 .section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
-
 .section-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
   margin: 0;
   color: var(--ink);
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 700;
 }
-
-.section-title i {
-  color: var(--theme-accent-strong);
-}
-
 .section-note {
-  color: var(--theme-muted-soft);
-  font-size: 10px;
-  font-weight: 600;
+  color: var(--theme-muted);
+  font-size: 12px;
 }
-
 .needs-list {
-  display: grid;
-  gap: 0;
   margin: 0;
 }
-
 .need-row {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
-  gap: 10px;
-  border-top: 1px solid var(--line);
-  padding: 9px 0;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
 }
-
-.need-row:first-child {
-  border-top: 0;
-  padding-top: 0;
+.need-row + .need-row {
+  margin-top: 14px;
 }
-
-.need-row:last-child {
-  padding-bottom: 0;
-}
-
 .need-row dt {
-  color: var(--theme-muted-soft);
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--theme-muted);
+  font-size: 14px;
 }
-
+.need-row dt .detail-tag {
+  padding: 2px 6px;
+}
 .need-row dd {
   min-width: 0;
   margin: 0;
+  padding-top: 1px;
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.detail-tag {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: var(--theme-accent-bg);
+  color: var(--theme-muted);
+  font-size: 13px;
+  line-height: 1.6;
   overflow-wrap: anywhere;
 }
-
+.detail-tag--accent {
+  background: var(--theme-accent-soft);
+  color: var(--detail-accent-text);
+}
+.detail-tag--status {
+  background: var(--theme-status-soft);
+  color: var(--theme-status);
+}
 .empty-copy {
   margin: 0;
-  color: var(--theme-muted-soft);
-  font-size: 12px;
+  color: var(--theme-muted);
+  font-size: 14px;
 }
-
 .ai-panel {
-  display: grid;
+  display: flex;
   width: 100%;
-  min-height: 70px;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  min-height: 60px;
   align-items: center;
-  gap: 11px;
-  border: 1px solid var(--theme-accent-soft);
+  gap: 12px;
+  border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 13px;
+  padding: 17px 20px;
   background: var(--theme-accent-bg);
-  color: inherit;
+  color: var(--detail-accent-text);
   text-align: left;
 }
-
-.ai-panel__icon {
-  display: inline-flex;
-  width: 42px;
-  height: 42px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--theme-surface);
-  color: var(--theme-accent-strong);
-  box-shadow: 0 6px 14px var(--theme-shadow);
-}
-
-.ai-panel__copy {
+.ai-panel > span {
   min-width: 0;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
 }
-
-.ai-panel__copy strong,
-.ai-panel__copy > span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.ai-panel__arrow {
+  font-size: 12px;
 }
-
-.ai-panel__copy strong {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
+.secondary-list {
+  margin-top: 4px;
 }
-
-.ai-panel__copy > span {
-  margin-top: 3px;
+.payment-amount {
+  font-variant-numeric: tabular-nums;
+}
+.tail-payment {
+  margin: 0 0 12px;
+}
+.booking-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.booking-fields > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+}
+.booking-fields dt {
   color: var(--theme-muted);
-  font-size: 10px;
 }
-
-.ai-panel__action {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 5px;
-  color: var(--theme-accent-strong);
-  font-size: 11px;
-  font-weight: 700;
+.booking-fields dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
-
+.schedule-detail-page :deep(button:focus-visible),
+.schedule-detail-page :deep(a:focus-visible),
+.schedule-detail-page :deep(summary:focus-visible) {
+  outline: 3px solid var(--theme-accent-strong);
+  outline-offset: 3px;
+}
 .reminder-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1276,14 +1279,31 @@ const handleRemove = () => {
   font-size: 13px;
 }
 
+@media (min-width: 640px) {
+  .detail-header {
+    margin-right: -20px;
+    margin-left: -20px;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+}
 @media (max-width: 350px) {
   .schedule-detail-page {
-    margin-right: -6px;
-    margin-left: -6px;
+    margin-right: -4px;
+    margin-left: -4px;
   }
-
+  .detail-header {
+    margin-right: -12px;
+    margin-left: -12px;
+  }
+  .information-surface,
+  .secondary-list {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
   .need-row {
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
   }
 
   .ai-actions {

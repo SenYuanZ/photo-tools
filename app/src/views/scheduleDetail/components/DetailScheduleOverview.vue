@@ -1,261 +1,147 @@
 <script setup lang="ts">
 defineProps<{
-  dateDay: string
-  dateCaption: string
+  dateLabel: string
   fullDate: string
   timeRange: string
   durationText: string
-  proximityText: string
+  statusLabel: string
   location: string
-  serviceType: string
-  roleLabels: string[]
-  paymentLabel: string
-  tailPaymentDate?: string | null
 }>()
 
-const emit = defineEmits<{
-  navigate: []
-}>()
+const emit = defineEmits<{ navigate: [] }>()
 </script>
 
 <template>
   <article class="schedule-focus" aria-labelledby="detail-schedule-heading">
-    <div class="section-heading">
-      <h2 id="detail-schedule-heading" class="section-title">
-        <i class="fa-regular fa-calendar" aria-hidden="true" />
-        拍摄安排
-      </h2>
-      <span class="section-note">{{ proximityText }}</span>
+    <div class="schedule-heading">
+      <h2 id="detail-schedule-heading">拍摄安排</h2>
+      <span class="schedule-status">{{ statusLabel }}</span>
     </div>
-
-    <div class="schedule-time">
-      <div class="date-block">
-        <strong>{{ dateDay }}</strong>
-        <span>{{ dateCaption }}</span>
-      </div>
-      <div class="time-copy">
-        <span>{{ fullDate }}</span>
-        <strong>{{ timeRange }}</strong>
-        <p>{{ durationText }}</p>
-      </div>
+    <div class="schedule-date" :title="fullDate">
+      <p>{{ dateLabel }}</p>
+      <span class="duration">{{ durationText }}</span>
     </div>
-
-    <div class="location-row">
-      <span class="location-icon">
-        <i class="fa-solid fa-location-dot" aria-hidden="true" />
-      </span>
-      <div class="location-copy">
-        <span>拍摄地点</span>
-        <strong>{{ location || '待补充地点' }}</strong>
-      </div>
-      <button type="button" class="text-button" :disabled="!location" @click="emit('navigate')">
-        <i class="fa-solid fa-location-arrow" aria-hidden="true" />
-        导航
+    <p class="schedule-time">{{ timeRange }}</p>
+    <div class="schedule-location">
+      <p>{{ location || '待补充地点' }}</p>
+      <button type="button" :disabled="!location" @click="emit('navigate')">
+        导航 <i class="fa-solid fa-chevron-right" aria-hidden="true" />
       </button>
-    </div>
-
-    <div class="schedule-meta" aria-label="服务与收款摘要">
-      <span><i class="fa-solid fa-camera" aria-hidden="true" />{{ serviceType }}</span>
-      <span v-for="role in roleLabels" :key="role">
-        <i class="fa-solid fa-user-tag" aria-hidden="true" />{{ role }}
-      </span>
-      <span class="payment-status">
-        <i class="fa-solid fa-wallet" aria-hidden="true" />{{ paymentLabel }}
-      </span>
-      <span v-if="tailPaymentDate">尾款 {{ tailPaymentDate }}</span>
     </div>
   </article>
 </template>
 
 <style scoped>
 .schedule-focus {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px;
-  background: var(--theme-surface);
-  box-shadow: 0 8px 20px rgba(var(--theme-accent-rgb), 0.1);
+  border: 1px solid var(--theme-accent-soft);
+  border-radius: 20px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--theme-accent-soft) 68%, var(--theme-accent-bg));
 }
-
-.section-heading {
+.schedule-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
 }
-
-.section-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+.schedule-heading h2 {
   margin: 0;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 500;
 }
-
-.section-title i {
-  color: var(--theme-accent-strong);
-}
-
-.section-note {
-  color: var(--theme-muted-soft);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.schedule-time {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  align-items: stretch;
-  gap: 13px;
-}
-
-.date-block {
-  display: flex;
-  min-height: 82px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--theme-accent-bg);
-  color: var(--theme-accent-strong);
-}
-
-.date-block strong {
-  font-size: 29px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.date-block span {
-  margin-top: 5px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.time-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.time-copy > span {
-  color: var(--theme-muted-soft);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.time-copy strong {
-  overflow-wrap: anywhere;
-  margin-top: 4px;
-  color: var(--ink);
-  font-size: 22px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.time-copy p {
-  margin: 5px 0 0;
-  color: var(--theme-muted);
-  font-size: 11px;
-}
-
-.location-row {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  margin-top: 13px;
-  border-top: 1px solid var(--line);
-  padding-top: 13px;
-}
-
-.location-icon {
+.schedule-status {
   display: inline-flex;
-  width: 34px;
-  height: 34px;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: var(--theme-accent-bg);
-  color: var(--theme-accent-strong);
-}
-
-.location-copy {
-  min-width: 0;
-}
-
-.location-copy span {
-  color: var(--theme-muted-soft);
-  font-size: 10px;
-}
-
-.location-copy strong {
-  display: block;
-  overflow: hidden;
-  margin-top: 2px;
-  color: var(--ink);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.text-button {
-  display: inline-flex;
-  min-width: 62px;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
+  gap: 6px;
   border: 1px solid var(--theme-accent-soft);
-  border-radius: 10px;
-  padding: 0 10px;
+  border-radius: 999px;
+  padding: 4px 10px;
   background: var(--theme-accent-bg);
-  color: var(--theme-accent-strong);
-  font-size: 11px;
-  font-weight: 700;
+  color: var(--detail-accent-text);
+  font-size: 12px;
 }
-
-.text-button:disabled {
-  opacity: 0.48;
+.schedule-status::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--theme-accent-strong);
+  content: '';
 }
-
-.schedule-meta {
+.schedule-date {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.schedule-meta span {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border: 1px solid var(--line);
+  gap: 10px;
+  margin-top: 22px;
+}
+.schedule-date p {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 500;
+}
+.duration {
   border-radius: 999px;
-  padding: 4px 8px;
-  color: var(--theme-muted);
-  font-size: 10px;
+  padding: 2px 9px;
+  background: var(--theme-accent-bg);
+  color: var(--detail-accent-text);
+  font-size: 13px;
+}
+.schedule-time {
+  margin: 2px 0 22px;
+  color: var(--detail-accent-text);
+  font-size: clamp(29px, 8vw, 38px);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
+  letter-spacing: -1.3px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
-
-.schedule-meta .payment-status {
-  border-color: var(--theme-status-border);
-  background: var(--theme-status-soft);
-  color: var(--theme-status);
+.schedule-location {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--theme-accent) 40%, var(--line));
+  padding-top: 18px;
 }
-
+.schedule-location p {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.schedule-location button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--detail-accent-text);
+  font-size: 14px;
+}
+.schedule-location button i {
+  font-size: 11px;
+}
+.schedule-location button:disabled {
+  opacity: 0.48;
+}
 @media (max-width: 350px) {
-  .schedule-time {
-    grid-template-columns: 64px minmax(0, 1fr);
+  .schedule-focus {
+    padding: 20px;
   }
-
-  .time-copy strong {
-    font-size: 19px;
+  .schedule-date {
+    gap: 7px;
+  }
+  .schedule-date p {
+    font-size: 17px;
   }
 }
 </style>

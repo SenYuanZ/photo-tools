@@ -1,107 +1,38 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button } from 'vant'
 import { useModelBookingContext } from '@/views/modelBooking/hooks/useModelBookingContext'
-
-const { activeServices, serviceDrafts, selectedDraftRoleLabel, submitting, submit } =
+import { durationLabel } from '@/views/modelBooking/utils/availability'
+const { form, step, activeServices, serviceDrafts, submitting, navigateStep, submit } =
   useModelBookingContext()
-
-const serviceCountLabel = computed(() => `${activeServices.value.length} 位服务者`)
-
-const primaryServiceSummary = computed(() => {
-  const service = activeServices.value[0]
-  if (!service) return '等待添加服务安排'
-
-  const draft = serviceDrafts[service.code]
-  const role = selectedDraftRoleLabel(service.code) || '待选择服务者'
-  if (!draft?.startTime || !draft?.endTime) return role
-  return `${role} · ${draft.startTime}–${draft.endTime}`
-})
+const caption = computed(() =>
+  step.value === 0
+    ? `已选日期 ${form.date}`
+    : step.value === 2
+      ? '全部选填，可直接进入下一步'
+      : `${activeServices.value.length} 位服务者 · 服务总时长 ${durationLabel(activeServices.value.reduce((total, item) => total + serviceDrafts[item.code].durationMinutes, 0))}`,
+)
+const labels = ['下一步 · 约服务', '下一步 · 拍摄偏好', '下一步 · 联系确认', '完成预约']
 </script>
-
 <template>
-  <aside class="booking-submit-dock" aria-label="提交预约">
-    <div class="booking-submit-dock__summary">
-      <strong>{{ serviceCountLabel }}</strong>
-      <span>{{ primaryServiceSummary }}</span>
+  <footer class="bk-dock" aria-label="预约操作">
+    <p class="bk-dock-caption">{{ caption }}</p>
+    <div class="bk-actions">
+      <button
+        v-if="step > 0"
+        type="button"
+        class="bk-secondary"
+        :disabled="submitting"
+        @click="navigateStep(step - 1)"
+      >
+        上一步</button
+      ><button
+        type="button"
+        class="bk-primary"
+        :disabled="submitting"
+        @click="step === 3 ? submit() : navigateStep(step + 1)"
+      >
+        {{ submitting ? '提交中…' : labels[step] }}
+      </button>
     </div>
-    <Button
-      class="booking-submit-dock__button"
-      type="primary"
-      :loading="submitting"
-      loading-text="提交中"
-      @click="submit"
-    >
-      <i class="fa-solid fa-paper-plane" aria-hidden="true" />
-      提交预约
-    </Button>
-  </aside>
+  </footer>
 </template>
-
-<style scoped>
-.booking-submit-dock {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 30;
-  display: grid;
-  width: min(760px, 100%);
-  grid-template-columns: minmax(0, 1fr) minmax(154px, 260px);
-  align-items: center;
-  gap: 12px;
-  margin: 0 auto;
-  border-top: 1px solid var(--theme-form-border);
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--theme-surface) 95%, transparent);
-  backdrop-filter: blur(14px);
-}
-
-.booking-submit-dock__summary {
-  min-width: 0;
-}
-
-.booking-submit-dock__summary strong,
-.booking-submit-dock__summary span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.booking-submit-dock__summary strong {
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.booking-submit-dock__summary span {
-  margin-top: 2px;
-  color: var(--theme-muted-soft);
-  font-size: 10px;
-}
-
-.booking-submit-dock__button {
-  width: 100%;
-  min-height: 46px;
-  border-radius: 11px;
-  font-size: 13px;
-}
-
-.booking-submit-dock__button :deep(.van-button__content) {
-  gap: 7px;
-}
-
-@media (max-width: 359px) {
-  .booking-submit-dock {
-    grid-template-columns: minmax(0, 1fr) 144px;
-    gap: 8px;
-    padding-right: 10px;
-    padding-left: 10px;
-  }
-
-  .booking-submit-dock__summary span {
-    max-width: 130px;
-  }
-}
-</style>

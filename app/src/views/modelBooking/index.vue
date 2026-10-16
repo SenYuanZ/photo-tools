@@ -1,189 +1,67 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { DatePicker, Picker, Popup } from 'vant'
 import BookingBasicSection from '@/views/modelBooking/components/BookingBasicSection.vue'
 import BookingPageHeader from '@/views/modelBooking/components/BookingPageHeader.vue'
 import BookingPreferencesSection from '@/views/modelBooking/components/BookingPreferencesSection.vue'
 import BookingServiceList from '@/views/modelBooking/components/BookingServiceList.vue'
 import BookingSubmitDock from '@/views/modelBooking/components/BookingSubmitDock.vue'
+import BookingConfirmation from '@/views/modelBooking/components/BookingConfirmation.vue'
+import BookingTimePicker from '@/views/modelBooking/components/BookingTimePicker.vue'
 import ProviderPicker from '@/views/modelBooking/components/ProviderPicker.vue'
 import { useModelBooking } from '@/views/modelBooking/hooks/useModelBooking'
 import { provideModelBooking } from '@/views/modelBooking/hooks/useModelBookingContext'
-
-type PickerValue = string | number
-
-interface PickerConfirmPayload {
-  selectedValues: PickerValue[]
-  selectedOptions: Array<{ value?: PickerValue } | undefined>
-}
-
 const booking = useModelBooking()
 provideModelBooking(booking)
-
-const {
-  router,
-  form,
-  selectedRoleCode,
-  roleOptions,
-  serviceDrafts,
-  selectedDateValues,
-  showDatePicker,
-  showCustomerTypePicker,
-  showStartTimePicker,
-  showEndTimePicker,
-  showRolePicker,
-  pickerServiceCode,
-  error,
-  success,
-  customerTypeColumns,
-  startColumns,
-  endColumns,
-  normalizeDate,
-  submit,
-} = booking
-
-const bookingDateLabel = computed(() => {
-  const [year, month, day] = form.date.split('-')
-  if (!year || !month || !day) return form.date
-  return `${year}年${Number(month)}月${Number(day)}日`
-})
-
-const confirmDate = ({ selectedValues }: PickerConfirmPayload) => {
-  form.date = normalizeDate(selectedValues.map(String))
-  showDatePicker.value = false
-}
-
-const confirmCustomerType = ({ selectedOptions }: PickerConfirmPayload) => {
-  const value = selectedOptions[0]?.value
-  if (value !== undefined) form.customerTypeCode = String(value)
-  showCustomerTypePicker.value = false
-}
-
-const confirmRole = ({ selectedOptions }: PickerConfirmPayload) => {
-  const value = selectedOptions[0]?.value
-  if (value !== undefined) selectedRoleCode.value = String(value)
-  showRolePicker.value = false
-}
-
-const confirmStartTime = ({ selectedOptions }: PickerConfirmPayload) => {
-  const value = selectedOptions[0]?.value
-  if (value !== undefined) serviceDrafts[pickerServiceCode.value].startTime = String(value)
-  showStartTimePicker.value = false
-}
-
-const confirmEndTime = ({ selectedOptions }: PickerConfirmPayload) => {
-  const value = selectedOptions[0]?.value
-  if (value !== undefined) serviceDrafts[pickerServiceCode.value].endTime = String(value)
-  showEndTimePicker.value = false
-}
+const { router, form, step, error, success, navigateStep, submit } = booking
+const steps = [
+  { label: '拍什么', title: '这次想拍什么？', description: '选好类型和日期，我们开始安排。' },
+  {
+    label: '约服务',
+    title: '和谁一起完成？',
+    description: '选服务者和时长，自动安排最早可约时间。',
+  },
+  { label: '拍摄偏好', title: '拍出你喜欢的感觉', description: '点选偏好就好，有特别想法再补充。' },
+  {
+    label: '联系确认',
+    title: '最后，留个联系方式',
+    description: '核对一下安排，就可以完成预约了。',
+  },
+]
 </script>
-
 <template>
   <section class="model-booking-page">
     <BookingPageHeader
-      :date-label="bookingDateLabel"
+      :date-label="form.date"
       @open-order-query="router.push({ name: 'order-query' })"
       @open-provider-login="router.push({ name: 'login' })"
     />
-
-    <form class="booking-paper" @submit.prevent="submit">
-      <BookingBasicSection />
-      <BookingPreferencesSection />
-      <BookingServiceList />
+    <nav class="bk-progress" aria-label="预约步骤">
+      <button
+        v-for="(item, index) in steps"
+        :key="item.label"
+        type="button"
+        :class="{ active: step === index, done: step > index }"
+        :aria-current="step === index ? 'step' : undefined"
+        @click="navigateStep(index)"
+      >
+        <b>{{ index + 1 }}</b
+        ><span>{{ item.label }}</span>
+      </button>
+    </nav>
+    <form class="bk-form" @submit.prevent="step === 3 ? submit() : navigateStep(step + 1)">
+      <header class="bk-intro">
+        <span class="bk-count"
+          >第 {{ step + 1 }} 步 / 共 4 步{{ step === 2 ? ' · 选填' : '' }}</span
+        >
+        <h2 class="bk-step-title" tabindex="-1">{{ steps[step].title }}</h2>
+        <p class="bk-hint">{{ steps[step].description }}</p>
+      </header>
+      <BookingBasicSection v-if="step === 0" /><BookingServiceList
+        v-else-if="step === 1"
+      /><BookingPreferencesSection v-else-if="step === 2" /><BookingConfirmation v-else />
     </form>
-
-    <p v-if="error" class="booking-feedback booking-feedback--error" role="alert">
-      <i class="fa-solid fa-triangle-exclamation" aria-hidden="true" />
-      {{ error }}
-    </p>
-    <p v-if="success" class="booking-feedback booking-feedback--success" role="status">
-      <i class="fa-solid fa-circle-check" aria-hidden="true" />
-      {{ success }}
-    </p>
-
-    <BookingSubmitDock />
-    <ProviderPicker />
-
-    <Popup v-model:show="showDatePicker" position="bottom" round>
-      <DatePicker
-        v-model="selectedDateValues"
-        title="选择服务日期"
-        @cancel="showDatePicker = false"
-        @confirm="confirmDate"
-      />
-    </Popup>
-
-    <Popup v-model:show="showCustomerTypePicker" position="bottom" round>
-      <Picker
-        :columns="customerTypeColumns"
-        @cancel="showCustomerTypePicker = false"
-        @confirm="confirmCustomerType"
-      />
-    </Popup>
-
-    <Popup v-model:show="showRolePicker" position="bottom" round>
-      <Picker
-        :columns="roleOptions.map((item) => ({ text: item.name, value: item.code }))"
-        @cancel="showRolePicker = false"
-        @confirm="confirmRole"
-      />
-    </Popup>
-
-    <Popup v-model:show="showStartTimePicker" position="bottom" round>
-      <Picker
-        :columns="startColumns"
-        @cancel="showStartTimePicker = false"
-        @confirm="confirmStartTime"
-      />
-    </Popup>
-
-    <Popup v-model:show="showEndTimePicker" position="bottom" round>
-      <Picker :columns="endColumns" @cancel="showEndTimePicker = false" @confirm="confirmEndTime" />
-    </Popup>
+    <p v-if="error" class="bk-error bk-feedback" role="alert">{{ error }}</p>
+    <p v-if="success" class="bk-note" role="status">{{ success }}</p>
+    <BookingSubmitDock /><ProviderPicker /><BookingTimePicker />
   </section>
 </template>
-
-<style scoped>
-.model-booking-page {
-  padding-bottom: 78px;
-}
-
-.booking-paper {
-  overflow: hidden;
-  border: 1px solid var(--theme-form-border);
-  border-radius: 12px;
-  margin-top: 10px;
-  background: var(--theme-surface);
-  box-shadow: 0 8px 22px rgba(var(--theme-accent-rgb), 0.08);
-}
-
-.booking-feedback {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  border: 1px solid;
-  border-radius: 9px;
-  margin: 10px 0 0;
-  padding: 10px 11px;
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-.booking-feedback--error {
-  border-color: var(--theme-status-border);
-  background: var(--theme-status-soft);
-  color: var(--theme-status);
-}
-
-.booking-feedback--success {
-  border-color: #ccecdf;
-  background: #effaf6;
-  color: #2f836c;
-}
-
-@media (max-width: 359px) {
-  .booking-paper {
-    border-radius: 10px;
-  }
-}
-</style>
+<style src="./booking.css"></style>

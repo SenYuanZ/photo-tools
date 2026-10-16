@@ -4,159 +4,161 @@ defineProps<{
   phone: string
   customerType: string
   tags: string[]
-  statusLabel: string
+  sourceLabel: string
+  serviceType: string
+  roleLabels: string[]
 }>()
 
-const emit = defineEmits<{
-  copyPhone: []
-}>()
+const emit = defineEmits<{ copyPhone: [] }>()
 </script>
 
 <template>
-  <article class="customer-summary" aria-labelledby="detail-customer-name">
-    <div class="customer-summary__top">
-      <div class="customer-avatar" aria-hidden="true">{{ customerName.slice(0, 1) || '客' }}</div>
-      <div class="customer-copy">
-        <div class="customer-name-row">
-          <h2 id="detail-customer-name">{{ customerName }}</h2>
-          <span class="status-chip">{{ statusLabel }}</span>
-        </div>
-        <p>{{ customerType }} · {{ phone }}</p>
-      </div>
-      <div class="icon-actions">
-        <button type="button" class="icon-button" aria-label="复制电话" @click="emit('copyPhone')">
-          <i class="fa-regular fa-copy" aria-hidden="true" />
-        </button>
-        <a class="icon-button" :href="`tel:${phone}`" aria-label="拨打电话">
-          <i class="fa-solid fa-phone" aria-hidden="true" />
-        </a>
-      </div>
+  <section class="customer-summary" aria-labelledby="detail-customer-name">
+    <div class="customer-heading">
+      <h2 id="detail-customer-name">{{ customerName }}</h2>
+      <a v-if="phone" class="contact-button" :href="`tel:${phone}`">
+        <i class="fa-solid fa-phone" aria-hidden="true" />联系客户
+      </a>
     </div>
-
-    <div v-if="tags.length" class="tag-list" aria-label="客户标签">
-      <span v-for="tag in tags" :key="tag">{{ tag }}</span>
+    <div class="customer-tags" aria-label="客户标签">
+      <span class="detail-tag detail-tag--accent">{{ sourceLabel }}</span>
+      <span v-for="tag in tags" :key="tag" class="detail-tag">{{ tag }}</span>
     </div>
-  </article>
+    <dl class="customer-fields">
+      <div v-if="phone" class="customer-field">
+        <dt><span class="detail-tag">联系电话</span></dt>
+        <dd>
+          <button
+            type="button"
+            class="copy-phone"
+            :aria-label="`复制联系电话 ${phone}`"
+            @click="emit('copyPhone')"
+          >
+            {{ phone }}<i class="fa-regular fa-copy" aria-hidden="true" />
+          </button>
+        </dd>
+      </div>
+      <div class="customer-field">
+        <dt><span class="detail-tag">拍摄服务</span></dt>
+        <dd class="service-tags">
+          <span v-if="customerType" class="detail-tag detail-tag--accent">{{ customerType }}</span>
+          <span class="detail-tag">{{ serviceType }}</span>
+          <span v-for="role in roleLabels" :key="role" class="detail-tag">{{ role }}</span>
+        </dd>
+      </div>
+    </dl>
+  </section>
 </template>
 
 <style scoped>
 .customer-summary {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px;
-  background: var(--theme-surface);
-  box-shadow: 0 8px 20px rgba(var(--theme-accent-rgb), 0.1);
+  padding: 22px 0;
 }
-
-.customer-summary__top {
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-}
-
-.customer-avatar {
-  display: inline-flex;
-  width: 46px;
-  height: 46px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 13px;
-  background: var(--theme-accent-bg);
-  color: var(--theme-accent-strong);
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.customer-copy {
-  min-width: 0;
-}
-
-.customer-name-row {
+.customer-heading {
   display: flex;
-  min-width: 0;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
 }
-
-.customer-name-row h2 {
-  overflow: hidden;
+.customer-heading h2 {
+  min-width: 0;
   margin: 0;
   color: var(--ink);
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status-chip {
-  flex: 0 0 auto;
-  border: 1px solid var(--theme-accent-soft);
-  border-radius: 999px;
-  padding: 2px 7px;
-  background: var(--theme-accent-bg);
-  color: var(--theme-accent-strong);
-  font-size: 10px;
+  font-size: 23px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
-
-.customer-copy p {
-  overflow: hidden;
-  margin: 4px 0 0;
-  color: var(--theme-muted-soft);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.icon-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.icon-button {
+.contact-button {
   display: inline-flex;
-  width: 44px;
-  height: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--theme-surface);
-  color: var(--theme-accent-strong);
+  gap: 6px;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: var(--theme-accent-bg);
+  color: var(--detail-accent-text);
+  font-size: 14px;
 }
-
-.tag-list {
+.contact-button i {
+  font-size: 15px;
+}
+.customer-tags,
+.service-tags {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  margin-top: 11px;
 }
-
-.tag-list span {
+.customer-tags {
+  margin: -2px 0 20px;
+}
+.detail-tag {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
   border-radius: 999px;
-  padding: 4px 8px;
-  background: color-mix(in srgb, var(--theme-accent-bg) 76%, var(--theme-surface));
+  padding: 3px 10px;
+  background: var(--theme-accent-bg);
   color: var(--theme-muted);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
-
+.detail-tag--accent {
+  background: var(--theme-accent-soft);
+  color: var(--detail-accent-text);
+}
+.customer-fields {
+  margin: 0;
+}
+.customer-field {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.customer-field + .customer-field {
+  margin-top: 14px;
+}
+.customer-field dt .detail-tag {
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.customer-field dd {
+  min-width: 0;
+  margin: 0;
+}
+.copy-phone {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  margin: -10px 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.copy-phone i {
+  color: var(--theme-muted);
+  font-size: 14px;
+}
 @media (max-width: 350px) {
-  .customer-summary__top {
-    grid-template-columns: 42px minmax(0, 1fr) auto;
-    gap: 8px;
+  .customer-field {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
   }
-
-  .customer-avatar {
-    width: 42px;
-    height: 42px;
-  }
-
-  .icon-actions {
-    gap: 3px;
+  .contact-button {
+    gap: 5px;
+    padding: 0 9px;
+    font-size: 13px;
   }
 }
 </style>

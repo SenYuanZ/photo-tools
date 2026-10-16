@@ -1,4 +1,3 @@
-import type { UploadItem } from '@/hooks/useUploadQueue'
 import type { PublicBookingThemeType } from '@/api/public-booking/types'
 
 export interface ModelBookingAiBriefForm {
@@ -22,12 +21,15 @@ export const MODEL_BOOKING_THEME_OPTIONS: Array<{
 ]
 
 export interface ServiceDraft {
+  durationMinutes: number
+  customDuration: boolean
+  timeSource: 'auto' | 'manual'
+
   providerId: string
   startTime: string
   endTime: string
   requirement: string
   selectedRoleCode: string
-  referenceFileList: UploadItem[]
 }
 
 export interface TimeRange {
@@ -49,5 +51,8 @@ export interface ProviderAvailabilitySummary {
   loading: boolean
   key: string
   freeRangeCount: number | null
+  busyRanges: TimeRange[]
+  freeRanges: TimeRange[]
+  error: string
   availableSlotCount: number | null
 }
