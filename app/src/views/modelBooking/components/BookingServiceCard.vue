@@ -45,13 +45,11 @@ const canEdit = computed(() => ready.value && !!draft.value.startTime)
       >
         <img :src="provider?.avatarUrl || defaultAvatar" alt="" class="bk-avatar" /><span
           ><strong>{{ provider?.nickname || '选择服务者' }}</strong
-          ><small>{{
-            provider
-              ? provider.bio ||
-                roles
-                  .map((role) => roleOptions.find((item) => item.code === role)?.name || role)
-                  .join(' / ')
-              : '选择后显示服务角色和可约时间'
+          ><small v-if="provider">{{
+            provider.bio ||
+            roles
+              .map((role) => roleOptions.find((item) => item.code === role)?.name || role)
+              .join(' / ')
           }}</small></span
         ><span class="bk-link">{{ provider ? '更换' : '选择' }}</span></button
       ><button
@@ -97,30 +95,22 @@ const canEdit = computed(() => ready.value && !!draft.value.startTime)
               : !draft.startTime
                 ? '暂无可约时间'
                 : draft.timeSource === 'manual'
-                  ? '已手动选择'
-                  : '已匹配最早时间'
+                  ? '预约时间'
+                  : '最早可约'
         }}</span
         ><strong>{{
           ready && draft.startTime ? `${draft.startTime} — ${draft.endTime}` : '—'
         }}</strong>
+        <button
+          type="button"
+          class="bk-change-time"
+          :disabled="!canEdit"
+          @click="openStartTimePicker(service.code)"
+        >
+          修改
+        </button>
       </div>
-      <button
-        type="button"
-        class="bk-change-time"
-        :disabled="!canEdit"
-        @click="openStartTimePicker(service.code)"
-      >
-        修改时间
-      </button>
-      <p v-if="ready" class="bk-hint">
-        {{
-          !draft.startTime
-            ? '当天没有能容纳该时长的连续空档，请缩短时长或更换日期。'
-            : draft.timeSource === 'manual'
-              ? '已保留手动选择；重新选择时长会匹配最早可约时间。'
-              : '已根据时长自动选择最早的连续空档，你也可以手动修改。'
-        }}
-      </p>
+      <p v-if="ready && !draft.startTime" class="bk-hint">无连续空档，请缩短时长或更换日期。</p>
       <BookingAvailabilityPanel
         :date="form.date"
         :loading="availability?.loading"
@@ -130,7 +120,7 @@ const canEdit = computed(() => ready.value && !!draft.value.startTime)
         @retry="loadAvailability(service.code)"
       />
       <details class="bk-details">
-        <summary>补充本位服务者的要求（选填）</summary>
+        <summary>服务要求（选填）</summary>
         <textarea
           v-model="draft.requirement"
           class="bk-field"
@@ -194,6 +184,7 @@ const canEdit = computed(() => ready.value && !!draft.value.startTime)
 }
 .bk-time-result {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   justify-content: space-between;
@@ -207,18 +198,17 @@ const canEdit = computed(() => ready.value && !!draft.value.startTime)
   font-size: 12px;
 }
 .bk-time-result strong {
-  font-size: 17px;
+  font-size: 16px;
   white-space: nowrap;
 }
 .bk-change-time {
-  border: 1px solid var(--theme-form-border);
-  border-radius: 9px;
-  width: 100%;
+  border: 0;
+  padding: 0 4px;
+  margin-left: auto;
   min-height: 44px;
-  background: var(--theme-surface);
+  background: transparent;
   color: var(--theme-accent-strong);
   font-size: 13px;
-  margin-top: 10px;
 }
 .bk-change-time:disabled {
   opacity: 0.5;

@@ -17,7 +17,7 @@ const emit = defineEmits<{
       </span>
       <div class="booking-brand__copy">
         <h1>预约拍摄</h1>
-        <p>{{ dateLabel }} · 公开预约入口</p>
+        <p>{{ dateLabel }}</p>
       </div>
     </div>
 

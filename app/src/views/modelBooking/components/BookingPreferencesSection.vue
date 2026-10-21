@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { useModelBookingContext } from '@/views/modelBooking/hooks/useModelBookingContext'
-const { form, preferenceGroups, preferenceSelections, togglePreference, navigateStep } =
-  useModelBookingContext()
+const { form, preferenceGroups, preferenceSelections, togglePreference } = useModelBookingContext()
 </script>
 <template>
   <div>
     <section v-for="group in preferenceGroups" :key="group.key" class="bk-group">
-      <div class="bk-label">{{ group.title }}<small>可多选</small></div>
+      <div class="bk-label">{{ group.title }}</div>
       <div class="bk-choices">
         <button
           v-for="option in group.options"
@@ -22,7 +21,7 @@ const { form, preferenceGroups, preferenceSelections, togglePreference, navigate
       </div>
     </section>
     <details class="bk-details">
-      <summary>补充作品、角色或其他想法</summary>
+      <summary>补充想法</summary>
       <label class="bk-input-label"
         >作品 / 角色 / 风格<input
           v-model="form.aiBrief.workName"
@@ -55,9 +54,5 @@ const { form, preferenceGroups, preferenceSelections, togglePreference, navigate
         />
       </label>
     </details>
-    <p class="bk-hint">偏好会以文字随预约保存，方便服务者了解你的想法。</p>
-    <button type="button" class="bk-link" @click="navigateStep(3)">
-      暂时没有特别偏好，跳过这一步
-    </button>
   </div>
 </template>

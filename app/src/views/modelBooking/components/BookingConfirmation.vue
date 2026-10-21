@@ -26,7 +26,7 @@ const {
               aiBriefThemeOptions.find((item) => item.value === form.aiBrief.themeType)?.label ||
               '未指定'
             }}
-            · {{ customerTypeLabel }}
+            <template v-if="form.customerTypeCode"> · {{ customerTypeLabel }}</template>
           </dd>
         </div>
         <div>
@@ -58,9 +58,7 @@ const {
           <dd>{{ form.note }}</dd>
         </div>
       </dl>
-      <button type="button" class="bk-link" @click="navigateStep(0)">
-        修改拍摄类型、日期或地点
-      </button>
+      <button type="button" class="bk-link" @click="navigateStep(0)">修改拍摄信息</button>
     </section>
     <label class="bk-input-label"
       >怎么称呼你<input

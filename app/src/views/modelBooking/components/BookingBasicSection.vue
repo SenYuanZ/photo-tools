@@ -7,7 +7,7 @@ const { form, aiBriefThemeOptions, locationMode, locationText, customerTypeColum
 <template>
   <div>
     <section class="bk-group">
-      <div class="bk-label">拍摄类型 <small>单选</small></div>
+      <div class="bk-label">拍摄类型</div>
       <div class="bk-type-grid">
         <button
           v-for="option in aiBriefThemeOptions"
@@ -29,7 +29,7 @@ const { form, aiBriefThemeOptions, locationMode, locationText, customerTypeColum
       <BookingMonthCalendar v-model="form.date" />
     </section>
     <section class="bk-group">
-      <div class="bk-label">在哪里拍？ <small>暂时没想好也没关系</small></div>
+      <div class="bk-label">拍摄地点</div>
       <div class="bk-choices">
         <button
           v-for="mode in ['待商议', '工作室', '其他地点']"
@@ -53,13 +53,6 @@ const { form, aiBriefThemeOptions, locationMode, locationText, customerTypeColum
         "
         aria-label="拍摄地点"
       />
-      <p class="bk-hint">
-        {{
-          locationMode === '待商议'
-            ? '提交后可与服务者商议具体地点。'
-            : '请填写你们已经约定的地址。'
-        }}
-      </p>
     </section>
     <details class="bk-details">
       <summary>更多资料（选填）</summary>

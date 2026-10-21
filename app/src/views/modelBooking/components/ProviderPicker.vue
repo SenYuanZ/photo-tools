@@ -75,7 +75,6 @@ const {
         </button>
       </div>
       <div class="provider-picker__list">
-        <p class="bk-hint">{{ form.date }} · 查看服务者当日空闲和已占用时间</p>
         <p v-if="loadingProvidersByService[pickerServiceCode]" class="bk-hint" role="status">
           正在加载服务者…
         </p>
@@ -102,7 +101,7 @@ const {
         <section class="provider-group">
           <header class="provider-group__header">
             <h3>全部可选</h3>
-            <span>{{ commonProvidersOfPicker.length }} 位 · 按可约时段排序</span>
+            <span>{{ commonProvidersOfPicker.length }} 位</span>
           </header>
           <ProviderPickerOption
             v-for="provider in commonProvidersOfPicker"

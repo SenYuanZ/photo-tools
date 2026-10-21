@@ -1,24 +1,21 @@
 .model-booking-page {
   background: var(--theme-surface);
   border-radius: 18px;
-  padding: 0 8px 110px;
+  padding: 0 8px 90px;
   min-height: calc(100dvh - 35px);
 }
 .bk-form {
-  padding: 26px 5px 16px;
+  padding: 20px 5px 16px;
 }
 .bk-intro {
-  margin-bottom: 27px;
-}
-.bk-count {
-  display: block;
-  color: var(--theme-accent-strong);
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 9px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
 }
 .bk-step-title {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.6px;
   line-height: 1.45;

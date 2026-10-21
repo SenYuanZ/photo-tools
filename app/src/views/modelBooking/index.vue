@@ -13,17 +13,15 @@ const booking = useModelBooking()
 provideModelBooking(booking)
 const { router, form, step, error, success, navigateStep, submit } = booking
 const steps = [
-  { label: '拍什么', title: '这次想拍什么？', description: '选好类型和日期，我们开始安排。' },
+  { label: '拍什么', title: '拍摄安排' },
   {
     label: '约服务',
-    title: '和谁一起完成？',
-    description: '选服务者和时长，自动安排最早可约时间。',
+    title: '选择服务者',
   },
-  { label: '拍摄偏好', title: '拍出你喜欢的感觉', description: '点选偏好就好，有特别想法再补充。' },
+  { label: '拍摄偏好', title: '拍摄偏好' },
   {
     label: '联系确认',
-    title: '最后，留个联系方式',
-    description: '核对一下安排，就可以完成预约了。',
+    title: '确认预约',
   },
 ]
 </script>
@@ -49,11 +47,8 @@ const steps = [
     </nav>
     <form class="bk-form" @submit.prevent="step === 3 ? submit() : navigateStep(step + 1)">
       <header class="bk-intro">
-        <span class="bk-count"
-          >第 {{ step + 1 }} 步 / 共 4 步{{ step === 2 ? ' · 选填' : '' }}</span
-        >
         <h2 class="bk-step-title" tabindex="-1">{{ steps[step].title }}</h2>
-        <p class="bk-hint">{{ steps[step].description }}</p>
+        <span v-if="step === 2" class="bk-hint">选填 · 可多选</span>
       </header>
       <BookingBasicSection v-if="step === 0" /><BookingServiceList
         v-else-if="step === 1"

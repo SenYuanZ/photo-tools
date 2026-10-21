@@ -16,7 +16,7 @@ const preview = (startPosition: number) => {
   <section class="provider-portfolio" :aria-label="`${provider.nickname}的公开作品集`">
     <header class="provider-portfolio__header">
       <strong>公开作品集</strong>
-      <span>{{ images.length ? `${images.length} 张 · 点击查看大图` : '暂无公开作品' }}</span>
+      <span>{{ images.length ? `${images.length} 张` : '暂无公开作品' }}</span>
     </header>
     <div v-if="images.length" class="provider-portfolio__images">
       <button
