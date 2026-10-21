@@ -522,6 +522,14 @@ export class SchedulesService {
         where: { userId },
       });
       const ownedRoleSet = new Set(assignments.map((item) => item.roleCode));
+      // 与公开服务者资料保持一致，兼容尚无多角色关联记录的旧账号。
+      if (!assignments.length) {
+        const user = await this.usersRepository.findOne({
+          where: { id: userId },
+          select: { role: true },
+        });
+        if (user?.role) ownedRoleSet.add(user.role);
+      }
       const invalidRoleCode = uniqueSelected.find(
         (item) => !ownedRoleSet.has(item),
       );

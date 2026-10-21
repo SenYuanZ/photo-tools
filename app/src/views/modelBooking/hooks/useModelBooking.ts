@@ -21,6 +21,7 @@ import type {
 } from '@/views/modelBooking/types'
 import { resolvePublicErrorMessage } from '@/views/modelBooking/utils/errors'
 import { useBookingSteps } from '@/views/modelBooking/hooks/useBookingSteps'
+import { useBookingProviderLink } from '@/views/modelBooking/hooks/useBookingProviderLink'
 import { useRecentProviders } from '@/views/modelBooking/hooks/useRecentProviders'
 import type { PublicBookingAiBrief } from '@/api/public-booking/types'
 import {
@@ -241,9 +242,7 @@ export function useModelBooking() {
     draft.timeSource = 'auto'
     const provider = (providersByService[serviceCode] || []).find((item) => item.id === providerId)
     const roleCodes = provider ? providerRoleCodes(provider) : []
-    if (!roleCodes.includes(draft.selectedRoleCode)) {
-      draft.selectedRoleCode = roleCodes[0] || ''
-    }
+    draft.selectedRoleCode = roleCodes.length === 1 ? roleCodes[0] : ''
     markRecentProvider(serviceCode, providerId)
     ensureAvailabilityState(serviceCode).lastKey = ''
     showProviderPicker.value = false
@@ -295,8 +294,9 @@ export function useModelBooking() {
       .filter(Boolean) as string[]
   }
 
-  const providerRoleCodes = (provider: PublicProvider) =>
-    (provider.roles?.length ? provider.roles : [provider.role]).filter(Boolean)
+  const providerRoleCodes = (provider: PublicProvider) => [
+    ...new Set((provider.roles?.length ? provider.roles : [provider.role]).filter(Boolean)),
+  ]
 
   const roleCodeToServiceType = (roleCode: string) =>
     roleCode === 'makeup_artist' ? 'makeup' : 'photography'
@@ -313,6 +313,8 @@ export function useModelBooking() {
   }
 
   const setDraftRoleCode = (serviceCode: string, roleCode: string) => {
+    const provider = selectedProvider(serviceCode)
+    if (!provider || !providerRoleCodes(provider).includes(roleCode)) return
     const draft = ensureDraft(serviceCode)
     draft.selectedRoleCode = roleCode
   }
@@ -675,7 +677,18 @@ export function useModelBooking() {
     }
   }
 
-  const loadProvidersForService = async (serviceCode: string) => {
+  const providerLoads = new Map<string, Promise<void>>()
+  const loadProvidersForService = (serviceCode: string): Promise<void> => {
+    const pending = providerLoads.get(serviceCode)
+    if (pending) return pending
+    const request = fetchProvidersForService(serviceCode).finally(() =>
+      providerLoads.delete(serviceCode),
+    )
+    providerLoads.set(serviceCode, request)
+    return request
+  }
+
+  const fetchProvidersForService = async (serviceCode: string) => {
     loadingProvidersByService[serviceCode] = true
     try {
       const providers = await publicBookingApi.listProviders()
@@ -687,10 +700,6 @@ export function useModelBooking() {
       ) {
         draft.providerId = ''
       }
-      // 选择第一个服务者
-      // if (!draft.providerId && providersByService[serviceCode].length) {
-      //   draft.providerId = providersByService[serviceCode][0].id
-      // }
 
       void prefetchProviderAvailabilitySummaries(serviceCode)
     } catch (requestError) {
@@ -766,7 +775,6 @@ export function useModelBooking() {
 
   onMounted(async () => {
     await Promise.all([loadCustomerTypes(), loadRoles()])
-    await Promise.all(selectedServiceCodes.value.map((code) => loadProvidersForService(code)))
   })
 
   const addServiceSlot = () => {
@@ -783,6 +791,7 @@ export function useModelBooking() {
       showToast('至少保留一位服务者')
       return
     }
+    if (serviceCode === selectedServiceCodes.value[0]) providerLink.dismiss()
     selectedServiceCodes.value = selectedServiceCodes.value.filter((item) => item !== serviceCode)
     delete serviceDrafts[serviceCode]
     delete providersByService[serviceCode]
@@ -850,6 +859,12 @@ export function useModelBooking() {
     error.value = ''
     success.value = ''
 
+    if (submitting.value) return
+    if (providerLink.blocked.value) {
+      error.value = providerLink.message.value
+      return
+    }
+
     if (!form.modelName.trim() || !form.modelPhone.trim() || !form.date || !form.location.trim()) {
       error.value = '请先补全姓名、手机号、日期和地点。'
       return
@@ -912,7 +927,11 @@ export function useModelBooking() {
 
       const currentProvider = selectedProvider(serviceCode)
       const providerRoleCodesList = currentProvider ? providerRoleCodes(currentProvider) : []
-      const selectedRoleCode = draft.selectedRoleCode || providerRoleCodesList[0] || 'photographer'
+      const selectedRoleCode = draft.selectedRoleCode
+      if (!selectedRoleCode || !providerRoleCodesList.includes(selectedRoleCode)) {
+        error.value = `请选择${serviceLabel}的本次服务角色。`
+        return
+      }
       const serviceTypeCode = roleCodeToServiceType(selectedRoleCode)
 
       items.push({
@@ -955,12 +974,39 @@ export function useModelBooking() {
     }
   }
 
+  const providerLink = useBookingProviderLink({
+    firstServiceCode: () => selectedServiceCodes.value[0]!,
+    prepareProviders: (code) =>
+      providerLoads.get(code) ??
+      (providersByService[code] ? Promise.resolve() : loadProvidersForService(code)),
+    addProvider: (code, provider) => {
+      const providers = providersByService[code] || []
+      providersByService[code] = [...providers.filter((item) => item.id !== provider.id), provider]
+    },
+    clearSelection: (code) => {
+      const draft = ensureDraft(code)
+      draft.providerId = ''
+      draft.selectedRoleCode = ''
+      draft.startTime = ''
+      draft.endTime = ''
+      ensureAvailabilityState(code).lastKey = ''
+    },
+    selectProvider: chooseProvider,
+  })
+
+  const chooseProviderManually = (code: string, providerId: string) => {
+    if (code === selectedServiceCodes.value[0]) providerLink.dismiss()
+    chooseProvider(code, providerId)
+  }
+
   const steps = useBookingSteps({
     form,
     activeServices,
     serviceDrafts,
     availabilityByService,
     error,
+    providerLinkBlocked: providerLink.blocked,
+    providerLinkMessage: providerLink.message,
   })
 
   return {
@@ -984,6 +1030,11 @@ export function useModelBooking() {
     showStartTimePicker,
     pickerServiceCode,
     submitting,
+    providerLinkState: providerLink.state,
+    providerLinkBlocked: providerLink.blocked,
+    providerLinkMessage: providerLink.message,
+    retryProviderLink: providerLink.retry,
+    dismissProviderLink: providerLink.dismiss,
     error,
     success,
     providerKeywordInput,
@@ -995,7 +1046,7 @@ export function useModelBooking() {
     commonProvidersOfPicker,
     selectedProviderIdOfPicker,
     clearRecentProviders,
-    chooseProvider,
+    chooseProvider: chooseProviderManually,
     customerTypeColumns,
     customerTypeLabel,
     roleLabel,

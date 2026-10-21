@@ -17,6 +17,8 @@ interface StepsOptions {
   serviceDrafts: Record<string, ServiceDraft>
   availabilityByService: Record<string, AvailabilityState>
   error: Ref<string>
+  providerLinkBlocked: Ref<boolean>
+  providerLinkMessage: Ref<string>
 }
 
 export function useBookingSteps(options: StepsOptions) {
@@ -84,6 +86,10 @@ export function useBookingSteps(options: StepsOptions) {
   }
   const navigateStep = async (target: number) => {
     options.error.value = ''
+    if (options.providerLinkBlocked.value) {
+      options.error.value = options.providerLinkMessage.value
+      return
+    }
     let next = Math.max(0, Math.min(3, target))
     if (
       next > 0 &&
@@ -97,6 +103,7 @@ export function useBookingSteps(options: StepsOptions) {
         const availability = options.availabilityByService[code]
         return (
           !draft?.providerId ||
+          !draft.selectedRoleCode ||
           !availability ||
           availability.loading ||
           availability.error ||
@@ -106,7 +113,7 @@ export function useBookingSteps(options: StepsOptions) {
       })
       if (invalid) {
         next = 1
-        options.error.value = '请先选择服务者，等待档期加载后确认可约时间。'
+        options.error.value = '请先选择服务者和本次服务角色，等待档期加载后确认可约时间。'
       }
     }
     step.value = next

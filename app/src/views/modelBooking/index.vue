@@ -11,7 +11,19 @@ import { useModelBooking } from '@/views/modelBooking/hooks/useModelBooking'
 import { provideModelBooking } from '@/views/modelBooking/hooks/useModelBookingContext'
 const booking = useModelBooking()
 provideModelBooking(booking)
-const { router, form, step, error, success, navigateStep, submit } = booking
+const {
+  router,
+  form,
+  step,
+  error,
+  success,
+  navigateStep,
+  submit,
+  providerLinkState,
+  providerLinkMessage,
+  retryProviderLink,
+  dismissProviderLink,
+} = booking
 const steps = [
   { label: '拍什么', title: '拍摄安排' },
   {
@@ -32,6 +44,20 @@ const steps = [
       @open-order-query="router.push({ name: 'order-query' })"
       @open-provider-login="router.push({ name: 'login' })"
     />
+    <aside v-if="providerLinkMessage" class="bk-link-notice" aria-live="polite">
+      <p>{{ providerLinkMessage }}</p>
+      <template v-if="providerLinkState === 'error' || providerLinkState === 'unavailable'">
+        <button
+          v-if="providerLinkState === 'error'"
+          type="button"
+          class="bk-link"
+          @click="retryProviderLink"
+        >
+          重试
+        </button>
+        <button type="button" class="bk-link" @click="dismissProviderLink">重新选择服务者</button>
+      </template>
+    </aside>
     <nav class="bk-progress" aria-label="预约步骤">
       <button
         v-for="(item, index) in steps"
@@ -60,3 +86,21 @@ const steps = [
   </section>
 </template>
 <style src="./booking.css"></style>
+<style scoped>
+.bk-link-notice {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--theme-accent-bg);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.bk-link-notice p {
+  margin: 0;
+}
+.bk-link-notice button {
+  margin-right: 18px;
+  min-height: 44px;
+}
+</style>

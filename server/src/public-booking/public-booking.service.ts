@@ -118,6 +118,21 @@ export class PublicBookingService {
     }
 
     const users = await builder.getMany();
+    return this.toPublicProviders(users);
+  }
+
+  async getProvider(providerId: string) {
+    const user = await this.usersRepository.findOne({
+      where: { id: providerId, displayStatus: DISPLAY_VISIBLE },
+    });
+    if (!user) {
+      throw new NotFoundException('该服务者暂时无法预约');
+    }
+    const [provider] = await this.toPublicProviders([user]);
+    return provider;
+  }
+
+  private async toPublicProviders(users: User[]) {
     const userIds = users.map((item) => item.id);
     const assignments = userIds.length
       ? await this.userRolesRepository.find({
@@ -251,7 +266,30 @@ export class PublicBookingService {
           throw new NotFoundException('服务者不存在，请重新选择');
         }
 
-        if (serviceTypeCode) {
+        // 分享链接只选用户，实际服务角色由客户选择；先校验归属再创建任何数据。
+        const selectedRoles = item.serviceRoleCodes;
+        if (selectedRoles?.length) {
+          const assignments = await this.userRolesRepository.find({
+            where: { userId: provider.id },
+          });
+          const ownedRoles = assignments.length
+            ? assignments.map((assignment) => assignment.roleCode)
+            : [provider.role];
+          if (selectedRoles.some((role) => !ownedRoles.includes(role))) {
+            throw new BadRequestException('所选角色不属于该服务者，请重新选择');
+          }
+          const expectedTypes = new Set<string>(
+            selectedRoles.map((role) =>
+              this.resolveServiceTypeByProviderRole(role),
+            ),
+          );
+          if (
+            expectedTypes.size !== 1 ||
+            (serviceTypeCode && !expectedTypes.has(serviceTypeCode))
+          ) {
+            throw new BadRequestException('服务角色与服务类型不匹配');
+          }
+        } else if (serviceTypeCode) {
           const expectedRole = this.resolveRoleByServiceType(serviceTypeCode);
           const matched = await this.providerSupportsRole(
             provider.id,
@@ -272,7 +310,9 @@ export class PublicBookingService {
           requirement: item.requirement?.trim() || '',
           serviceTypeCode:
             serviceTypeCode ??
-            this.resolveServiceTypeByProviderRole(provider.role),
+            this.resolveServiceTypeByProviderRole(
+              selectedRoles?.[0] ?? provider.role,
+            ),
           provider,
         };
       }),

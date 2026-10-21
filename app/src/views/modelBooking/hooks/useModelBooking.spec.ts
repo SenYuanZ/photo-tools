@@ -1,15 +1,18 @@
-import { defineComponent, nextTick } from 'vue'
+import { defineComponent, nextTick, reactive } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@/test/mount'
 import { publicBookingApi } from '@/api/public-booking'
 import type { PublicAvailability, PublicProvider } from '@/api/public-booking/types'
 import { useModelBooking } from './useModelBooking'
+import { ApiError } from '@/api/core/error'
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
+const { push, replace } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
+const route = reactive<{ query: Record<string, string | string[] | null> }>({ query: {} })
+vi.mock('vue-router', () => ({ useRouter: () => ({ push, replace }), useRoute: () => route }))
 vi.mock('@/api/public-booking', () => ({
   publicBookingApi: {
     listProviders: vi.fn(),
+    getProvider: vi.fn(),
     listCustomerTypes: vi.fn(),
     getAvailability: vi.fn(),
     create: vi.fn(),
@@ -67,6 +70,13 @@ describe('model booking workflow', () => {
   let wrapper: ReturnType<typeof mount>
   beforeEach(async () => {
     vi.clearAllMocks()
+    route.query = {}
+    replace.mockImplementation(async ({ query }) => {
+      route.query = query
+    })
+    vi.mocked(publicBookingApi.getProvider).mockImplementation(async (id) =>
+      providers.find((item) => item.id === id)!,
+    )
     localStorage.clear()
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     vi.mocked(publicBookingApi.listProviders).mockResolvedValue(providers)
@@ -220,5 +230,165 @@ describe('model booking workflow', () => {
     await page.submit()
     expect(publicBookingApi.create).not.toHaveBeenCalled()
     expect(page.error.value).toBeTruthy()
+  })
+
+  it('preselects a link provider and its only role without requiring customer login', async () => {
+    route.query = { provider: 'p2' }
+    await flushPromises()
+    expect(page.providerLinkState.value).toBe('ready')
+    expect(page.serviceDrafts['slot-1']).toMatchObject({
+      providerId: 'p2',
+      selectedRoleCode: 'makeup_artist',
+    })
+    expect(page.providerLinkMessage.value).toContain('桃子')
+  })
+
+  it('leaves multiple roles empty and requires an explicit role before advancing or submitting', async () => {
+    const multiple = { ...providers[0]!, roles: ['photographer', 'makeup_artist'] }
+    vi.mocked(publicBookingApi.getProvider).mockResolvedValueOnce(multiple)
+    route.query = { provider: 'p1' }
+    await flushPromises()
+    expect(page.serviceDrafts['slot-1'].selectedRoleCode).toBe('')
+    await page.navigateStep(2)
+    expect(page.step.value).toBe(1)
+    page.form.modelName = '客户'
+    page.form.modelPhone = '13800000000'
+    await page.submit()
+    expect(publicBookingApi.create).not.toHaveBeenCalled()
+    page.setDraftRoleCode('slot-1', 'makeup_artist')
+    vi.mocked(publicBookingApi.create).mockResolvedValue({
+      success: true,
+      bookingGroupId: 'g',
+      bookings: [],
+    })
+    vi.useFakeTimers()
+    await page.submit()
+    expect(publicBookingApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            providerId: 'p1',
+            serviceTypeCode: 'makeup',
+            serviceRoleCodes: ['makeup_artist'],
+          }),
+        ],
+      }),
+    )
+  })
+
+  it('keeps a manual provider change after reload and submits to the final user', async () => {
+    route.query = { provider: 'p1' }
+    await flushPromises()
+    page.chooseProvider('slot-1', 'p2')
+    await flushPromises()
+    await page.loadProvidersForService('slot-1')
+    expect(page.serviceDrafts['slot-1']).toMatchObject({
+      providerId: 'p2',
+      selectedRoleCode: 'makeup_artist',
+    })
+    expect(route.query.provider).toBeUndefined()
+    page.form.modelName = '客户'
+    page.form.modelPhone = '13800000000'
+    vi.mocked(publicBookingApi.create).mockResolvedValue({
+      success: true,
+      bookingGroupId: 'g',
+      bookings: [],
+    })
+    vi.useFakeTimers()
+    await page.submit()
+    expect(publicBookingApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({ items: [expect.objectContaining({ providerId: 'p2' })] }),
+    )
+  })
+
+  it('ignores old link responses after a different link or a manual choice', async () => {
+    let resolveOld!: (value: PublicProvider) => void
+    vi.mocked(publicBookingApi.getProvider).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve
+        }),
+    )
+    route.query = { provider: 'p1' }
+    await nextTick()
+    expect(page.providerLinkBlocked.value).toBe(true)
+    route.query = { provider: 'p2' }
+    await flushPromises()
+    resolveOld(providers[0]!)
+    await flushPromises()
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('p2')
+    vi.mocked(publicBookingApi.getProvider).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve
+        }),
+    )
+    route.query = { provider: 'p1' }
+    await nextTick()
+    page.chooseProvider('slot-1', 'p2')
+    resolveOld(providers[0]!)
+    await flushPromises()
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('p2')
+  })
+
+  it('shows an unavailable link without silently selecting someone and supports manual recovery', async () => {
+    vi.mocked(publicBookingApi.getProvider).mockRejectedValueOnce(new ApiError(404, 'hidden'))
+    route.query = { provider: 'missing' }
+    await flushPromises()
+    expect(page.providerLinkState.value).toBe('unavailable')
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('')
+    await page.submit()
+    expect(publicBookingApi.create).not.toHaveBeenCalled()
+    page.dismissProviderLink()
+    await flushPromises()
+    expect(page.providerLinkBlocked.value).toBe(false)
+    await selectProvider()
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('p1')
+  })
+
+  it('supports retry after a network error and rejects duplicate query parameters', async () => {
+    vi.mocked(publicBookingApi.getProvider).mockRejectedValueOnce(new Error('offline'))
+    route.query = { provider: 'p1' }
+    await flushPromises()
+    expect(page.providerLinkState.value).toBe('error')
+    await page.retryProviderLink()
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('p1')
+    route.query = { provider: ['p1', 'p2'] }
+    await flushPromises()
+    expect(page.providerLinkState.value).toBe('unavailable')
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('')
+  })
+
+  it('waits for an in-flight list before applying the link and keeps the detail available', async () => {
+    let finishList!: (value: PublicProvider[]) => void
+    vi.mocked(publicBookingApi.listProviders).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishList = resolve
+        }),
+    )
+    const pendingList = page.loadProvidersForService('slot-1')
+    route.query = { provider: 'p2' }
+    await nextTick()
+    expect(page.providerLinkBlocked.value).toBe(true)
+    finishList([providers[0]!])
+    await pendingList
+    await flushPromises()
+    expect(page.serviceDrafts['slot-1'].providerId).toBe('p2')
+    expect(page.selectedProvider('slot-1')?.id).toBe('p2')
+  })
+
+  it('clears the previous role when manually choosing a different multi-role user', async () => {
+    await selectProvider()
+    page.providersByService['slot-1'].push({
+      ...providers[0]!,
+      id: 'multi',
+      roles: ['photographer', 'makeup_artist'],
+    })
+    page.chooseProvider('slot-1', 'multi')
+    expect(page.serviceDrafts['slot-1'].selectedRoleCode).toBe('')
+    page.setDraftRoleCode('slot-1', 'makeup_artist')
+    page.chooseProvider('slot-1', 'multi')
+    expect(page.serviceDrafts['slot-1'].selectedRoleCode).toBe('makeup_artist')
   })
 })

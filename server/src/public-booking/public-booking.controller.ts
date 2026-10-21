@@ -5,6 +5,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UploadedFiles,
@@ -67,6 +69,11 @@ export class PublicBookingController {
   @Get('service-types')
   listServiceTypes() {
     return this.publicBookingService.listServiceTypes();
+  }
+
+  @Get('providers/:providerId')
+  getProvider(@Param('providerId', new ParseUUIDPipe()) providerId: string) {
+    return this.publicBookingService.getProvider(providerId);
   }
 
   @Get('customer-types')

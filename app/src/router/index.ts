@@ -61,6 +61,12 @@ const routes = [
     meta: { requiresAuth: true, tab: 'my' },
   },
   {
+    path: '/my-booking-code',
+    name: 'my-booking-code',
+    component: () => import('@/views/myBookingCode/index.vue'),
+    meta: { requiresAuth: true, tab: 'my' },
+  },
+  {
     path: '/ai-qa',
     name: 'ai-qa',
     component: () => import('@/views/aiQa/index.vue'),

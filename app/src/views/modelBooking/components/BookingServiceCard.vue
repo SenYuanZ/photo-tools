@@ -65,7 +65,9 @@ const canEdit = computed(() => ready.value && !!draft.value.startTime)
     <div v-if="provider" class="bk-service-body">
       <ProviderPortfolio :provider="provider" />
       <section v-if="roles.length > 1" class="bk-group">
-        <div class="bk-label">本次服务角色</div>
+        <div class="bk-label">
+          本次服务角色 <span v-if="!draft.selectedRoleCode" class="bk-hint">请选择一项</span>
+        </div>
         <div class="bk-choices">
           <button
             v-for="role in roles"

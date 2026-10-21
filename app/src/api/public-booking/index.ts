@@ -12,6 +12,11 @@ import type {
 } from '@/api/public-booking/types'
 
 export const publicBookingApi = {
+  getProvider(providerId: string) {
+    return request<PublicProvider>(`/public/providers/${encodeURIComponent(providerId)}`, {
+      skipAuth: true,
+    })
+  },
   listProviders(serviceTypeCode?: string, roleCode?: string) {
     return request<PublicProvider[]>('/public/providers', {
       query: { serviceTypeCode, roleCode },

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
 import MyMenuItem from '@/views/my/components/MyMenuItem.vue'
 import MyProfileHeader from '@/views/my/components/MyProfileHeader.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -41,47 +40,6 @@ const jump = (name: string) => router.push({ name })
 const logout = () => {
   store.logout()
   router.push({ name: 'login' })
-}
-
-const openModelBooking = () => {
-  router.push({ name: 'model-booking' })
-}
-
-const copyByExecCommand = (text: string) => {
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.setAttribute('readonly', 'true')
-  textarea.style.position = 'fixed'
-  textarea.style.top = '-9999px'
-  textarea.style.left = '-9999px'
-  document.body.appendChild(textarea)
-  textarea.select()
-  textarea.setSelectionRange(0, textarea.value.length)
-  const success = document.execCommand('copy')
-  document.body.removeChild(textarea)
-  return success
-}
-
-const copyText = async (text: string) => {
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text)
-    return true
-  }
-
-  return copyByExecCommand(text)
-}
-
-const copyModelBookingLink = async () => {
-  const link = `${window.location.origin}${router.resolve({ name: 'model-booking' }).href}`
-  try {
-    const copied = await copyText(link)
-    if (!copied) {
-      throw new Error('copy failed')
-    }
-    showToast('约拍链接已复制')
-  } catch {
-    showToast('复制失败，请手动复制')
-  }
 }
 </script>
 
@@ -147,6 +105,12 @@ const copyModelBookingLink = async () => {
       </header>
       <div class="my-menu-card">
         <MyMenuItem
+          icon="fa-solid fa-qrcode"
+          title="我的预约二维码"
+          description="保存专属二维码、复制链接或预览预约页面"
+          @click="jump('my-booking-code')"
+        />
+        <MyMenuItem
           icon="fa-solid fa-id-badge"
           title="个人资料与作品集"
           description="编辑头像、简介与公开作品"
@@ -158,31 +122,6 @@ const copyModelBookingLink = async () => {
           description="切换主题与默认提醒"
           @click="jump('settings')"
         />
-      </div>
-    </section>
-
-    <section class="my-booking-panel" aria-labelledby="booking-entry-title">
-      <div class="my-booking-panel__head">
-        <span class="my-booking-panel__icon">
-          <i class="fa-regular fa-calendar-check" aria-hidden="true" />
-        </span>
-        <div>
-          <p class="my-booking-panel__eyebrow">公开预约</p>
-          <h2 id="booking-entry-title">模特约拍入口</h2>
-        </div>
-      </div>
-      <p class="my-booking-panel__description">
-        分享给模特后，对方可免登录选择时间并提交拍摄需求。
-      </p>
-      <div class="my-booking-panel__actions">
-        <button class="btn-primary" type="button" @click="openModelBooking">
-          <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />
-          打开入口
-        </button>
-        <button class="btn-secondary" type="button" @click="copyModelBookingLink">
-          <i class="fa-regular fa-copy" aria-hidden="true" />
-          复制链接
-        </button>
       </div>
     </section>
 
@@ -213,8 +152,7 @@ const copyModelBookingLink = async () => {
   padding: 0 2px;
 }
 
-.my-section__heading h2,
-.my-booking-panel h2 {
+.my-section__heading h2 {
   margin: 0;
   color: var(--ink);
   font-size: 15px;
@@ -302,66 +240,6 @@ const copyModelBookingLink = async () => {
 
 .my-menu-card :deep(.my-menu-item + .my-menu-item) {
   border-top: 1px solid var(--line);
-}
-
-.my-booking-panel {
-  border: 1px solid var(--theme-accent-soft);
-  border-radius: 16px;
-  padding: 14px;
-  background: linear-gradient(
-    145deg,
-    var(--theme-accent-bg),
-    color-mix(in srgb, var(--theme-accent-bg) 55%, var(--theme-surface))
-  );
-}
-
-.my-booking-panel__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.my-booking-panel__icon {
-  display: inline-flex;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--theme-surface);
-  color: var(--theme-accent-strong);
-  box-shadow: 0 6px 14px rgba(var(--theme-accent-rgb), 0.12);
-}
-
-.my-booking-panel__eyebrow {
-  margin: 0 0 1px;
-  color: var(--theme-accent-strong);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.my-booking-panel__description {
-  margin: 10px 0 0;
-  color: var(--theme-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.my-booking-panel__actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin-top: 12px;
-}
-
-.my-booking-panel__actions button {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 8px;
 }
 
 .my-logout-button {
